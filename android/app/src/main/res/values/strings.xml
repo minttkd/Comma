@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">쉼표</string>
+    <string name="a11y_label">쉼표 결제 감지</string>
+    <string name="a11y_desc">배달의민족·쿠팡·무신사의 결제 준비 화면에서 상품명과 금액만 읽어, 이번 달 재정에 무리가 될 때 결제 화면 위에 질문을 띄웁니다. 비밀번호·카드번호·메시지는 판단에 쓰지 않습니다.</string>
+</resources>
