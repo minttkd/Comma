@@ -72,7 +72,7 @@ public class GuardService extends AccessibilityService implements OverlayControl
         instance = this;
         store = Store.get(this);
         overlay = new OverlayController(this, this);
-        store.log("감지 서비스 연결됨 (v0.4 · 결제 버튼을 누를 때만 개입)");
+        store.log("감지 서비스 연결됨 (v0.5 · 결제 버튼을 누를 때만 개입)");
     }
 
     @Override

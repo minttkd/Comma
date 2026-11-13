@@ -5,6 +5,7 @@ import android.graphics.Color;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.View;
+import android.view.ViewGroup;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -13,141 +14,252 @@ import android.widget.Toast;
 import com.shimpyo.app.core.Enums.TargetApp;
 import com.shimpyo.app.core.Money;
 
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
 /**
  * 데모 결제 화면. 실제 앱 없이도 개입 흐름(판정 → 트리거 → 오버레이 → 기록)을 시연·테스트할 수 있다.
  * 실제 앱 화면 읽기(접근성 트리)는 건너뛰고, 같은 엔진·같은 오버레이를 쓴다.
+ * 화면은 Figma "Backdrops (실제 앱 주문 화면 재현, 로고 없음)"를 따른다.
  */
 public class DemoCheckoutActivity extends Activity {
 
+    static final String EXTRA_PRESET = "preset";
+
     static final class Preset {
         final TargetApp app;
-        final String label;
+        final String label;      // 홈 데모 목록에 보이는 이름
+        final String expect;     // 예상 강도 (홈 데모 목록 오른쪽)
         final long amount;
         final List<String> items;
+        final long[] prices;
+        final long fee;          // 배달팁 · 배송비
         final String hint;
 
-        Preset(TargetApp app, String label, long amount, String hint, String... items) {
+        Preset(TargetApp app, String label, String expect, long amount, long fee, String hint, String[] items, long[] prices) {
             this.app = app;
             this.label = label;
+            this.expect = expect;
             this.amount = amount;
+            this.fee = fee;
             this.hint = hint;
             this.items = Arrays.asList(items);
+            this.prices = prices;
         }
     }
 
     static final Preset[] PRESETS = {
-            new Preset(TargetApp.BAEMIN, "배민 치킨 23,000", 23_000, "설정 ①② 후 → 재정위험 · 보통", "후라이드 치킨 세트"),
-            new Preset(TargetApp.BAEMIN, "배민 떡볶이 12,000", 12_000, "설정 ③④ 후 → 야식 반복 · 가벼움 (②도 하면 보통)", "떡볶이 세트"),
-            new Preset(TargetApp.BAEMIN, "배민 회·초밥 45,000", 45_000, "설정 ①③④ 후 → 재정위험+고액+야식 · 강함", "모둠 회·초밥 세트"),
-            new Preset(TargetApp.COUPANG, "쿠팡 휴지·세제 26,000", 26_000, "설정 ①② 후 → 필요 판정 · 한 단계 낮춰 가벼움", "3겹 데코 화장지 30롤", "액체 세제 3L"),
-            new Preset(TargetApp.COUPANG, "쿠팡 계란·우유 18,000", 18_000, "식료품 + 필요 → 식비 예산 차감, 개입 없음", "계란 30구", "우유 900ml", "두부 300g"),
-            new Preset(TargetApp.MUSINSA, "무신사 코트 129,000", 129_000, "설정 ① 후 → 재정위험+고액 · 강함 (질문 3개)", "오버핏 울 코트 (차콜)"),
-            new Preset(TargetApp.MUSINSA, "무신사 머리끈 4,500", 4_500, "1시간 안에 3번 결제하면 → 몰아치기 · 가벼움", "머리끈 세트"),
+            new Preset(TargetApp.BAEMIN, "배민 · 치킨 세트", "보통", 23_000, 2_000, "설정 ①② 후 → 재정위험 · 보통",
+                    new String[]{"후라이드 반 + 양념 반 세트"}, new long[]{21_000}),
+            new Preset(TargetApp.COUPANG, "쿠팡 · 휴지·세제", "가벼움", 26_000, 0, "설정 ①② 후 → 필요 판정 · 한 단계 낮춰 가벼움",
+                    new String[]{"3겹 롤화장지 30롤", "중성세제 2.5L"}, new long[]{15_900, 10_100}),
+            new Preset(TargetApp.MUSINSA, "무신사 · 울 코트", "강함", 129_000, 0, "설정 ① 후 → 재정위험+고액 · 강함 (질문 3개)",
+                    new String[]{"울 블렌드 싱글 코트 (차콜, M)"}, new long[]{129_000}),
+            new Preset(TargetApp.BAEMIN, "배민 · 떡볶이", "가벼움", 12_000, 2_000, "설정 ③④ 후 → 야식 반복 · 가벼움 (②도 하면 보통)",
+                    new String[]{"로제 떡볶이 세트"}, new long[]{10_000}),
+            new Preset(TargetApp.BAEMIN, "배민 · 회·초밥", "강함", 45_000, 3_000, "설정 ①③④ 후 → 재정위험+고액+야식 · 강함",
+                    new String[]{"모둠 회·초밥 세트"}, new long[]{42_000}),
+            new Preset(TargetApp.COUPANG, "쿠팡 · 계란·우유·두부", "개입 없음", 18_000, 0, "식료품 + 필요 → 식비 예산 차감, 개입 없음",
+                    new String[]{"계란 30구", "우유 900ml", "두부 300g"}, new long[]{9_900, 4_980, 3_120}),
+            new Preset(TargetApp.MUSINSA, "무신사 · 머리끈", "1시간에 3번째부터", 4_500, 0, "1시간 안에 3번 결제하면 → 몰아치기 · 가벼움",
+                    new String[]{"머리끈 세트"}, new long[]{4_500}),
     };
 
-    private LinearLayout content;
     private Preset current;
     private String status = "";
+    private LinearLayout content;
+    private TextView statusView;
+    private final android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
 
     @Override
     protected void onCreate(Bundle b) {
         super.onCreate(b);
-        ScrollView scroll = new ScrollView(this);
-        scroll.setBackgroundColor(Ui.BG);
-        content = Ui.v(this);
-        Ui.pad(content, this, 20, 20, 20, 28);
-        scroll.addView(content);
-        setContentView(scroll);
-        render();
+        MainActivity.styleWindow(this);
+        int idx = getIntent().getIntExtra(EXTRA_PRESET, 0);
+        current = PRESETS[Math.max(0, Math.min(PRESETS.length - 1, idx))];
+        setContentView(buildView());
+        GuardService g = GuardService.instance;
+        if (g != null) g.demoCheckout(current.app);
+        else status = "접근성 서비스가 꺼져 있어 쉼표가 판단할 수 없어요.";
+        updateStatus();
     }
 
-    private final android.os.Handler handler = new android.os.Handler(android.os.Looper.getMainLooper());
-
-    private void add(View v, int gap) {
-        content.addView(v, Ui.fillW());
-        if (gap > 0) Ui.gapTop(v, this, gap);
-    }
-
-    private int appColor(TargetApp a) {
-        if (a == TargetApp.BAEMIN) return Color.parseColor("#2AC1BC");
-        if (a == TargetApp.COUPANG) return Color.parseColor("#346AFF");
+    private int payColor() {
+        if (current.app == TargetApp.BAEMIN) return Color.parseColor("#2AC1BC");
+        if (current.app == TargetApp.COUPANG) return Color.parseColor("#346AFF");
         return Color.BLACK;
     }
 
-    private void render() {
-        content.removeAllViews();
-        add(Ui.text(this, "데모 결제 화면", 22, Ui.DARK, true), 0);
-        add(Ui.text(this, "실제 앱 대신 이 화면에서 결제 시도를 흉내 내요. 판정·트리거·질문·기록은 실제와 같은 엔진을 써요."
-                + (GuardService.instance == null ? "\n※ 접근성 서비스가 꺼져 있으면 오버레이가 뜨지 않아요." : ""), 13, Ui.MUTED, false), 6);
+    /** Figma Backdrop: AppBar · 섹션들 · PayBar. */
+    View buildView() {
+        LinearLayout root = Ui.v(this);
+        root.setBackgroundColor(Ui.BG);
 
-        List<TextView> chips = new ArrayList<>();
-        for (Preset p : PRESETS) chips.add(Ui.chip(this, p.label, p == current, v -> select(p)));
-        add(Ui.chipGrid(this, chips, 2), 14);
-
-        if (current == null) {
-            add(Ui.text(this, "위에서 결제할 상품을 고르면, 결제 준비 화면에 들어온 것으로 보고 쉼표가 판단해요.", 13, Ui.MUTED, false), 16);
-            return;
-        }
-        add(Ui.text(this, current.hint, 12, Ui.BLUE, true), 12);
-
-        LinearLayout sheet = Ui.card(this);
+        // AppBar: ← 주문하기
+        LinearLayout bar = Ui.h(this);
+        bar.setBackgroundColor(Ui.WHITE);
+        Ui.pad(bar, this, 16, 12, 16, 12);
+        TextView back = Ui.text(this, "←", 17, Ui.TEXT, Ui.BOLD);
+        back.setOnClickListener(v -> finish());
+        bar.addView(back);
         String title = current.app == TargetApp.BAEMIN ? "주문하기" : current.app == TargetApp.COUPANG ? "주문/결제" : "주문서";
-        sheet.addView(Ui.text(this, current.app.label + " · " + title, 17, Ui.DARK, true));
-        for (String it : current.items) {
-            TextView t = Ui.text(this, it, 14, Ui.DARK, false);
-            sheet.addView(t);
-            Ui.gapTop(t, this, 8);
-        }
-        View d = Ui.divider(this);
-        sheet.addView(d);
-        Ui.gapTop(d, this, 12);
-        View kv = Ui.kv(this, "총 결제금액", Money.won(current.amount), true);
-        sheet.addView(kv);
-        Ui.gapTop(kv, this, 10);
-        add(sheet, 12);
+        TextView tt = Ui.text(this, title, 17, Ui.TEXT, Ui.BOLD);
+        LinearLayout.LayoutParams tp = Ui.wrap();
+        tp.leftMargin = Ui.dp(this, 12);
+        bar.addView(tt, tp);
+        root.addView(bar, Ui.fillW());
 
-        TextView pay = Ui.text(this, Money.won(current.amount) + " 결제하기", 16, Color.WHITE, true);
+        ScrollView scroll = new ScrollView(this);
+        content = Ui.v(this);
+        Ui.pad(content, this, 0, 8, 0, 16);
+        scroll.addView(content);
+        root.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
+
+        if (current.app == TargetApp.BAEMIN) baemin();
+        else if (current.app == TargetApp.COUPANG) coupang();
+        else musinsa();
+
+        statusView = Ui.text(this, "", 12, Ui.MUTED, Ui.MEDIUM);
+        Ui.pad(statusView, this, 16, 14, 16, 0);
+        content.addView(statusView, Ui.fillW());
+        TextView hint = Ui.text(this, "데모 · " + current.hint, 12, Ui.SUBTLE, Ui.REGULAR);
+        Ui.pad(hint, this, 16, 6, 16, 0);
+        content.addView(hint, Ui.fillW());
+        TextView retry = Ui.linkButton(this, "같은 상품으로 다시 시도 (새 결제 화면)", v -> {
+            status = "";
+            GuardService g = GuardService.instance;
+            if (g != null) g.demoCheckout(current.app);
+            updateStatus();
+        });
+        LinearLayout rr = Ui.h(this);
+        rr.setGravity(Gravity.CENTER_HORIZONTAL);
+        rr.addView(retry, Ui.wrap());
+        content.addView(rr, Ui.fillW());
+
+        // PayBar
+        LinearLayout payBar = Ui.v(this);
+        payBar.setBackgroundColor(Ui.WHITE);
+        Ui.pad(payBar, this, 16, 10, 16, 18);
+        String payLabel = current.app == TargetApp.COUPANG ? "결제하기" : Money.won(current.amount) + " 결제하기";
+        TextView pay = Ui.text(this, payLabel, 16, Ui.WHITE, Ui.BOLD);
         pay.setGravity(Gravity.CENTER);
-        pay.setBackground(Ui.round(this, appColor(current.app), 10));
-        Ui.pad(pay, this, 16, 16, 16, 16);
+        pay.setBackground(Ui.round(this, payColor(), 10));
+        Ui.pad(pay, this, 16, 15, 16, 15);
         pay.setOnClickListener(v -> payClick());
-        add(pay, 14);
-
-        if (!status.isEmpty()) add(Ui.text(this, status, 13, Ui.DARK, true), 12);
-        add(Ui.linkButton(this, "같은 상품으로 다시 시도 (새 결제 화면)", v -> select(current)), 8);
+        payBar.addView(pay, Ui.fillW());
+        root.addView(payBar, Ui.fillW());
+        updateStatus();
+        return root;
     }
 
-    private void select(Preset p) {
-        current = p;
-        status = "";
-        GuardService g = GuardService.instance;
-        if (g == null) {
-            status = "접근성 서비스가 꺼져 있어 판단할 수 없어요.";
-        } else {
-            g.demoCheckout(p.app);
-            status = "결제 화면에 들어왔어요. 결제하기를 누르면 그때 쉼표가 최종 금액으로 판단해요.";
-        }
-        render();
+    // ------------------------------------------------------------------ 섹션 (흰 바탕, padding 14/16, gap 8)
+
+    private LinearLayout section(String title, String right, int rightColor) {
+        LinearLayout s = Ui.v(this);
+        s.setBackgroundColor(Ui.WHITE);
+        Ui.pad(s, this, 16, 14, 16, 14);
+        LinearLayout h = Ui.h(this);
+        h.setGravity(Gravity.TOP);
+        h.addView(Ui.text(this, title, 15, Ui.TEXT, Ui.MEDIUM), Ui.weight1());
+        if (right != null) h.addView(Ui.text(this, right, 12, rightColor, Ui.MEDIUM));
+        s.addView(h, Ui.fillW());
+        LinearLayout.LayoutParams p = Ui.fillW();
+        p.topMargin = content.getChildCount() == 0 ? 0 : Ui.dp(this, 8);
+        content.addView(s, p);
+        return s;
     }
+
+    private void line(LinearLayout s, String text) {
+        TextView t = Ui.text(this, text, 12, Ui.MUTED, Ui.REGULAR);
+        s.addView(t, Ui.fillW());
+        Ui.gapTop(t, this, 8);
+    }
+
+    private void row(LinearLayout s, String k, String v) {
+        LinearLayout r = Ui.h(this);
+        r.addView(Ui.text(this, k, 12, Ui.MUTED, Ui.REGULAR), Ui.weight1());
+        r.addView(Ui.text(this, v, 12, Ui.TEXT, Ui.REGULAR));
+        s.addView(r, Ui.fillW());
+        Ui.gapTop(r, this, 8);
+    }
+
+    private void total(LinearLayout s, String k, long v, int color) {
+        LinearLayout r = Ui.h(this);
+        r.addView(Ui.text(this, k, 15, Ui.TEXT, Ui.MEDIUM), Ui.weight1());
+        r.addView(Ui.text(this, Money.won(v), 17, color, Ui.BOLD));
+        s.addView(r, Ui.fillW());
+        Ui.gapTop(r, this, 8);
+    }
+
+    private long itemsSum() {
+        long t = 0;
+        for (long p : current.prices) t += p;
+        return t;
+    }
+
+    private void baemin() {
+        LinearLayout d = section("배달", "한집배달 · 25~40분", Ui.MUTED);
+        line(d, "서울 동작구 상도로 369, 기숙사 B동");
+        line(d, "요청사항: 문 앞에 두고 벨 눌러주세요");
+        LinearLayout m = section("주문 메뉴", null, 0);
+        for (int i = 0; i < current.items.size(); i++) row(m, current.items.get(i) + " · 1개", Money.won(current.prices[i]));
+        if (current.items.get(0).contains("치킨") || current.items.get(0).contains("양념")) row(m, "콜라 1.25L (기본 제공)", "0원");
+        LinearLayout p = section("결제수단", "간편결제 ›", Ui.MUTED);
+        line(p, "등록된 카드로 바로 결제돼요");
+        LinearLayout a = section("결제금액", null, 0);
+        row(a, "주문금액", Money.won(itemsSum()));
+        row(a, "배달팁", Money.won(current.fee));
+        total(a, "총 결제금액", current.amount, Ui.TEXT);
+    }
+
+    private void coupang() {
+        LinearLayout r = section("받는사람 정보", "변경 ›", Ui.MUTED);
+        line(r, "이수민 · 010-****-1234");
+        line(r, "서울 동작구 상도로 369, 기숙사 B동");
+        LinearLayout s = section("배송 1건", "내일(목) 도착 보장", Color.parseColor("#346AFF"));
+        for (int i = 0; i < current.items.size(); i++) row(s, current.items.get(i) + " · 1개", Money.won(current.prices[i]));
+        LinearLayout p = section("결제정보", null, 0);
+        row(p, "총상품가격", Money.won(itemsSum()));
+        row(p, "배송비", Money.won(current.fee));
+        total(p, "총결제금액", current.amount, Color.parseColor("#E52528"));
+        section("결제수단", "신용/체크카드 ›", Ui.MUTED);
+    }
+
+    private void musinsa() {
+        LinearLayout d = section("배송 정보", "변경 ›", Ui.MUTED);
+        line(d, "이수민 · 010-****-1234");
+        line(d, "서울 동작구 상도로 369, 기숙사 B동");
+        LinearLayout s = section("주문 상품 " + current.items.size() + "개", null, 0);
+        for (int i = 0; i < current.items.size(); i++) row(s, current.items.get(i), Money.won(current.prices[i]));
+        section("결제 수단", "간편결제 ›", Ui.MUTED);
+        LinearLayout a = section("결제 금액", null, 0);
+        row(a, "상품 금액", Money.won(itemsSum()));
+        row(a, "배송비", current.fee == 0 ? "무료" : Money.won(current.fee));
+        total(a, "최종 결제 금액", current.amount, Ui.TEXT);
+    }
+
+    private void updateStatus() {
+        if (statusView == null) return;
+        statusView.setText(status);
+        statusView.setVisibility(status.isEmpty() ? View.GONE : View.VISIBLE);
+    }
+
+    // ------------------------------------------------------------------ 결제 버튼
 
     private void payClick() {
         GuardService g = GuardService.instance;
-        if (g == null || current == null) {
+        if (g == null) {
             Toast.makeText(this, "접근성 서비스를 켜 주세요", Toast.LENGTH_SHORT).show();
             return;
         }
         String screen = current.app.label + "\n" + String.join("\n", current.items) + "\n총 결제금액\n" + Money.won(current.amount) + "\n결제하기";
         if (g.demoPayClick(current.app, current.amount, current.items, screen)) {
             status = "결제 완료 (데모) · " + Money.won(current.amount) + " 기록됨";
-            render();
+            updateStatus();
             return;
         }
-        status = "결제하기를 눌렀어요 · 쉼표가 확인 중…";
-        render();
+        status = "쉼표가 최종 금액으로 확인하고 있어요…";
+        updateStatus();
         pollAfterTap(0);
     }
 
@@ -167,8 +279,9 @@ public class DemoCheckoutActivity extends Activity {
             }
             if ("ALLOWED".equals(st)) status = "질문이 끝났어요. 결제하기를 한 번 더 눌러 주세요.";
             else if ("ACTIVE".equals(st)) status = "쉼표 질문 중…";
-            else status = "세션 상태: " + st;
-            render();
+            else if ("PAUSED".equals(st)) status = "질문을 닫았어요. 결제하기를 누르면 하던 질문부터 다시 떠요.";
+            else status = "";
+            updateStatus();
         }, 400);
     }
 

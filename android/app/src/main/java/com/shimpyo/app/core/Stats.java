@@ -17,6 +17,7 @@ public class Stats {
     public int prevented;
     public long preventedSum;
     public Map<Outcome, Integer> byOutcome = new EnumMap<>(Outcome.class);
+    public Map<Outcome, Long> byOutcomeSum = new EnumMap<>(Outcome.class);
     public Map<Intensity, int[]> byIntensity = new EnumMap<>(Intensity.class); // [개입 수, 방지 수]
     public int lateCount;
     public long lateSum;
@@ -35,7 +36,10 @@ public class Stats {
         LocalDate[] c = BudgetEngine.cycle(s, today);
         LocalDate prevStart = s.cycleStartOverride >= 0 ? c[0].minusDays(30) : c[0].minusMonths(1);
         for (Intensity i : Intensity.values()) st.byIntensity.put(i, new int[2]);
-        for (Outcome o : Outcome.values()) st.byOutcome.put(o, 0);
+        for (Outcome o : Outcome.values()) {
+            st.byOutcome.put(o, 0);
+            st.byOutcomeSum.put(o, 0L);
+        }
         for (Record r : records) {
             LocalDate d = Instant.ofEpochMilli(r.ts).atZone(zone).toLocalDate();
             boolean inCycle = !d.isBefore(c[0]) && d.isBefore(c[1]);
@@ -43,6 +47,7 @@ public class Stats {
             if (inPrev && r.lateNight && r.app == TargetApp.BAEMIN && r.outcome.spend) st.prevLateCount++;
             if (!inCycle) continue;
             st.byOutcome.put(r.outcome, st.byOutcome.get(r.outcome) + 1);
+            st.byOutcomeSum.put(r.outcome, st.byOutcomeSum.get(r.outcome) + r.amount);
             if (r.isIntervention()) {
                 st.interventions++;
                 int[] v = st.byIntensity.get(r.intensity);

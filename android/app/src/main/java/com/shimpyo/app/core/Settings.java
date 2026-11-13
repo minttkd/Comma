@@ -10,10 +10,10 @@ public class Settings {
     public int payday = 25;
     /** 테스트용: 이번 주기 시작일을 직접 지정 (epochDay, -1이면 급여일로 계산). 지정 시 주기는 30일. */
     public long cycleStartOverride = -1;
-    public long rent = 380_000;       // 월세·관리비
-    public long utilities = 40_000;   // 공과금
-    public long phone = 35_000;       // 통신비
-    public long transport = 30_000;   // 교통비
+    public long rent = 350_000;       // 월세·관리비
+    public long utilities = 50_000;   // 공과금
+    public long phone = 45_000;       // 통신비
+    public long transport = 40_000;   // 교통비
     public long subscriptions = 15_000; // 구독료
     public long martBudget = 40_000;
     public long coupangFoodBudget = 60_000;
