@@ -36,7 +36,7 @@ public class Settings {
 
     // ---- AI
     public String apiKey = "";
-    public String model = "claude-haiku-4-5";
+    public String model = "claude-haiku-5-5";
     public int aiTimeoutMs = 2000;
 
     // ---- 테스트

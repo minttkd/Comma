@@ -142,6 +142,8 @@ public final class Store {
         s.showGuard = o.optBoolean("showGuard", d.showGuard);
         s.apiKey = o.optString("apiKey", d.apiKey);
         s.model = o.optString("model", d.model);
+        // 0.3까지의 기본값(claude-haiku-4-5)이 저장돼 있으면 새 기본값으로 옮긴다
+        if ("claude-haiku-4-5".equals(s.model)) s.model = d.model;
         s.aiTimeoutMs = o.optInt("aiTimeoutMs", d.aiTimeoutMs);
         s.simulatedHour = o.optInt("simulatedHour", d.simulatedHour);
         s.lastSyncTs = o.optLong("lastSyncTs", d.lastSyncTs);

@@ -594,7 +594,7 @@ public class MainActivity extends Activity {
         boolean on = serviceEnabled();
         sc.addView(Ui.kv(this, "결제 감지(접근성 서비스)", on ? "켜짐" : "꺼짐", true));
         sc.addView(Ui.kv(this, "현재 세션", GuardService.instance == null ? "서비스 미연결" : GuardService.instance.sessionState(), false));
-        sc.addView(Ui.kv(this, "앱 버전", "0.3 · 멈춘 뒤 재시도 문구", false));
+        sc.addView(Ui.kv(this, "앱 버전", "0.4 · Haiku 5.5 기본 모델", false));
         TextView open = Ui.text(this, "접근성 설정 열기 ›", 13, Ui.BLUE, true);
         Ui.pad(open, this, 0, 8, 0, 0);
         open.setOnClickListener(v -> openA11ySettings());
