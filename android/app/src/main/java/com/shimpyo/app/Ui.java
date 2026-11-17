@@ -233,6 +233,11 @@ final class Ui {
         static final int GUARD_STROKE = 3;   // 결제 버튼 가드 테두리
         static final int ELEVATION = 6;      // 토스트 그림자
         static final int TOAST_OFFSET = 100; // 토스트 바닥에서 띄우는 높이
+
+        // UI 갤러리 전용
+        static final int SWATCH = 32;        // 색 견본
+        static final int RADIUS_SAMPLE = 48; // 모서리 견본
+        static final int GALLERY_LABEL = 150; // 간격 막대 이름 칸
     }
 
     /** Figma 글자 스타일의 줄 높이 (Caption 12/17 · Body 15/22 · Button 16/22 · Heading 17/25 · Title 22/30 · Display 30/38). */

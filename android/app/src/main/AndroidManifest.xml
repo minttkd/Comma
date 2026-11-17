@@ -24,6 +24,10 @@
             android:name=".DemoCheckoutActivity"
             android:exported="false"
             android:label="데모 결제 화면" />
+        <activity
+            android:name=".UiGalleryActivity"
+            android:exported="false"
+            android:label="UI 갤러리" />
 
         <service
             android:name=".GuardService"

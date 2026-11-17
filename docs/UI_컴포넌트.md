@@ -4,6 +4,9 @@
 화면 코드(`MainActivity`, `OverlayController`, `DemoCheckoutActivity`)에는 숫자 dp·sp·색을 쓰지 않고 아래 이름만 쓴다.
 값을 바꾸면 그 이름을 쓰는 모든 화면이 함께 바뀐다.
 
+앱의 설정 탭 › 테스트 도구 › **UI 갤러리 열기**에서 아래 토큰과 부품을 실제 모양으로 볼 수 있다 (`UiGalleryActivity.java`).
+토큰 목록은 `Ui.java`에서 자동으로 읽으므로 새 토큰은 갤러리에 바로 나온다. 새 부품을 만들면 갤러리의 `components()`에 예시를 하나 추가한다.
+
 ## 토큰
 
 ### 색 (Figma Color 변수)
@@ -97,7 +100,7 @@
 
 ### `Ui.Size`: 고정 크기 (dp)
 
-`NAV_HEIGHT` 63 · `NAV_INSET` 28 · `NAV_DOT` 6 · `ICON_BUTTON` 24 · `CHECKBOX` 20 · `STEP_DOT` 8 · `STEP_ACTIVE` 24 · `BAR` 8 · `FIELD_WIDTH` 130 · `ROW_LABEL` 48 · `STROKE` 1 · `STROKE_STRONG` 1.5 · `GUARD_STROKE` 3 · `ELEVATION` 6 · `TOAST_OFFSET` 100
+`NAV_HEIGHT` 63 · `NAV_INSET` 28 · `NAV_DOT` 6 · `ICON_BUTTON` 24 · `CHECKBOX` 20 · `STEP_DOT` 8 · `STEP_ACTIVE` 24 · `BAR` 8 · `FIELD_WIDTH` 130 · `ROW_LABEL` 48 · `STROKE` 1 · `STROKE_STRONG` 1.5 · `GUARD_STROKE` 3 · `ELEVATION` 6 · `TOAST_OFFSET` 100 · (갤러리 전용) `SWATCH` 32 · `RADIUS_SAMPLE` 48 · `GALLERY_LABEL` 150
 
 ## 컴포넌트
 

@@ -844,6 +844,7 @@ public class MainActivity extends Activity {
             store.saveSettings(st);
         }));
         tc.addView(testButton("데모 결제 화면 열기", () -> startActivity(new Intent(this, DemoCheckoutActivity.class))));
+        tc.addView(testButton("UI 갤러리 열기 (토큰·컴포넌트 모음)", () -> startActivity(new Intent(this, UiGalleryActivity.class))));
         tc.addView(testButton("기록 전체 삭제", () -> {
             store.clearRecords();
             toast("기록을 모두 지웠어요");
