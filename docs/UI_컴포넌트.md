@@ -197,5 +197,25 @@
 | S10 리포트 | `reportScreen()` | `intensityCard`, `outcomeCard` |
 | 설정 | `settingsScreen()` | `statusCard`, `numberField`, `testTools`, `logCard`, `screenTextCard` |
 
-각 화면 메서드는 맨 위에서 데이터(`Store`, `BudgetEngine`, `Stats`)를 한 번 읽고 카드 메서드에 값으로 넘긴다.
-백엔드에서 데이터를 받게 되면 이 맨 윗부분만 바꾸면 된다.
+각 화면 메서드는 맨 위에서 데이터(`Store`, `BudgetEngine`, `Stats`, `BackendSlots`)를 한 번 읽고 카드 메서드에 값으로 넘긴다.
+
+## 데이터가 오는 곳
+
+| 출처 | 값 | 상태 |
+|---|---|---|
+| `Store` · `core/` (차민상) | 설정, 결제 기록, 예산 계산, 통계 | 연결됨 |
+| `BackendSlots.java` (프론트) | 연결된 계좌, 정기 수입 내역, 수입 연속 개월 수, 알림 허용 여부 | **데모 값**. 백엔드가 생기면 채운다 |
+| `PackageManager` | 앱 버전 (설정 탭) | `build.gradle.kts`의 `versionName`에서 자동으로 |
+
+### `BackendSlots` 연결하는 법
+
+1. `BackendSlots.load(Context)` 안에서 백엔드 값을 받아 새 `BackendSlots`를 채우고 `current`에 넣는다 (파일 안 주석에 예시가 있다).
+2. 네트워크 호출이면 백그라운드에서 부르고, 끝나면 화면의 `refresh()`를 다시 부른다.
+3. 화면 코드는 고치지 않아도 된다. 화면은 `BackendSlots.get()`으로만 읽는다.
+
+| 필드 | 쓰는 화면 | 비었을 때 |
+|---|---|---|
+| `account` (`bank`, `kind`, `maskedNumber`, `demo`) | S02 연결된 계좌 | `null`이면 "연결된 계좌가 없어요" |
+| `incomeSources` (`label`, `amount`) | S02 정기 수입 내역 | 합계가 월 수입과 다르면 "최근 N개월 연속 같은 날 들어왔어요" |
+| `incomeStreakMonths` | S02 설명·내역 | — |
+| `notificationAllowed` | S01 알림 줄 ✓ | `false` |

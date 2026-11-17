@@ -92,6 +92,7 @@ public class MainActivity extends Activity {
         super.onCreate(b);
         styleWindow(this);
         setContentView(buildLayout());
+        BackendSlots.load(this);
         if (!store.settings().onboarded) onboardStep = ONBOARD_PERMISSION;
     }
 
@@ -200,6 +201,15 @@ public class MainActivity extends Activity {
 
     private void toast(String s) {
         Toast.makeText(this, s, Toast.LENGTH_SHORT).show();
+    }
+
+    /** build.gradle.kts의 versionName (예: "0.5"). */
+    private String appVersion() {
+        try {
+            return getPackageManager().getPackageInfo(getPackageName(), 0).versionName;
+        } catch (Exception e) {
+            return "?";
+        }
     }
 
     // ------------------------------------------------------------------ 화면 문구 만들기 (값 → 글자)
@@ -312,7 +322,7 @@ public class MainActivity extends Activity {
         c.setBackground(Ui.round(this, Ui.WHITE, Ui.Radius.BOX));
         c.addView(permissionRow(true, "접근성 서비스", "결제 화면의 상품명과 금액을 읽어요", on), Ui.fillW());
         Ui.stack(c, permissionRow(true, "결제 화면 위 질문 표시", "결제 화면 위에 질문을 띄워요 (접근성 서비스로 함께 허용돼요)", on), Ui.Space.STACK);
-        Ui.stack(c, permissionRow(false, "알림", "다음 날 어제 결제를 돌아보자고 물어봐요", false), Ui.Space.STACK);
+        Ui.stack(c, permissionRow(false, "알림", "다음 날 어제 결제를 돌아보자고 물어봐요", BackendSlots.get().notificationAllowed), Ui.Space.STACK);
         return c;
     }
 
@@ -333,9 +343,11 @@ public class MainActivity extends Activity {
         Settings s = store.settings();
         add(onboardingTopBar(ONBOARD_INCOME), 0);
         add(Ui.title(this, "정기 수입을\n확인했어요"), Ui.Space.WIDE);
-        add(Ui.body(this, "최근 6개월 입출금 내역으로 매달 들어오는 돈을 찾았어요. (데모: Mock 계좌)"), Ui.Space.WIDE);
-        add(linkedAccountCard("쉼표은행 입출금 ****1234 (데모)"), Ui.Space.WIDE);
-        add(incomeCard(s), Ui.Space.WIDE);
+        BackendSlots data = BackendSlots.get();
+        boolean demo = data.account == null || data.account.demo;
+        add(Ui.body(this, "최근 " + data.incomeStreakMonths + "개월 입출금 내역으로 매달 들어오는 돈을 찾았어요." + (demo ? " (데모: Mock 계좌)" : "")), Ui.Space.WIDE);
+        add(linkedAccountCard(data.account == null ? "연결된 계좌가 없어요" : data.account.displayName()), Ui.Space.WIDE);
+        add(incomeCard(s, data), Ui.Space.WIDE);
         add(consentCard(), Ui.Space.WIDE);
 
         TextView next = Ui.button(this, "다음", true, v -> {
@@ -353,11 +365,22 @@ public class MainActivity extends Activity {
         return c;
     }
 
-    private View incomeCard(Settings s) {
+    /** 정기 수입 카드. 내역(BackendSlots)의 합계가 월 수입과 같을 때만 "용돈 … + 과외비 …"를 보여 준다. */
+    private View incomeCard(Settings s, BackendSlots data) {
         LinearLayout c = Ui.tintCard(this, Ui.BRAND_LIGHT);
         c.addView(Ui.text(this, "정기 수입", Ui.Font.CAPTION, Ui.BRAND, Ui.MEDIUM));
         Ui.stack(c, Ui.heading(this, "매달 " + s.payday + "일 · 약 " + Money.won(s.income)), Ui.Space.ITEM);
-        String detail = s.income == 1_000_000 ? "용돈 600,000원 + 과외비 400,000원 (6개월 연속)" : "최근 6개월 연속 같은 날 들어왔어요";
+        String detail;
+        if (!data.incomeSources.isEmpty() && data.incomeTotal() == s.income) {
+            StringBuilder b = new StringBuilder();
+            for (BackendSlots.IncomeSource src : data.incomeSources) {
+                if (b.length() > 0) b.append(" + ");
+                b.append(src.label).append(' ').append(Money.won(src.amount));
+            }
+            detail = b + " (" + data.incomeStreakMonths + "개월 연속)";
+        } else {
+            detail = "최근 " + data.incomeStreakMonths + "개월 연속 같은 날 들어왔어요";
+        }
         Ui.stack(c, Ui.meta(this, detail), Ui.Space.ITEM);
         return c;
     }
@@ -754,7 +777,7 @@ public class MainActivity extends Activity {
         LinearLayout c = Ui.card(this);
         c.addView(Ui.kv(this, "결제 감지(접근성 서비스)", serviceEnabled() ? "켜짐" : "꺼짐", true));
         Ui.stack(c, Ui.kv(this, "현재 세션", GuardService.instance == null ? "서비스 미연결" : GuardService.instance.sessionState(), false), Ui.Space.ITEM);
-        Ui.stack(c, Ui.kv(this, "앱 버전", "0.5 · Figma Hi-Fi 디자인", false), Ui.Space.ITEM);
+        Ui.stack(c, Ui.kv(this, "앱 버전", appVersion() + " · Figma Hi-Fi 디자인", false), Ui.Space.ITEM);
         TextView open = Ui.textLink(this, "접근성 설정 열기 ›", Ui.BRAND, v -> openA11ySettings());
         Ui.pad(open, this, 0, Ui.Space.ITEM, 0, 0);
         c.addView(open);
