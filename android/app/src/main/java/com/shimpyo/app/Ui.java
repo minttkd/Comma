@@ -18,15 +18,29 @@ import android.widget.ScrollView;
 import android.widget.TextView;
 
 import java.util.List;
+import java.util.function.IntConsumer;
 
 /**
- * 코드로 화면을 그리는 작은 도우미.
- * 색·글자·모서리 값은 Figma "쉼표 Hi-Fi 프로토타입"(쉼표 와이어프레임 › Components)의 변수와 맞춘다.
+ * 쉼표 디자인 시스템: 토큰(색·글자·간격·모서리·크기)과 공통 UI 부품.
+ * 값은 Figma "쉼표 Hi-Fi 프로토타입"(쉼표 와이어프레임 › Components)의 변수와 맞추고, 주석에 Figma 이름을 적는다.
+ *
+ * 화면 코드에서는 숫자 대신 이 파일의 이름만 쓴다.
+ * <pre>
+ *   색          Ui.TEXT, Ui.MUTED, Ui.BRAND …
+ *   상태 색 묶음 Ui.Tone.SUCCESS · WARNING · DANGER …
+ *   글자 크기    Ui.Font.TITLE · BODY · CAPTION …
+ *   간격        Ui.Space.BLOCK · ROW · ITEM …
+ *   모서리      Ui.Radius.CARD · BOX · CHIP …
+ *   고정 크기    Ui.Size.NAV_HEIGHT · ICON_BUTTON …
+ * </pre>
+ * 전체 목록과 쓰는 곳은 docs/UI_컴포넌트.md 에 정리했다.
  */
 final class Ui {
     private Ui() {}
 
-    // ---- Figma 변수 (brand/blue는 이름과 달리 짙은 먹색)
+    // ================================================================== 색 (Figma Color 변수)
+    // brand/blue는 이름과 달리 짙은 먹색이다.
+
     static final int BRAND = Color.parseColor("#292D2B");      // brand/blue · brand/navy
     static final int BRAND_LIGHT = Color.parseColor("#EAF1EC"); // brand/blue-light
     static final int TEXT = Color.parseColor("#292D2B");       // text/primary
@@ -36,20 +50,131 @@ final class Ui {
     static final int BG = Color.parseColor("#F3F5F2");         // bg
     static final int WHITE = Color.WHITE;                      // surface
     static final int RED = Color.parseColor("#A14D46");        // status/red
-    static final int RED_BG = Color.parseColor("#F7EAE8");
+    static final int RED_BG = Color.parseColor("#F7EAE8");     // status/red-bg
     static final int AMBER = Color.parseColor("#8C6C23");      // status/amber
-    static final int AMBER_BG = Color.parseColor("#F7F0DE");
+    static final int AMBER_BG = Color.parseColor("#F7F0DE");   // status/amber-bg
     static final int GREEN = Color.parseColor("#37624C");      // status/green
-    static final int GREEN_BG = Color.parseColor("#E8EFE9");
-    static final int DIM = Color.argb(140, 0x17, 0x20, 0x1A);   // dim #17201A · 55%
+    static final int GREEN_BG = Color.parseColor("#E8EFE9");   // status/green-bg
+    static final int DIM = Color.argb(140, 0x17, 0x20, 0x1A);  // dim #17201A · 55%
 
-    // 예전 이름 (다른 화면 코드와의 호환)
-    static final int BLUE = BRAND;
-    static final int BLUE_LIGHT = BRAND_LIGHT;
-    static final int DARK = TEXT;
-    static final int GRAY_BG = BG;
+    static final int ON_BRAND = WHITE;                         // 먹색 바탕 위 글자
+    static final int ON_BRAND_SUB = LINE;                      // 먹색 바탕 위 보조 글자
+    static final int GUARD_FILL = Color.argb(40, 0x37, 0x62, 0x4C); // status/green 16% · 결제 버튼 가드 표시
+
+    /** 상태 색 묶음 (바탕, 글자). 태그·알림에 쓴다. */
+    enum Tone {
+        SUCCESS(GREEN_BG, GREEN),       // Tag/Green · 멈춤, 여유
+        WARNING(AMBER_BG, AMBER),       // Tag/Amber · 주의, 숙고 후 결제
+        DANGER(RED_BG, RED),            // Tag/Red · 초과, 재무 위험
+        BRAND(BRAND_LIGHT, Ui.BRAND),   // Tag/Blue · 강도, 회고
+        ACCENT(BRAND_LIGHT, GREEN),     // 연초록 바탕 + 초록 글자 · 필수, 이유 선택 결제
+        NEUTRAL(BG, MUTED),             // 회색 · 선택, 기타
+        INVERSE(Ui.BRAND, WHITE);       // 먹색 바탕 · 강한 개입
+
+        final int bg, fg;
+
+        Tone(int bg, int fg) {
+            this.bg = bg;
+            this.fg = fg;
+        }
+    }
+
+    // ================================================================== 글자 (Figma Text Style)
+
+    /** 글자 크기 (sp). 줄 높이는 lineHeight()에 있다. */
+    static final class Font {
+        private Font() {}
+
+        static final int DISPLAY = 30;  // Display 30/38 · 리포트 큰 숫자
+        static final int AMOUNT = 28;   // 28/40 · 홈 "오늘 쓸 수 있는 돈"
+        static final int TITLE = 22;    // Title 22/30 · 화면 제목
+        static final int STAT = 18;     // 18/26 · 홈 요약 타일 값
+        static final int HEADING = 17;  // Heading 17/25 · 시트·개입 제목
+        static final int BUTTON = 16;   // Button 16/22
+        static final int BODY = 15;     // Body 15/22
+        static final int LABEL = 14;    // 14/20 · 목록 제목
+        static final int SMALL = 13;    // 13/19 · 짧은 안내
+        static final int CAPTION = 12;  // Caption 12/17
+        static final int MICRO = 11;    // 11/16 · 아주 작은 설명
+    }
 
     static final int REGULAR = 400, MEDIUM = 500, BOLD = 700;
+
+    // ================================================================== 간격 · 모서리 · 크기 (dp)
+
+    /** 간격. 이름은 주로 쓰는 자리. */
+    static final class Space {
+        private Space() {}
+
+        static final int TEXT = 2;      // 제목 ↔ 바로 아래 설명
+        static final int LINE = 4;      // 가까운 줄 사이
+        static final int TIGHT = 6;     // 단계 점 사이, 태그 사이
+        static final int ITEM = 8;      // 나란히 놓인 요소 사이, 칩 간격
+        static final int ROW = 10;      // 카드 안 줄 사이
+        static final int BLOCK = 12;    // 카드 ↔ 카드
+        static final int STACK = 14;    // 개입 시트·온보딩의 세로 간격
+        static final int CARD = 16;     // 카드 안쪽 여백
+        static final int SECTION = 18;  // 섹션 제목 위
+        static final int SCREEN = 20;   // 화면 좌우 여백
+        static final int LARGE = 24;    // 화면 아래 여백, 큰 섹션 위
+
+        static final int SHEET_TOP = 18;        // 개입 시트 위 여백 (Figma A2~C3)
+        static final int REVIEW_SHEET_TOP = 22; // 회고 시트 위 여백 (Figma S09)
+    }
+
+    /** 모서리 반지름. */
+    static final class Radius {
+        private Radius() {}
+
+        static final int BAR = 4;       // 진행 막대, 단계 점, 말풍선 꼬리
+        static final int CHECK = 6;     // 체크 상자, 작은 태그
+        static final int TAG = 8;       // Tag
+        static final int NOTE = 10;     // 사실 한 줄 상자, 짧은 안내
+        static final int INPUT = 12;    // Input
+        static final int BOX = 14;      // Button, 테두리 카드, 알림, 토스트
+        static final int CARD = 16;     // Card, 말풍선
+        static final int CHIP = 20;     // Chip
+        static final int SHEET = 24;    // Sheet 위 모서리
+    }
+
+    /** 고정 크기. */
+    static final class Size {
+        private Size() {}
+
+        static final int NAV_HEIGHT = 63;    // BottomNav 64 − 위 1dp 선
+        static final int NAV_INSET = 28;     // BottomNav 좌우 여백
+        static final int NAV_DOT = 6;        // 선택된 탭 점
+        static final int ICON_BUTTON = 24;   // ← · ✕ 누르는 영역
+        static final int CHECKBOX = 20;
+        static final int STEP_DOT = 8;       // 온보딩 단계 점
+        static final int STEP_ACTIVE = 24;   // 현재 단계 막대 폭
+        static final int BAR = 8;            // 진행 막대 높이
+        static final int FIELD_WIDTH = 130;  // 설정 입력칸 폭
+        static final int ROW_LABEL = 48;     // 리포트 강도 이름 칸
+        static final float STROKE = 1f;
+        static final float STROKE_STRONG = 1.5f; // 선택된 칩, 필수 입력
+        static final int GUARD_STROKE = 3;   // 결제 버튼 가드 테두리
+        static final int ELEVATION = 6;      // 토스트 그림자
+        static final int TOAST_OFFSET = 100; // 토스트 바닥에서 띄우는 높이
+    }
+
+    /** Figma 글자 스타일의 줄 높이 (Caption 12/17 · Body 15/22 · Button 16/22 · Heading 17/25 · Title 22/30 · Display 30/38). */
+    static int lineHeight(float sp) {
+        if (sp == Font.MICRO) return 16;
+        if (sp == Font.CAPTION) return 17;
+        if (sp == Font.SMALL) return 19;
+        if (sp == Font.LABEL) return 20;
+        if (sp == Font.BODY) return 22;
+        if (sp == Font.BUTTON) return 22;
+        if (sp == Font.HEADING) return 25;
+        if (sp == Font.STAT) return 26;
+        if (sp == Font.TITLE) return 30;
+        if (sp == Font.AMOUNT) return 40;
+        if (sp == Font.DISPLAY) return 38;
+        return Math.round(sp * 1.45f);
+    }
+
+    // ================================================================== 바탕 그리기
 
     static int dp(Context c, float v) {
         return Math.round(TypedValue.applyDimension(TypedValue.COMPLEX_UNIT_DIP, v, c.getResources().getDisplayMetrics()));
@@ -63,7 +188,7 @@ final class Ui {
     }
 
     static GradientDrawable roundStroke(Context c, int color, float radiusDp, int strokeColor) {
-        return roundStroke(c, color, radiusDp, strokeColor, 1);
+        return roundStroke(c, color, radiusDp, strokeColor, Size.STROKE);
     }
 
     static GradientDrawable roundStroke(Context c, int color, float radiusDp, int strokeColor, float strokeDp) {
@@ -81,23 +206,14 @@ final class Ui {
         return g;
     }
 
-    // ------------------------------------------------------------------ 글자
-
-    /** Figma 글자 스타일의 줄 높이 (Caption 12/17 · Body 15/22 · Button 16/22 · Heading 17/25 · Title 22/30 · Display 30/38). */
-    static int lineHeight(float sp) {
-        if (sp == 11) return 16;
-        if (sp == 12) return 17;
-        if (sp == 13) return 19;
-        if (sp == 14) return 20;
-        if (sp == 15) return 22;
-        if (sp == 16) return 22;
-        if (sp == 17) return 25;
-        if (sp == 18) return 26;
-        if (sp == 22) return 30;
-        if (sp == 28) return 40;
-        if (sp == 30) return 38;
-        return Math.round(sp * 1.45f);
+    static GradientDrawable circle(int color) {
+        GradientDrawable g = new GradientDrawable();
+        g.setShape(GradientDrawable.OVAL);
+        g.setColor(color);
+        return g;
     }
+
+    // ================================================================== 글자
 
     static TextView text(Context c, String s, float sp, int color, int weight) {
         TextView t = new TextView(c);
@@ -116,10 +232,6 @@ final class Ui {
         return t;
     }
 
-    static TextView text(Context c, String s, float sp, int color, boolean bold) {
-        return text(c, s, sp, color, bold ? BOLD : REGULAR);
-    }
-
     static void setWeight(TextView t, int weight) {
         if (Build.VERSION.SDK_INT >= 28) {
             t.setTypeface(Typeface.create(Typeface.DEFAULT, weight, false));
@@ -132,7 +244,47 @@ final class Ui {
         }
     }
 
-    // ------------------------------------------------------------------ 배치
+    /** 화면 제목 · Title 22 Bold. */
+    static TextView title(Context c, String s) {
+        return text(c, s, Font.TITLE, TEXT, BOLD);
+    }
+
+    /** 시트·개입 제목 · Heading 17 Bold. */
+    static TextView heading(Context c, String s) {
+        return text(c, s, Font.HEADING, TEXT, BOLD);
+    }
+
+    /** 섹션 머리말 · 15 Bold. */
+    static TextView sectionTitle(Context c, String s) {
+        return text(c, s, Font.BODY, TEXT, BOLD);
+    }
+
+    /** 본문 · Body 15 Regular muted. */
+    static TextView body(Context c, String s) {
+        return text(c, s, Font.BODY, MUTED, REGULAR);
+    }
+
+    /** 짧은 안내 · 13 Regular muted. */
+    static TextView bodySmall(Context c, String s) {
+        return text(c, s, Font.SMALL, MUTED, REGULAR);
+    }
+
+    /** 카드 머리말 · Caption 12 Medium muted. */
+    static TextView caption(Context c, String s) {
+        return text(c, s, Font.CAPTION, MUTED, MEDIUM);
+    }
+
+    /** 시각·부가 정보 · Caption 12 Regular muted. */
+    static TextView meta(Context c, String s) {
+        return text(c, s, Font.CAPTION, MUTED, REGULAR);
+    }
+
+    /** 아주 작은 설명 · 11 Regular. */
+    static TextView micro(Context c, String s, int color) {
+        return text(c, s, Font.MICRO, color, REGULAR);
+    }
+
+    // ================================================================== 배치
 
     static LinearLayout v(Context c) {
         LinearLayout l = new LinearLayout(c);
@@ -163,8 +315,22 @@ final class Ui {
         return new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
     }
 
+    /** 정사각형 크기의 LayoutParams. */
+    static LinearLayout.LayoutParams square(Context c, int sizeDp) {
+        return new LinearLayout.LayoutParams(dp(c, sizeDp), dp(c, sizeDp));
+    }
+
     static void pad(View v, Context c, int l, int t, int r, int b) {
         v.setPadding(dp(c, l), dp(c, t), dp(c, r), dp(c, b));
+    }
+
+    /** 좌우 h, 위아래 v 여백. */
+    static void pad(View v, Context c, int h, int vert) {
+        pad(v, c, h, vert, h, vert);
+    }
+
+    static void pad(View v, Context c, int all) {
+        pad(v, c, all, all, all, all);
     }
 
     static void gapTop(View v, Context c, int dpTop) {
@@ -174,240 +340,91 @@ final class Ui {
         v.setLayoutParams(lp);
     }
 
+    /** 세로 묶음: parent 아래에 child를 가로 꽉 차게 붙이고 위 간격을 gapDp만큼 둔다. */
+    static <T extends View> T stack(ViewGroup parent, T child, int gapDp) {
+        LinearLayout.LayoutParams p = fillW();
+        p.topMargin = dp(parent.getContext(), gapDp);
+        parent.addView(child, p);
+        return child;
+    }
+
+    /** 가로 묶음: row 오른쪽에 child를 내용 크기로 붙이고 왼쪽 간격을 gapDp만큼 둔다. */
+    static <T extends View> T inline(LinearLayout row, T child, int gapDp) {
+        LinearLayout.LayoutParams p = wrap();
+        p.leftMargin = dp(row.getContext(), gapDp);
+        row.addView(child, p);
+        return child;
+    }
+
+    /** 가로 묶음: 남은 폭을 나눠 갖는 child를 붙인다. */
+    static <T extends View> T inlineFill(LinearLayout row, T child, int gapDp) {
+        LinearLayout.LayoutParams p = weight1();
+        p.leftMargin = dp(row.getContext(), gapDp);
+        row.addView(child, p);
+        return child;
+    }
+
     static View spacer(Context c) {
         View v = new View(c);
         v.setLayoutParams(new LinearLayout.LayoutParams(0, 1, 1f));
         return v;
     }
 
-    // ------------------------------------------------------------------ 컴포넌트
+    /** 가운데 정렬로 한 줄에 놓는다 (링크 버튼 등). */
+    static LinearLayout centered(Context c, View child) {
+        LinearLayout r = h(c);
+        r.setGravity(Gravity.CENTER_HORIZONTAL);
+        r.addView(child, wrap());
+        return r;
+    }
 
-    /** 흰 카드 (radius 16, padding 16). */
+    static View divider(Context c) {
+        View v = new View(c);
+        v.setBackgroundColor(LINE);
+        v.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Math.max(1, dp(c, Size.STROKE))));
+        return v;
+    }
+
+    // ================================================================== 컨테이너
+
+    /** Card: 흰 바탕 (radius 16, padding 16). */
     static LinearLayout card(Context c) {
         LinearLayout l = v(c);
-        l.setBackground(round(c, WHITE, 16));
-        pad(l, c, 16, 16, 16, 16);
+        l.setBackground(round(c, WHITE, Radius.CARD));
+        pad(l, c, Space.CARD);
+        return l;
+    }
+
+    /** 색 바탕 카드 (radius 16, padding 16). */
+    static LinearLayout tintCard(Context c, int color) {
+        LinearLayout l = card(c);
+        l.setBackground(round(c, color, Radius.CARD));
         return l;
     }
 
     /** 테두리 있는 흰 카드 (S04 홈: radius 14, 1dp line). */
     static LinearLayout outlineCard(Context c, int padH, int padV) {
         LinearLayout l = v(c);
-        l.setBackground(roundStroke(c, WHITE, 14, LINE));
-        pad(l, c, padH, padV, padH, padV);
+        l.setBackground(roundStroke(c, WHITE, Radius.BOX, LINE));
+        pad(l, c, padH, padV);
         return l;
     }
 
-    /** Button/Primary · Button/Secondary (radius 14, 16 Bold). */
-    static TextView button(Context c, String label, boolean primary, View.OnClickListener click) {
-        TextView b = text(c, label, 16, primary ? WHITE : TEXT, BOLD);
-        b.setGravity(Gravity.CENTER);
-        b.setBackground(primary ? round(c, BRAND, 14) : roundStroke(c, WHITE, 14, LINE));
-        if (primary) pad(b, c, 20, 16, 20, 16);
-        else pad(b, c, 20, 15, 20, 15);
-        b.setOnClickListener(click);
-        b.setClickable(true);
-        return b;
+    /** 색 바탕 상자 (radius 14). */
+    static LinearLayout tintBox(Context c, int color, int padH, int padV) {
+        LinearLayout l = v(c);
+        l.setBackground(round(c, color, Radius.BOX));
+        pad(l, c, padH, padV);
+        return l;
     }
 
-    /** 비활성 Primary 버튼. */
-    static void setEnabled(TextView b, boolean on) {
-        b.setEnabled(on);
-        b.setAlpha(on ? 1f : 0.35f);
-    }
-
-    /** Button/Text (12 Medium muted, padding 8). */
-    static TextView linkButton(Context c, String label, View.OnClickListener click) {
-        TextView b = text(c, label, 12, MUTED, MEDIUM);
-        b.setGravity(Gravity.CENTER);
-        pad(b, c, 8, 8, 8, 8);
-        b.setOnClickListener(click);
-        return b;
-    }
-
-    /** Chip · Chip/Selected (radius 20, padding 10/16, 15 Medium). */
-    static TextView chip(Context c, String label, boolean selected, View.OnClickListener click) {
-        TextView t = text(c, label, 15, TEXT, MEDIUM);
-        t.setGravity(Gravity.CENTER);
-        t.setBackground(selected ? roundStroke(c, BRAND_LIGHT, 20, BRAND, 1.5f) : roundStroke(c, WHITE, 20, LINE));
-        pad(t, c, 16, 10, 16, 10);
-        if (click != null) t.setOnClickListener(click);
-        return t;
-    }
-
-    /** Tag/Blue · Red · Amber · Green (radius 8, padding 4/10, 12 Medium). */
-    static TextView tag(Context c, String label, int bg, int fg) {
-        TextView t = text(c, label, 12, fg, MEDIUM);
-        t.setBackground(round(c, bg, 8));
-        pad(t, c, 10, 4, 10, 4);
-        return t;
-    }
-
-    /** 홈·온보딩 화면의 작은 태그 (radius 6, padding 3/8, 12 Bold). */
-    static TextView smallTag(Context c, String label, int bg, int fg) {
-        TextView t = text(c, label, 12, fg, BOLD);
-        t.setBackground(round(c, bg, 6));
-        pad(t, c, 8, 3, 8, 3);
-        return t;
-    }
-
-    /** 칩을 줄바꿈하며 왼쪽부터 채운다 (Figma Chips: wrap, gap 8). */
-    static FlowLayout chipFlow(Context c, List<TextView> chips) {
-        FlowLayout f = new FlowLayout(c, dp(c, 8), dp(c, 8));
-        for (TextView t : chips) f.addView(t, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
-        return f;
-    }
-
-    /** 칩을 한 줄에 perRow개씩 같은 폭으로 배치 (설정 화면 등). */
-    static LinearLayout chipGrid(Context c, List<TextView> chips, int perRow) {
-        LinearLayout box = v(c);
-        LinearLayout row = null;
-        for (int i = 0; i < chips.size(); i++) {
-            if (i % perRow == 0) {
-                row = h(c);
-                box.addView(row, fillW());
-                if (i > 0) gapTop(row, c, 8);
-            }
-            LinearLayout.LayoutParams p = weight1();
-            if (i % perRow != 0) p.leftMargin = dp(c, 8);
-            row.addView(chips.get(i), p);
-        }
-        if (row != null && chips.size() % perRow != 0) {
-            for (int k = chips.size() % perRow; k < perRow; k++) {
-                View spacer = new View(c);
-                LinearLayout.LayoutParams p = weight1();
-                p.leftMargin = dp(c, 8);
-                row.addView(spacer, p);
-            }
-        }
-        return box;
-    }
-
-    /** Bubble/AI: "쉼표" 라벨 + 질문 (bg, 모서리 4/16/16/16). */
-    static LinearLayout bubbleAi(Context c, String question, boolean faded) {
-        LinearLayout b = v(c);
-        b.setBackground(corners(c, BG, 4, 16, 16, 16));
-        pad(b, c, 14, 12, 14, 12);
-        b.addView(text(c, "쉼표", 12, BRAND, MEDIUM));
-        TextView q = text(c, question, 15, TEXT, MEDIUM);
-        b.addView(q);
-        gapTop(q, c, 4);
-        if (faded) b.setAlpha(0.6f);
-        LinearLayout row = h(c);
-        row.setGravity(Gravity.TOP);
-        LinearLayout.LayoutParams bp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 276f);
-        row.addView(b, bp);
-        row.addView(new View(c), new LinearLayout.LayoutParams(0, 1, 44f));
-        return row;
-    }
-
-    /** Bubble/User: 오른쪽 정렬 먹색 말풍선 (모서리 16/4/16/16). */
-    static LinearLayout bubbleUser(Context c, String answer) {
-        LinearLayout row = h(c);
-        row.setGravity(Gravity.END);
-        TextView b = text(c, answer, 15, WHITE, MEDIUM);
-        b.setBackground(corners(c, BRAND, 16, 4, 16, 16));
-        pad(b, c, 14, 10, 14, 10);
-        row.addView(b, wrap());
-        return row;
-    }
-
-    /** 사실 한 줄 상자: 연초록 바탕 + 왼쪽 3dp 초록 선 (radius 10, padding 8/12, 12 Medium). */
-    static TextView factBox(Context c, String s) {
-        TextView t = text(c, s, 12, TEXT, MEDIUM);
-        Drawable line = round(c, GREEN, 10);
-        Drawable fill = round(c, GREEN_BG, 10);
-        LayerDrawable ld = new LayerDrawable(new Drawable[]{line, fill});
-        ld.setLayerInset(1, dp(c, 3), 0, 0, 0);
-        t.setBackground(ld);
-        pad(t, c, 12, 8, 12, 8);
-        return t;
-    }
-
-    /** 온보딩 단계 표시: 현재 단계는 24×8 막대, 나머지는 8×8 점 (gap 6). */
-    static LinearLayout steps(Context c, int current, int total, boolean doneFilled) {
-        LinearLayout r = h(c);
-        for (int i = 1; i <= total; i++) {
-            View d = new View(c);
-            boolean on = i == current || (doneFilled && i < current);
-            d.setBackground(round(c, on ? BRAND : LINE, 4));
-            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(dp(c, i == current ? 24 : 8), dp(c, 8));
-            if (i > 1) p.leftMargin = dp(c, 6);
-            r.addView(d, p);
-        }
-        return r;
-    }
-
-    /** 20dp 체크 상자 + 문구 (Figma S02). */
-    static LinearLayout checkRow(Context c, String label, boolean checked, View.OnClickListener click) {
-        LinearLayout r = h(c);
-        View box = new View(c);
-        box.setBackground(checked ? round(c, BRAND, 6) : roundStroke(c, WHITE, 6, LINE, 1.5f));
-        r.addView(box, new LinearLayout.LayoutParams(dp(c, 20), dp(c, 20)));
-        TextView t = text(c, label, 15, TEXT, REGULAR);
-        LinearLayout.LayoutParams tp = weight1();
-        tp.leftMargin = dp(c, 10);
-        r.addView(t, tp);
-        r.setOnClickListener(click);
-        return r;
-    }
-
-    static EditText input(Context c, String hint, String value, boolean number) {
-        EditText e = new EditText(c);
-        e.setHint(hint);
-        if (value != null) e.setText(value);
-        e.setTextSize(TypedValue.COMPLEX_UNIT_SP, 15);
-        e.setTextColor(TEXT);
-        e.setHintTextColor(SUBTLE);
-        e.setSingleLine(true);
-        e.setLetterSpacing(-0.01f);
-        if (number) e.setInputType(InputType.TYPE_CLASS_NUMBER);
-        e.setBackground(roundStroke(c, WHITE, 12, LINE));
-        pad(e, c, 14, 12, 14, 12);
-        return e;
-    }
-
-    /** 왼쪽 라벨 · 오른쪽 값 한 줄 (Figma Row: 15 Regular muted / 15 Medium primary). */
-    static LinearLayout kv(Context c, String k, String v, boolean bold) {
-        LinearLayout r = h(c);
-        TextView kt = text(c, k, 15, bold ? TEXT : MUTED, bold ? MEDIUM : REGULAR);
-        r.addView(kt, weight1());
-        r.addView(text(c, v, bold ? 17 : 15, TEXT, bold ? BOLD : MEDIUM));
-        return r;
-    }
-
-    /** 카드 안 작은 머리말 (12 Medium muted). */
-    static TextView caption(Context c, String s) {
-        return text(c, s, 12, MUTED, MEDIUM);
-    }
-
-    static long num(EditText e, long def) {
-        try {
-            String s = e.getText().toString().replace(",", "").trim();
-            return s.isEmpty() ? def : Long.parseLong(s);
-        } catch (NumberFormatException ex) {
-            return def;
-        }
-    }
-
-    static View divider(Context c) {
-        View v = new View(c);
-        v.setBackgroundColor(LINE);
-        v.setLayoutParams(new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, Math.max(1, dp(c, 1))));
-        return v;
-    }
-
-    /** 진행 막대 (높이 8, radius 4). */
-    static LinearLayout bar(Context c, float ratio, int fillColor, int trackColor) {
-        LinearLayout track = h(c);
-        track.setBackground(round(c, trackColor, 4));
-        float r = Math.max(0f, Math.min(1f, ratio));
-        View fill = new View(c);
-        fill.setBackground(round(c, fillColor, 4));
-        track.addView(fill, new LinearLayout.LayoutParams(0, dp(c, 8), Math.max(0.0001f, r)));
-        track.addView(new View(c), new LinearLayout.LayoutParams(0, dp(c, 8), Math.max(0.0001f, 1f - r)));
-        if (r <= 0f) fill.setVisibility(View.INVISIBLE);
-        return track;
+    /** Sheet: 아래에서 올라오는 흰 시트 (위 모서리 24). padTop만 화면마다 다르다. */
+    static LinearLayout bottomSheet(Context c, int padTop) {
+        LinearLayout s = v(c);
+        s.setBackground(corners(c, WHITE, Radius.SHEET, Radius.SHEET, 0, 0));
+        pad(s, c, Space.SCREEN, padTop, Space.SCREEN, Space.LARGE);
+        s.setClickable(true);
+        return s;
     }
 
     /** 내용 높이만큼 늘어나되 maxHeight를 넘으면 스크롤되는 영역. */
@@ -422,6 +439,374 @@ final class Ui {
         @Override
         protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
             super.onMeasure(widthMeasureSpec, MeasureSpec.makeMeasureSpec(maxHeight, MeasureSpec.AT_MOST));
+        }
+    }
+
+    // ================================================================== 버튼
+
+    /** Button/Primary · Button/Secondary (radius 14, 16 Bold). */
+    static TextView button(Context c, String label, boolean primary, View.OnClickListener click) {
+        TextView b = text(c, label, Font.BUTTON, primary ? ON_BRAND : TEXT, BOLD);
+        b.setGravity(Gravity.CENTER);
+        b.setBackground(primary ? round(c, BRAND, Radius.BOX) : roundStroke(c, WHITE, Radius.BOX, LINE));
+        // Secondary는 1dp 테두리만큼 위아래를 줄여 Primary와 높이를 맞춘다.
+        pad(b, c, Space.SCREEN, primary ? Space.CARD : Space.CARD - 1);
+        b.setOnClickListener(click);
+        b.setClickable(true);
+        return b;
+    }
+
+    /** 같은 폭 버튼 두 개를 나란히 (gap 8). */
+    static LinearLayout buttonPair(Context c, TextView left, TextView right) {
+        LinearLayout r = h(c);
+        r.addView(left, weight1());
+        inlineFill(r, right, Space.ITEM);
+        return r;
+    }
+
+    /** 비활성 Primary 버튼. */
+    static void setEnabled(TextView b, boolean on) {
+        b.setEnabled(on);
+        b.setAlpha(on ? 1f : 0.35f);
+    }
+
+    /** Button/Text (12 Medium muted, padding 8). */
+    static TextView linkButton(Context c, String label, View.OnClickListener click) {
+        TextView b = text(c, label, Font.CAPTION, MUTED, MEDIUM);
+        b.setGravity(Gravity.CENTER);
+        pad(b, c, Space.ITEM);
+        b.setOnClickListener(click);
+        return b;
+    }
+
+    /** 글자 링크 (13 Bold): "접근성 설정 열기 ›" 같은 이동 버튼. */
+    static TextView textLink(Context c, String label, int color, View.OnClickListener click) {
+        TextView t = text(c, label, Font.SMALL, color, BOLD);
+        t.setOnClickListener(click);
+        return t;
+    }
+
+    /** ← 뒤로 (17 Bold, 누르는 영역 24×24). */
+    static TextView backButton(Context c, View.OnClickListener click) {
+        TextView b = text(c, "←", Font.HEADING, TEXT, BOLD);
+        b.setGravity(Gravity.CENTER);
+        b.setContentDescription("뒤로");
+        b.setOnClickListener(click);
+        return b;
+    }
+
+    /** ✕ 닫기 (17 Bold subtle, padding 6). */
+    static TextView closeButton(Context c, View.OnClickListener click) {
+        TextView x = text(c, "✕", Font.HEADING, SUBTLE, BOLD);
+        pad(x, c, Space.TIGHT);
+        x.setContentDescription("닫기");
+        x.setOnClickListener(click);
+        return x;
+    }
+
+    // ================================================================== 칩 · 태그
+
+    /** Chip · Chip/Selected (radius 20, padding 10/16, 15 Medium). */
+    static TextView chip(Context c, String label, boolean selected, View.OnClickListener click) {
+        TextView t = text(c, label, Font.BODY, TEXT, MEDIUM);
+        t.setGravity(Gravity.CENTER);
+        t.setBackground(selected ? roundStroke(c, BRAND_LIGHT, Radius.CHIP, BRAND, Size.STROKE_STRONG) : roundStroke(c, WHITE, Radius.CHIP, LINE));
+        pad(t, c, Space.CARD, Space.ROW);
+        if (click != null) t.setOnClickListener(click);
+        return t;
+    }
+
+    /** Tag/Blue · Red · Amber · Green (radius 8, padding 4/10, 12 Medium). */
+    static TextView tag(Context c, String label, Tone tone) {
+        TextView t = text(c, label, Font.CAPTION, tone.fg, MEDIUM);
+        t.setBackground(round(c, tone.bg, Radius.TAG));
+        pad(t, c, Space.ROW, Space.LINE);
+        return t;
+    }
+
+    /** 홈·온보딩 화면의 작은 태그 (radius 6, padding 3/8, 12 Bold). */
+    static TextView smallTag(Context c, String label, Tone tone) {
+        TextView t = text(c, label, Font.CAPTION, tone.fg, BOLD);
+        t.setBackground(round(c, tone.bg, Radius.CHECK));
+        pad(t, c, Space.ITEM, 3);
+        return t;
+    }
+
+    /** 칩을 줄바꿈하며 왼쪽부터 채운다 (Figma Chips: wrap, gap 8). */
+    static FlowLayout chipFlow(Context c, List<TextView> chips) {
+        FlowLayout f = new FlowLayout(c, dp(c, Space.ITEM), dp(c, Space.ITEM));
+        for (TextView t : chips) f.addView(t, new ViewGroup.LayoutParams(ViewGroup.LayoutParams.WRAP_CONTENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        return f;
+    }
+
+    /** 태그를 줄바꿈하며 놓는다 (gap 6). */
+    static FlowLayout tagFlow(Context c) {
+        return new FlowLayout(c, dp(c, Space.TIGHT), dp(c, Space.TIGHT));
+    }
+
+    /** 칩을 한 줄에 perRow개씩 같은 폭으로 배치 (설정 화면 등). */
+    static LinearLayout chipGrid(Context c, List<TextView> chips, int perRow) {
+        LinearLayout box = v(c);
+        LinearLayout row = null;
+        for (int i = 0; i < chips.size(); i++) {
+            if (i % perRow == 0) {
+                row = h(c);
+                box.addView(row, fillW());
+                if (i > 0) gapTop(row, c, Space.ITEM);
+            }
+            if (i % perRow == 0) row.addView(chips.get(i), weight1());
+            else inlineFill(row, chips.get(i), Space.ITEM);
+        }
+        if (row != null && chips.size() % perRow != 0) {
+            for (int k = chips.size() % perRow; k < perRow; k++) inlineFill(row, new View(c), Space.ITEM);
+        }
+        return box;
+    }
+
+    // ================================================================== 정보 표시
+
+    /** 왼쪽 라벨 · 오른쪽 값 한 줄 (Figma Row: 15 Regular muted / 15 Medium primary, 합계는 15 Medium / 17 Bold). */
+    static LinearLayout kv(Context c, String k, String v, boolean total) {
+        LinearLayout r = h(c);
+        r.addView(text(c, k, Font.BODY, total ? TEXT : MUTED, total ? MEDIUM : REGULAR), weight1());
+        r.addView(text(c, v, total ? Font.HEADING : Font.BODY, TEXT, total ? BOLD : MEDIUM));
+        return r;
+    }
+
+    /** 목록 한 줄 (S04 최근 기록): 왼쪽 제목 14 Medium · 부가 12, 오른쪽 금액 14 Bold · 태그. */
+    static LinearLayout listRow(Context c, String title, String sub, String amount, View tag) {
+        LinearLayout row = h(c);
+        LinearLayout left = v(c);
+        left.addView(text(c, title, Font.LABEL, TEXT, MEDIUM));
+        stack(left, meta(c, sub), Space.TEXT);
+        row.addView(left, weight1());
+        LinearLayout right = v(c);
+        right.setGravity(Gravity.END);
+        right.addView(text(c, amount, Font.LABEL, TEXT, BOLD), wrap());
+        if (tag != null) {
+            right.addView(tag, wrap());
+            gapTop(tag, c, Space.LINE);
+        }
+        inline(row, right, Space.BLOCK);
+        return row;
+    }
+
+    /**
+     * 요약 타일: 라벨 · 큰 값 · 한 줄 설명.
+     * outlined=true는 홈(S04: 테두리 카드, 값 18, 설명 11 muted),
+     * false는 리포트(S10: 흰 카드 16, 값 17, 설명 12 subtle).
+     */
+    static LinearLayout statTile(Context c, String label, String value, String sub, boolean outlined) {
+        LinearLayout t;
+        if (outlined) {
+            t = outlineCard(c, Space.CARD, Space.STACK);
+        } else {
+            t = v(c);
+            t.setBackground(round(c, WHITE, Radius.CARD));
+            pad(t, c, Space.STACK);
+        }
+        t.addView(meta(c, label));
+        stack(t, text(c, value, outlined ? Font.STAT : Font.HEADING, TEXT, BOLD), Space.TEXT);
+        stack(t, outlined ? micro(c, sub, MUTED) : text(c, sub, Font.CAPTION, SUBTLE, REGULAR), Space.TEXT);
+        return t;
+    }
+
+    /** 타일 두 개를 같은 폭으로 나란히 (위쪽 맞춤). */
+    static LinearLayout tilePair(Context c, View left, View right, int gapDp) {
+        LinearLayout r = h(c);
+        r.setGravity(Gravity.TOP);
+        r.addView(left, weight1());
+        inlineFill(r, right, gapDp);
+        return r;
+    }
+
+    /**
+     * 먹색 강조 카드: 라벨 12 · 큰 값 · 설명 12.
+     * large=false는 온보딩 S03 "월 여윳돈"(값 22, padding 16), true는 리포트 S10 "마음 돌림 비율"(값 30, padding 20).
+     */
+    static LinearLayout heroCard(Context c, String label, String value, String sub, boolean large) {
+        LinearLayout h = v(c);
+        h.setBackground(round(c, BRAND, Radius.CARD));
+        pad(h, c, large ? Space.SCREEN : Space.CARD);
+        h.addView(text(c, label, Font.CAPTION, ON_BRAND_SUB, MEDIUM));
+        stack(h, text(c, value, large ? Font.DISPLAY : Font.TITLE, ON_BRAND, BOLD), Space.LINE);
+        stack(h, text(c, sub, Font.CAPTION, ON_BRAND_SUB, REGULAR), Space.LINE);
+        return h;
+    }
+
+    /** 경고 상자 (S04 결제 감지 꺼짐): 빨간 바탕, 제목 14 Bold · 설명 12 · 이동 링크. */
+    static LinearLayout alertBox(Context c, String title, String desc, String action, View.OnClickListener click) {
+        LinearLayout w = tintBox(c, RED_BG, Space.CARD, Space.STACK);
+        w.addView(text(c, title, Font.LABEL, RED, BOLD));
+        stack(w, text(c, desc, Font.CAPTION, RED, REGULAR), Space.TEXT);
+        TextView open = textLink(c, action, RED, click);
+        pad(open, c, 0, Space.ITEM, 0, 0);
+        w.addView(open);
+        return w;
+    }
+
+    /** 성과 상자 (S04 이번 달 쉼표): 연초록 바탕, 라벨 12 · 값 16 Bold. */
+    static LinearLayout highlightBox(Context c, String label, String value) {
+        LinearLayout b = tintBox(c, BRAND_LIGHT, Space.CARD, Space.STACK);
+        b.addView(text(c, label, Font.CAPTION, GREEN, REGULAR));
+        stack(b, text(c, value, Font.BUTTON, GREEN, BOLD), Space.LINE);
+        return b;
+    }
+
+    /** 연초록 안내 한 줄 (radius·글자는 자리마다 Figma 값이 달라 인자로 받는다). */
+    static TextView tintNote(Context c, String s, float sp, int fg, int radius, int padH, int padV) {
+        TextView t = text(c, s, sp, fg, MEDIUM);
+        t.setBackground(round(c, BRAND_LIGHT, radius));
+        pad(t, c, padH, padV);
+        return t;
+    }
+
+    /** 사실 한 줄 상자: 연초록 바탕 + 왼쪽 3dp 초록 선 (radius 10, padding 8/12, 12 Medium). */
+    static TextView factBox(Context c, String s) {
+        TextView t = text(c, s, Font.CAPTION, TEXT, MEDIUM);
+        Drawable line = round(c, GREEN, Radius.NOTE);
+        Drawable fill = round(c, GREEN_BG, Radius.NOTE);
+        LayerDrawable ld = new LayerDrawable(new Drawable[]{line, fill});
+        ld.setLayerInset(1, dp(c, 3), 0, 0, 0);
+        t.setBackground(ld);
+        pad(t, c, Space.BLOCK, Space.ITEM);
+        return t;
+    }
+
+    /** 진행 막대 (높이 8, radius 4). */
+    static LinearLayout bar(Context c, float ratio, int fillColor, int trackColor) {
+        LinearLayout track = h(c);
+        track.setBackground(round(c, trackColor, Radius.BAR));
+        float r = Math.max(0f, Math.min(1f, ratio));
+        View fill = new View(c);
+        fill.setBackground(round(c, fillColor, Radius.BAR));
+        track.addView(fill, new LinearLayout.LayoutParams(0, dp(c, Size.BAR), Math.max(0.0001f, r)));
+        track.addView(new View(c), new LinearLayout.LayoutParams(0, dp(c, Size.BAR), Math.max(0.0001f, 1f - r)));
+        if (r <= 0f) fill.setVisibility(View.INVISIBLE);
+        return track;
+    }
+
+    // ================================================================== 대화 (개입 오버레이)
+
+    /** Bubble/AI: "쉼표" 라벨 + 질문 (bg, 모서리 4/16/16/16). */
+    static LinearLayout bubbleAi(Context c, String question, boolean faded) {
+        LinearLayout b = v(c);
+        b.setBackground(corners(c, BG, Radius.BAR, Radius.CARD, Radius.CARD, Radius.CARD));
+        pad(b, c, Space.STACK, Space.BLOCK);
+        b.addView(text(c, "쉼표", Font.CAPTION, BRAND, MEDIUM));
+        stack(b, text(c, question, Font.BODY, TEXT, MEDIUM), Space.LINE);
+        if (faded) b.setAlpha(0.6f);
+        LinearLayout row = h(c);
+        row.setGravity(Gravity.TOP);
+        // Figma: 말풍선 276 : 오른쪽 빈칸 44
+        row.addView(b, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 276f));
+        row.addView(new View(c), new LinearLayout.LayoutParams(0, 1, 44f));
+        return row;
+    }
+
+    /** Bubble/User: 오른쪽 정렬 먹색 말풍선 (모서리 16/4/16/16). */
+    static LinearLayout bubbleUser(Context c, String answer) {
+        LinearLayout row = h(c);
+        row.setGravity(Gravity.END);
+        TextView b = text(c, answer, Font.BODY, ON_BRAND, MEDIUM);
+        b.setBackground(corners(c, BRAND, Radius.CARD, Radius.BAR, Radius.CARD, Radius.CARD));
+        pad(b, c, Space.STACK, Space.ROW);
+        row.addView(b, wrap());
+        return row;
+    }
+
+    // ================================================================== 내비게이션 · 온보딩
+
+    /** BottomNav: 위 1dp 선, 탭마다 6dp 점 + 12 Medium 글자. 선택된 탭만 점이 보인다. */
+    static LinearLayout bottomNav(Context c, String[] labels, int selected, IntConsumer onSelect) {
+        LinearLayout nav = v(c);
+        nav.setBackgroundColor(WHITE);
+        nav.addView(divider(c));
+        LinearLayout row = h(c);
+        pad(row, c, Size.NAV_INSET, 0);
+        for (int i = 0; i < labels.length; i++) {
+            final int idx = i;
+            boolean on = i == selected;
+            LinearLayout item = v(c);
+            item.setGravity(Gravity.CENTER);
+            View dot = new View(c);
+            dot.setBackground(circle(BRAND));
+            dot.setVisibility(on ? View.VISIBLE : View.INVISIBLE);
+            item.addView(dot, square(c, Size.NAV_DOT));
+            TextView t = text(c, labels[i], Font.CAPTION, on ? BRAND : SUBTLE, MEDIUM);
+            item.addView(t, wrap());
+            gapTop(t, c, Space.LINE);
+            item.setOnClickListener(v -> onSelect.accept(idx));
+            row.addView(item, new LinearLayout.LayoutParams(0, dp(c, Size.NAV_HEIGHT), 1f));
+        }
+        nav.addView(row, fillW());
+        return nav;
+    }
+
+    /** 온보딩 단계 표시: 현재 단계는 24×8 막대, 나머지는 8×8 점 (gap 6). */
+    static LinearLayout steps(Context c, int current, int total, boolean doneFilled) {
+        LinearLayout r = h(c);
+        for (int i = 1; i <= total; i++) {
+            View d = new View(c);
+            boolean on = i == current || (doneFilled && i < current);
+            d.setBackground(round(c, on ? BRAND : LINE, Radius.BAR));
+            LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(dp(c, i == current ? Size.STEP_ACTIVE : Size.STEP_DOT), dp(c, Size.STEP_DOT));
+            if (i > 1) p.leftMargin = dp(c, Space.TIGHT);
+            r.addView(d, p);
+        }
+        return r;
+    }
+
+    /** 20dp 체크 상자 + 문구 (Figma S02). */
+    static LinearLayout checkRow(Context c, String label, boolean checked, View.OnClickListener click) {
+        LinearLayout r = h(c);
+        View box = new View(c);
+        box.setBackground(checked ? round(c, BRAND, Radius.CHECK) : roundStroke(c, WHITE, Radius.CHECK, LINE, Size.STROKE_STRONG));
+        r.addView(box, square(c, Size.CHECKBOX));
+        inlineFill(r, text(c, label, Font.BODY, TEXT, REGULAR), Space.ROW);
+        r.setOnClickListener(click);
+        return r;
+    }
+
+    // ================================================================== 입력
+
+    /** 테두리·바탕 없는 입력칸 (글자 15, padding 12/14). 다른 상자 안에 넣어 쓴다. */
+    static EditText plainInput(Context c, String hint, String value) {
+        EditText e = new EditText(c);
+        e.setHint(hint);
+        if (value != null) e.setText(value);
+        e.setTextSize(TypedValue.COMPLEX_UNIT_SP, Font.BODY);
+        e.setTextColor(TEXT);
+        e.setHintTextColor(SUBTLE);
+        e.setSingleLine(true);
+        e.setLetterSpacing(-0.01f);
+        e.setBackground(null);
+        pad(e, c, Space.STACK, Space.BLOCK);
+        return e;
+    }
+
+    /** Input: 흰 바탕 + 1dp 테두리 (radius 12). */
+    static EditText input(Context c, String hint, String value, boolean number) {
+        EditText e = plainInput(c, hint, value);
+        if (number) e.setInputType(InputType.TYPE_CLASS_NUMBER);
+        e.setBackground(roundStroke(c, WHITE, Radius.INPUT, LINE));
+        return e;
+    }
+
+    /** 왼쪽 라벨(15 muted) + 오른쪽 고정 폭 입력칸 (설정 화면). */
+    static LinearLayout labeledField(Context c, String label, EditText in) {
+        LinearLayout r = h(c);
+        r.addView(text(c, label, Font.BODY, MUTED, REGULAR), weight1());
+        r.addView(in, new LinearLayout.LayoutParams(dp(c, Size.FIELD_WIDTH), ViewGroup.LayoutParams.WRAP_CONTENT));
+        return r;
+    }
+
+    static long num(EditText e, long def) {
+        try {
+            String s = e.getText().toString().replace(",", "").trim();
+            return s.isEmpty() ? def : Long.parseLong(s);
+        } catch (NumberFormatException ex) {
+            return def;
         }
     }
 }

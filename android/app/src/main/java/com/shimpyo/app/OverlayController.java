@@ -113,10 +113,7 @@ final class OverlayController {
         };
         root.setBackgroundColor(Ui.DIM);
         root.setClickable(true); // 아래 결제 화면 터치 차단
-        sheet = Ui.v(ctx);
-        sheet.setBackground(Ui.corners(ctx, Ui.WHITE, 24, 24, 0, 0));
-        Ui.pad(sheet, ctx, 20, 18, 20, 24);
-        sheet.setClickable(true);
+        sheet = Ui.bottomSheet(ctx, Ui.Space.SHEET_TOP);
         FrameLayout.LayoutParams sp = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM);
         root.addView(sheet, sp);
@@ -161,9 +158,9 @@ final class OverlayController {
             guardView.setClickable(true);
             if (visible) {
                 android.graphics.drawable.GradientDrawable g = new android.graphics.drawable.GradientDrawable();
-                g.setColor(Color.argb(40, 0x37, 0x62, 0x4C));
-                g.setStroke(Ui.dp(ctx, 3), Ui.GREEN);
-                g.setCornerRadius(Ui.dp(ctx, 10));
+                g.setColor(Ui.GUARD_FILL);
+                g.setStroke(Ui.dp(ctx, Ui.Size.GUARD_STROKE), Ui.GREEN);
+                g.setCornerRadius(Ui.dp(ctx, Ui.Radius.NOTE));
                 guardView.setBackground(g);
             }
             guardView.setOnClickListener(v -> {
@@ -211,21 +208,17 @@ final class OverlayController {
     /** S08 처리 완료 토스트 (Figma Toast: 먹색 바탕, radius 14, 15 Medium / 12 Regular). */
     void toast(String line1, String line2) {
         removeToast();
-        LinearLayout box = Ui.v(ctx);
-        box.setBackground(Ui.round(ctx, Ui.BRAND, 14));
-        box.setElevation(Ui.dp(ctx, 6));
-        Ui.pad(box, ctx, 18, 14, 18, 14);
-        box.addView(Ui.text(ctx, line1, 15, Ui.WHITE, Ui.MEDIUM));
+        LinearLayout box = Ui.tintBox(ctx, Ui.BRAND, Ui.Space.SECTION, Ui.Space.STACK);
+        box.setElevation(Ui.dp(ctx, Ui.Size.ELEVATION));
+        box.addView(Ui.text(ctx, line1, Ui.Font.BODY, Ui.ON_BRAND, Ui.MEDIUM));
         if (line2 != null && !line2.isEmpty()) {
-            TextView t2 = Ui.text(ctx, line2, 12, Ui.LINE, Ui.REGULAR);
-            box.addView(t2);
-            Ui.gapTop(t2, ctx, 4);
+            Ui.stack(box, Ui.text(ctx, line2, Ui.Font.CAPTION, Ui.ON_BRAND_SUB, Ui.REGULAR), Ui.Space.LINE);
         }
         FrameLayout wrap = new FrameLayout(ctx);
         FrameLayout.LayoutParams bp = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        bp.leftMargin = Ui.dp(ctx, 20);
-        bp.rightMargin = Ui.dp(ctx, 20);
-        bp.bottomMargin = Ui.dp(ctx, 10);
+        bp.leftMargin = Ui.dp(ctx, Ui.Space.SCREEN);
+        bp.rightMargin = Ui.dp(ctx, Ui.Space.SCREEN);
+        bp.bottomMargin = Ui.dp(ctx, Ui.Space.ROW);
         wrap.addView(box, bp);
         WindowManager.LayoutParams p = new WindowManager.LayoutParams(
                 WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.WRAP_CONTENT,
@@ -233,7 +226,7 @@ final class OverlayController {
                 WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE | WindowManager.LayoutParams.FLAG_NOT_TOUCHABLE,
                 PixelFormat.TRANSLUCENT);
         p.gravity = Gravity.BOTTOM;
-        p.y = Ui.dp(ctx, 100);
+        p.y = Ui.dp(ctx, Ui.Size.TOAST_OFFSET);
         try {
             wm.addView(wrap, p);
             toastView = wrap;
@@ -267,10 +260,7 @@ final class OverlayController {
         add(headerRow(s), 0);
         // 방금 멈춘 뒤 다시 결제를 누른 경우: 첫 화면에만 맥락 한 줄을 붙인다.
         if (s.retryAfterStop && s.answers.isEmpty()) {
-            TextView note = Ui.text(ctx, QuestionTemplates.retryLine(s.attempt.app), 13, Ui.BRAND, Ui.MEDIUM);
-            note.setBackground(Ui.round(ctx, Ui.BRAND_LIGHT, 10));
-            Ui.pad(note, ctx, 12, 10, 12, 10);
-            add(note, 14);
+            add(Ui.tintNote(ctx, QuestionTemplates.retryLine(s.attempt.app), Ui.Font.SMALL, Ui.BRAND, Ui.Radius.NOTE, Ui.Space.BLOCK, Ui.Space.ROW), Ui.Space.STACK);
         }
         if (s.eval.intensity == Intensity.LIGHT) renderLight(s);
         else renderDialogue(s);
@@ -283,31 +273,22 @@ final class OverlayController {
     /** Header: 트리거 태그 · (필요 판정) · 강도 태그 · 진행 표시 · X */
     private View headerRow(Session s) {
         LinearLayout row = Ui.h(ctx);
-        FlowLayout tags = new FlowLayout(ctx, Ui.dp(ctx, 6), Ui.dp(ctx, 6));
+        FlowLayout tags = Ui.tagFlow(ctx);
         for (Trigger t : s.eval.triggers) {
-            tags.addView(t.financial ? Ui.tag(ctx, t.label, Ui.RED_BG, Ui.RED) : Ui.tag(ctx, t.label, Ui.AMBER_BG, Ui.AMBER));
+            tags.addView(Ui.tag(ctx, t.label, t.financial ? Ui.Tone.DANGER : Ui.Tone.WARNING));
         }
         if (s.attempt.judgment == Judgment.NEED && s.attempt.app != TargetApp.BAEMIN) {
-            tags.addView(Ui.tag(ctx, "필요", Ui.GREEN_BG, Ui.GREEN));
+            tags.addView(Ui.tag(ctx, "필요", Ui.Tone.SUCCESS));
         }
         Intensity in = s.eval.intensity;
-        tags.addView(in == Intensity.STRONG ? Ui.tag(ctx, intensityLabel(in), Ui.BRAND, Ui.WHITE) : Ui.tag(ctx, intensityLabel(in), Ui.BRAND_LIGHT, Ui.BRAND));
+        tags.addView(Ui.tag(ctx, intensityLabel(in), in == Intensity.STRONG ? Ui.Tone.INVERSE : Ui.Tone.BRAND));
         row.addView(tags, Ui.weight1());
         if (in != Intensity.LIGHT) {
             int total = s.total();
             String step = s.inDecisionStep() ? "결정" : Math.min(s.index + 1, total) + " / " + total;
-            TextView st = Ui.text(ctx, step, 12, Ui.SUBTLE, Ui.MEDIUM);
-            LinearLayout.LayoutParams sp = Ui.wrap();
-            sp.leftMargin = Ui.dp(ctx, 6);
-            row.addView(st, sp);
+            Ui.inline(row, Ui.text(ctx, step, Ui.Font.CAPTION, Ui.SUBTLE, Ui.MEDIUM), Ui.Space.TIGHT);
         }
-        TextView x = Ui.text(ctx, "✕", 17, Ui.SUBTLE, Ui.BOLD);
-        Ui.pad(x, ctx, 6, 6, 6, 6);
-        x.setContentDescription("닫기");
-        x.setOnClickListener(v -> cb.onClose(s));
-        LinearLayout.LayoutParams xp = Ui.wrap();
-        xp.leftMargin = Ui.dp(ctx, 6);
-        row.addView(x, xp);
+        Ui.inline(row, Ui.closeButton(ctx, v -> cb.onClose(s)), Ui.Space.TIGHT);
         return row;
     }
 
@@ -326,15 +307,20 @@ final class OverlayController {
         boolean baemin = s.attempt.app == TargetApp.BAEMIN;
         String head = QuestionTemplates.lightHeadline(s.eval, s.attempt).replace("결제하면 ", "").trim();
         if (head.endsWith(".")) head = head.substring(0, head.length() - 1);
-        add(Ui.text(ctx, head, 17, Ui.TEXT, Ui.BOLD), 14);
-        add(Ui.factBox(ctx, factBefore(s, false)), 14);
-        add(Ui.text(ctx, baemin ? "지금 시키려는 이유가 뭐예요?" : "지금 사려는 이유가 뭐예요?", 15, Ui.MUTED, Ui.REGULAR), 14);
+        add(Ui.heading(ctx, head), Ui.Space.STACK);
+        add(Ui.factBox(ctx, factBefore(s, false)), Ui.Space.STACK);
+        add(Ui.body(ctx, baemin ? "지금 시키려는 이유가 뭐예요?" : "지금 사려는 이유가 뭐예요?"), Ui.Space.STACK);
         List<TextView> chips = new ArrayList<>();
         for (String c : QuestionTemplates.lightChips(s.eval, s.attempt)) {
             chips.add(Ui.chip(ctx, c, false, v -> cb.onReason(s, c)));
         }
-        add(Ui.chipFlow(ctx, chips), 14);
-        add(Ui.button(ctx, "그만둘게요", true, v -> cb.onStop(s)), 14);
+        add(Ui.chipFlow(ctx, chips), Ui.Space.STACK);
+        add(stopButton(s), Ui.Space.STACK);
+    }
+
+    /** [그만둘게요]: 개입 화면에서 항상 가장 큰 Primary 버튼. */
+    private TextView stopButton(Session s) {
+        return Ui.button(ctx, "그만둘게요", true, v -> cb.onStop(s));
     }
 
     /** A2·A3·C2 질문 대화, A4·C3 결정 화면. */
@@ -343,8 +329,8 @@ final class OverlayController {
             renderDecision(s);
             return;
         }
-        add(Ui.text(ctx, "잠깐, 쉼표 하나 찍을까요?", 17, Ui.TEXT, Ui.BOLD), 14);
-        if (s.answers.isEmpty()) add(Ui.factBox(ctx, factBefore(s, true)), 14);
+        add(Ui.heading(ctx, "잠깐, 쉼표 하나 찍을까요?"), Ui.Space.STACK);
+        if (s.answers.isEmpty()) add(Ui.factBox(ctx, factBefore(s, true)), Ui.Space.STACK);
 
         // 대화 영역: 내용만큼 늘어나고, 길어지면 화면의 45%까지만 차지하고 스크롤
         int maxH = (int) (ctx.getResources().getDisplayMetrics().heightPixels * 0.45);
@@ -354,24 +340,16 @@ final class OverlayController {
         scroll.addView(conv);
         int n = Math.min(s.answers.size(), s.questions.size());
         for (int i = 0; i < n; i++) {
-            View q = Ui.bubbleAi(ctx, s.questions.get(i).text, true);
-            conv.addView(q, Ui.fillW());
-            if (i > 0) Ui.gapTop(q, ctx, 14);
-            View a = Ui.bubbleUser(ctx, s.answers.get(i));
-            conv.addView(a, Ui.fillW());
-            Ui.gapTop(a, ctx, 14);
+            Ui.stack(conv, Ui.bubbleAi(ctx, s.questions.get(i).text, true), i > 0 ? Ui.Space.STACK : 0);
+            Ui.stack(conv, Ui.bubbleUser(ctx, s.answers.get(i)), Ui.Space.STACK);
         }
         Question q = s.current();
         if (q == null || s.loading) {
-            TextView think = Ui.text(ctx, "쉼표가 다음 질문을 고르는 중…", 15, Ui.SUBTLE, Ui.MEDIUM);
-            conv.addView(think, Ui.fillW());
-            if (n > 0) Ui.gapTop(think, ctx, 14);
+            Ui.stack(conv, Ui.text(ctx, "쉼표가 다음 질문을 고르는 중…", Ui.Font.BODY, Ui.SUBTLE, Ui.MEDIUM), n > 0 ? Ui.Space.STACK : 0);
         } else {
-            View b = Ui.bubbleAi(ctx, q.text, false);
-            conv.addView(b, Ui.fillW());
-            if (n > 0) Ui.gapTop(b, ctx, 14);
+            Ui.stack(conv, Ui.bubbleAi(ctx, q.text, false), n > 0 ? Ui.Space.STACK : 0);
         }
-        add(scroll, 14);
+        add(scroll, Ui.Space.STACK);
         scroll.post(() -> scroll.fullScroll(View.FOCUS_DOWN));
 
         if (q != null && !s.loading) {
@@ -382,21 +360,21 @@ final class OverlayController {
             if (!q.chips.isEmpty()) {
                 List<TextView> chips = new ArrayList<>();
                 for (Question.Chip c : q.chips) chips.add(Ui.chip(ctx, c.label, false, v -> answer(s, c.label, c.decision)));
-                add(Ui.chipFlow(ctx, chips), 14);
+                add(Ui.chipFlow(ctx, chips), Ui.Space.STACK);
             }
-            add(optionalInput(s), 14);
+            add(optionalInput(s), Ui.Space.STACK);
         }
-        add(Ui.button(ctx, "그만둘게요", true, v -> cb.onStop(s)), 14);
+        add(stopButton(s), Ui.Space.STACK);
     }
 
     /** Input (선택): 회색 바탕, 입력하면 오른쪽에 [보내기]가 나타난다. 키보드의 보내기로도 전송. */
     private View optionalInput(Session s) {
         LinearLayout box = Ui.h(ctx);
-        box.setBackground(Ui.round(ctx, Ui.BG, 12));
+        box.setBackground(Ui.round(ctx, Ui.BG, Ui.Radius.INPUT));
         EditText in = bareInput("직접 입력 (선택)");
         box.addView(in, Ui.weight1());
-        TextView send = Ui.text(ctx, "보내기", 15, Ui.BRAND, Ui.BOLD);
-        Ui.pad(send, ctx, 10, 12, 14, 12);
+        TextView send = Ui.text(ctx, "보내기", Ui.Font.BODY, Ui.BRAND, Ui.BOLD);
+        Ui.pad(send, ctx, Ui.Space.ROW, Ui.Space.BLOCK, Ui.Space.STACK, Ui.Space.BLOCK);
         send.setVisibility(draft.trim().isEmpty() ? View.GONE : View.VISIBLE);
         box.addView(send);
         Runnable submit = () -> {
@@ -427,13 +405,13 @@ final class OverlayController {
     /** C2 Input (필수): 먹색 1.5dp 테두리 + 안내 문구, [다음] 보조 버튼. */
     private void renderRequiredInput(Session s) {
         LinearLayout box = Ui.v(ctx);
-        box.setBackground(Ui.roundStroke(ctx, Ui.WHITE, 12, Ui.BRAND, 1.5f));
+        box.setBackground(Ui.roundStroke(ctx, Ui.WHITE, Ui.Radius.INPUT, Ui.BRAND, Ui.Size.STROKE_STRONG));
         EditText in = bareInput("직접 입력해 주세요");
         in.setSingleLine(false);
         in.setMaxLines(3);
         box.addView(in, Ui.fillW());
-        TextView help = Ui.text(ctx, "이 질문은 직접 입력해야 다음으로 넘어가요", 12, Ui.BRAND, Ui.REGULAR);
-        Ui.pad(help, ctx, 14, 0, 14, 12);
+        TextView help = Ui.text(ctx, "이 질문은 직접 입력해야 다음으로 넘어가요", Ui.Font.CAPTION, Ui.BRAND, Ui.REGULAR);
+        Ui.pad(help, ctx, Ui.Space.STACK, 0, Ui.Space.STACK, Ui.Space.BLOCK);
         box.addView(help, Ui.fillW());
         in.addTextChangedListener(new android.text.TextWatcher() {
             public void beforeTextChanged(CharSequence a, int b, int c, int d) {}
@@ -442,7 +420,7 @@ final class OverlayController {
                 draft = e.toString();
             }
         });
-        add(box, 14);
+        add(box, Ui.Space.STACK);
         add(Ui.button(ctx, "다음", false, v -> {
             String t = in.getText().toString().trim();
             if (t.length() < 2) {
@@ -451,24 +429,16 @@ final class OverlayController {
             }
             draft = "";
             answer(s, t, Decision.NONE);
-        }), 14);
-        add(Ui.button(ctx, "그만둘게요", true, v -> cb.onStop(s)), 14);
+        }), Ui.Space.STACK);
+        add(stopButton(s), Ui.Space.STACK);
     }
 
+    /** 답 입력칸: 쓰던 글(draft)을 이어서 보여 주고, 키보드 버튼은 [보내기]. */
     private EditText bareInput(String hint) {
-        EditText in = new EditText(ctx);
-        in.setHint(hint);
-        in.setText(draft);
+        EditText in = Ui.plainInput(ctx, hint, draft);
         in.setSelection(draft.length());
-        in.setTextSize(android.util.TypedValue.COMPLEX_UNIT_SP, 15);
-        in.setTextColor(Ui.TEXT);
-        in.setHintTextColor(Ui.SUBTLE);
-        in.setLetterSpacing(-0.01f);
-        in.setBackground(null);
-        in.setSingleLine(true);
         in.setInputType(InputType.TYPE_CLASS_TEXT);
         in.setImeOptions(android.view.inputmethod.EditorInfo.IME_ACTION_SEND);
-        Ui.pad(in, ctx, 14, 12, 14, 12);
         return in;
     }
 
@@ -487,25 +457,19 @@ final class OverlayController {
 
     /** A4·C3 결정 화면: 마지막 답에 결정이 없을 때만. */
     private void renderDecision(Session s) {
-        add(Ui.text(ctx, "어떻게 할까요?", 22, Ui.TEXT, Ui.BOLD), 14);
-        add(Ui.factBox(ctx, QuestionTemplates.factLine(s.eval, s.attempt)), 14);
-        LinearLayout mine = Ui.v(ctx);
-        mine.setBackground(Ui.round(ctx, Ui.BG, 14));
-        Ui.pad(mine, ctx, 14, 14, 14, 14);
+        add(Ui.title(ctx, "어떻게 할까요?"), Ui.Space.STACK);
+        add(Ui.factBox(ctx, QuestionTemplates.factLine(s.eval, s.attempt)), Ui.Space.STACK);
+        LinearLayout mine = Ui.tintBox(ctx, Ui.BG, Ui.Space.STACK, Ui.Space.STACK);
         mine.addView(Ui.caption(ctx, "내 답"));
         int n = Math.min(s.answers.size(), s.questions.size());
         for (int i = 0; i < n; i++) {
-            TextView line = Ui.text(ctx, shortName(s.questions.get(i), i) + " → " + s.answers.get(i), 15, Ui.TEXT, Ui.REGULAR);
-            mine.addView(line, Ui.fillW());
-            Ui.gapTop(line, ctx, 6);
+            Ui.stack(mine, Ui.text(ctx, shortName(s.questions.get(i), i) + " → " + s.answers.get(i), Ui.Font.BODY, Ui.TEXT, Ui.REGULAR), Ui.Space.TIGHT);
         }
-        add(mine, 14);
-        add(Ui.button(ctx, "그만둘게요", true, v -> cb.onStop(s)), 14);
+        add(mine, Ui.Space.STACK);
+        add(stopButton(s), Ui.Space.STACK);
+        // [그만둘게요]보다 작게 둔다 (CLAUDE.md UI 규칙: 결제로 바로 넘어가는 큰 버튼은 만들지 않는다).
         TextView buy = Ui.linkButton(ctx, s.attempt.app == TargetApp.BAEMIN ? "그래도 시킬게요" : "그래도 살게요", v -> cb.onBuy(s));
-        LinearLayout buyRow = Ui.h(ctx);
-        buyRow.setGravity(Gravity.CENTER_HORIZONTAL);
-        buyRow.addView(buy, Ui.wrap());
-        add(buyRow, 14);
+        add(Ui.centered(ctx, buy), Ui.Space.STACK);
     }
 
     private void answer(Session s, String text, Decision chipDecision) {

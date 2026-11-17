@@ -1,0 +1,182 @@
+# 쉼표 UI 컴포넌트·토큰 목록
+
+모든 값과 부품은 `android/app/src/main/java/com/shimpyo/app/Ui.java` 한 곳에 있다.
+화면 코드(`MainActivity`, `OverlayController`, `DemoCheckoutActivity`)에는 숫자 dp·sp·색을 쓰지 않고 아래 이름만 쓴다.
+값을 바꾸면 그 이름을 쓰는 모든 화면이 함께 바뀐다.
+
+## 토큰
+
+### 색 (Figma Color 변수)
+
+| 이름 | 값 | Figma |
+|---|---|---|
+| `BRAND` | #292D2B | brand/blue · brand/navy (먹색) |
+| `BRAND_LIGHT` | #EAF1EC | brand/blue-light |
+| `TEXT` | #292D2B | text/primary |
+| `MUTED` | #737A75 | text/muted |
+| `SUBTLE` | #879A8A | text/subtle |
+| `LINE` | #DFE3DF | line · chip/stroke |
+| `BG` | #F3F5F2 | bg |
+| `WHITE` | #FFFFFF | surface |
+| `RED` / `RED_BG` | #A14D46 / #F7EAE8 | status/red |
+| `AMBER` / `AMBER_BG` | #8C6C23 / #F7F0DE | status/amber |
+| `GREEN` / `GREEN_BG` | #37624C / #E8EFE9 | status/green |
+| `DIM` | #17201A 55% | dim |
+| `ON_BRAND` / `ON_BRAND_SUB` | WHITE / LINE | 먹색 바탕 위 글자 |
+| `GUARD_FILL` | status/green 16% | 결제 버튼 가드 표시 |
+
+### `Ui.Tone`: 상태 색 묶음 (바탕 + 글자)
+
+| 이름 | 바탕 / 글자 | 쓰는 곳 |
+|---|---|---|
+| `SUCCESS` | GREEN_BG / GREEN | 멈춤, 여유, 필요 판정, 식비 예산 |
+| `WARNING` | AMBER_BG / AMBER | 주의, 숙고 후 결제, 행동 트리거 |
+| `DANGER` | RED_BG / RED | 초과, 재무 트리거 |
+| `BRAND` | BRAND_LIGHT / BRAND | 강도 태그, 회고 태그 |
+| `ACCENT` | BRAND_LIGHT / GREEN | 필수 권한, 이유 선택 결제 |
+| `NEUTRAL` | BG / MUTED | 선택 권한, 여윳돈, 기타 결과 |
+| `INVERSE` | BRAND / WHITE | 강한 개입 강도 |
+
+### `Ui.Font`: 글자 크기 (sp / 줄 높이)
+
+| 이름 | 크기 | Figma 스타일 | 쓰는 곳 |
+|---|---|---|---|
+| `DISPLAY` | 30/38 | Display | 리포트 마음 돌림 비율 |
+| `AMOUNT` | 28/40 | — | 홈 오늘 쓸 수 있는 돈 |
+| `TITLE` | 22/30 | Title | 화면 제목 |
+| `STAT` | 18/26 | — | 홈 요약 타일 값 |
+| `HEADING` | 17/25 | Heading | 시트·개입 제목, 합계 |
+| `BUTTON` | 16/22 | Button | 버튼 |
+| `BODY` | 15/22 | Body | 본문, 칩, 줄 라벨 |
+| `LABEL` | 14/20 | — | 목록 제목 |
+| `SMALL` | 13/19 | — | 짧은 안내, 글자 링크 |
+| `CAPTION` | 12/17 | Caption | 머리말, 태그, 부가 정보 |
+| `MICRO` | 11/16 | — | 아주 작은 설명, 로그 |
+
+굵기: `REGULAR` 400 · `MEDIUM` 500 · `BOLD` 700
+
+### `Ui.Space`: 간격 (dp)
+
+| 이름 | 값 | 주로 쓰는 자리 |
+|---|---|---|
+| `TEXT` | 2 | 제목 ↔ 바로 아래 설명 |
+| `LINE` | 4 | 가까운 줄 사이 |
+| `TIGHT` | 6 | 단계 점, 태그 사이 |
+| `ITEM` | 8 | 나란히 놓인 요소, 칩 간격 |
+| `ROW` | 10 | 카드 안 줄 사이 |
+| `BLOCK` | 12 | 카드 ↔ 카드 |
+| `STACK` | 14 | 개입 시트·온보딩 세로 간격 |
+| `CARD` | 16 | 카드 안쪽 여백 |
+| `SECTION` | 18 | 섹션 제목 위 |
+| `SCREEN` | 20 | 화면 좌우 여백 |
+| `LARGE` | 24 | 화면 아래, 큰 섹션 위 |
+| `SHEET_TOP` / `REVIEW_SHEET_TOP` | 18 / 22 | 개입 시트 / 회고 시트 위 여백 |
+
+### `Ui.Radius`: 모서리 (dp)
+
+`BAR` 4 · `CHECK` 6 · `TAG` 8 · `NOTE` 10 · `INPUT` 12 · `BOX` 14 · `CARD` 16 · `CHIP` 20 · `SHEET` 24
+
+### `Ui.Size`: 고정 크기 (dp)
+
+`NAV_HEIGHT` 63 · `NAV_INSET` 28 · `NAV_DOT` 6 · `ICON_BUTTON` 24 · `CHECKBOX` 20 · `STEP_DOT` 8 · `STEP_ACTIVE` 24 · `BAR` 8 · `FIELD_WIDTH` 130 · `ROW_LABEL` 48 · `STROKE` 1 · `STROKE_STRONG` 1.5 · `GUARD_STROKE` 3 · `ELEVATION` 6 · `TOAST_OFFSET` 100
+
+## 컴포넌트
+
+### 글자
+
+| 함수 | 모양 |
+|---|---|
+| `title(c, s)` | 22 Bold, 화면 제목 |
+| `heading(c, s)` | 17 Bold, 시트 제목 |
+| `sectionTitle(c, s)` | 15 Bold, 섹션 머리말 |
+| `body(c, s)` | 15 Regular muted |
+| `bodySmall(c, s)` | 13 Regular muted |
+| `caption(c, s)` | 12 Medium muted, 카드 머리말 |
+| `meta(c, s)` | 12 Regular muted, 시각·부가 정보 |
+| `micro(c, s, color)` | 11 Regular |
+| `text(c, s, Font, color, weight)` | 위에 없는 조합 |
+
+### 배치
+
+| 함수 | 하는 일 |
+|---|---|
+| `stack(parent, child, gap)` | 세로로 붙이고 위 간격을 둔다 |
+| `inline(row, child, gap)` | 가로로 붙이고(내용 크기) 왼쪽 간격을 둔다 |
+| `inlineFill(row, child, gap)` | 가로로 붙이고 남은 폭을 나눠 갖는다 |
+| `centered(c, child)` | 가운데 정렬 한 줄 |
+| `pad(v, c, all)` · `pad(v, c, h, v)` · `pad(v, c, l, t, r, b)` | 안쪽 여백 |
+
+### 컨테이너
+
+| 함수 | 모양 | 화면 |
+|---|---|---|
+| `card(c)` | 흰 바탕, radius 16, padding 16 | 공통 |
+| `tintCard(c, color)` | 색 바탕 card | S02 정기 수입 |
+| `outlineCard(c, padH, padV)` | 흰 바탕 + 1dp 테두리, radius 14 | S04 홈 |
+| `tintBox(c, color, padH, padV)` | 색 바탕, radius 14 | 토스트, 내 답 |
+| `bottomSheet(c, padTop)` | 위 모서리 24 흰 시트 | S09 회고, 개입 오버레이 |
+
+### 버튼
+
+| 함수 | 모양 |
+|---|---|
+| `button(c, label, primary, click)` | Button/Primary · Secondary |
+| `buttonPair(c, left, right)` | 같은 폭 버튼 두 개 |
+| `linkButton(c, label, click)` | Button/Text (12 Medium muted) |
+| `textLink(c, label, color, click)` | 13 Bold 글자 링크 ("… 열기 ›") |
+| `backButton(c, click)` · `closeButton(c, click)` | ← · ✕ |
+| `setEnabled(button, on)` | 비활성 표시 |
+
+### 칩 · 태그
+
+| 함수 | 모양 |
+|---|---|
+| `chip(c, label, selected, click)` | Chip · Chip/Selected |
+| `chipFlow(c, chips)` · `chipGrid(c, chips, perRow)` | 칩 줄바꿈 배치 · 같은 폭 배치 |
+| `tag(c, label, Tone)` | Tag (radius 8, 12 Medium) |
+| `smallTag(c, label, Tone)` | 작은 태그 (radius 6, 12 Bold) |
+| `tagFlow(c)` | 태그 줄바꿈 배치 (gap 6) |
+
+### 정보 표시
+
+| 함수 | 모양 | 화면 |
+|---|---|---|
+| `kv(c, label, value, total)` | 왼쪽 라벨 · 오른쪽 값 | S03, 리포트, 설정 |
+| `listRow(c, title, sub, amount, tag)` | 제목·부가 / 금액·태그 | 홈 최근 기록, 기록 탭 |
+| `statTile(c, label, value, sub, outlined)` | 요약 타일 | 홈(outlined) · 리포트 |
+| `tilePair(c, left, right, gap)` | 타일 두 개 나란히 | 홈 · 리포트 |
+| `heroCard(c, label, value, sub, large)` | 먹색 강조 카드 | S03 여윳돈 · S10 마음 돌림 비율(large) |
+| `alertBox(c, title, desc, action, click)` | 빨간 경고 상자 | 홈 결제 감지 꺼짐 |
+| `highlightBox(c, label, value)` | 연초록 성과 상자 | 홈 이번 달 쉼표 |
+| `tintNote(c, s, Font, fg, Radius, padH, padV)` | 연초록 안내 한 줄 | S01, 리포트, 개입 재시도 |
+| `factBox(c, s)` | 사실 한 줄 (왼쪽 초록 선) | 개입 오버레이 |
+| `bar(c, ratio, fill, track)` | 진행 막대 | 홈, 리포트 |
+| `divider(c)` | 1dp 선 | 기록 탭, 하단 탭 |
+
+### 대화 · 내비게이션 · 입력
+
+| 함수 | 모양 |
+|---|---|
+| `bubbleAi(c, question, faded)` · `bubbleUser(c, answer)` | Bubble/AI · Bubble/User |
+| `bottomNav(c, labels, selected, onSelect)` | BottomNav |
+| `steps(c, current, total, doneFilled)` | 온보딩 단계 점 |
+| `checkRow(c, label, checked, click)` | 체크 상자 + 문구 |
+| `input(c, hint, value, number)` | Input (테두리) |
+| `plainInput(c, hint, value)` | 테두리 없는 입력칸 |
+| `labeledField(c, label, input)` | 라벨 + 고정 폭 입력칸 |
+
+## 화면 메서드 (`MainActivity`)
+
+| 화면 | 메서드 | 안의 카드 |
+|---|---|---|
+| S01 권한 | `onboardingPermissionScreen()` | `permissionCard`, `permissionRow` |
+| S02 정기 수입 | `onboardingIncomeScreen()` | `linkedAccountCard`, `incomeCard`, `consentCard` |
+| S03 예산 | `onboardingBudgetScreen()` | `amountListCard`, heroCard |
+| S04 홈 | `homeScreen()` | `homeHeader`, `todayBudgetCard`, `recentRecordsCard`, `demoCard` |
+| S09 회고 | `showReview()` | `reviewSheetContent` |
+| 기록 | `recordsScreen()` | `recordRow` |
+| S10 리포트 | `reportScreen()` | `intensityCard`, `outcomeCard` |
+| 설정 | `settingsScreen()` | `statusCard`, `numberField`, `testTools`, `logCard`, `screenTextCard` |
+
+각 화면 메서드는 맨 위에서 데이터(`Store`, `BudgetEngine`, `Stats`)를 한 번 읽고 카드 메서드에 값으로 넘긴다.
+백엔드에서 데이터를 받게 되면 이 맨 윗부분만 바꾸면 된다.
