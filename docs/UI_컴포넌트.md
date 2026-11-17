@@ -55,22 +55,41 @@
 
 굵기: `REGULAR` 400 · `MEDIUM` 500 · `BOLD` 700
 
-### `Ui.Space`: 간격 (dp)
+### 간격과 여백을 나눈 이유
 
-| 이름 | 값 | 주로 쓰는 자리 |
+- `Ui.Space`는 **요소와 요소 사이**(바깥) 간격만 담는다.
+- `Ui.Pad`는 **부품 안쪽** 여백을 담고, 부품·자리마다 이름이 따로 있다.
+
+그래서 `Space.BLOCK`을 바꾸면 카드 사이만 넓어지고 카드 크기는 그대로다.
+`Pad.BUTTON_V`를 바꾸면 버튼 높이만 바뀐다. 값이 같아도 이름이 다르면 서로 영향을 주지 않는다.
+
+### `Ui.Space`: 사이 간격 (dp)
+
+| 이름 | 값 | 쓰는 자리 |
 |---|---|---|
 | `TEXT` | 2 | 제목 ↔ 바로 아래 설명 |
 | `LINE` | 4 | 가까운 줄 사이 |
-| `TIGHT` | 6 | 단계 점, 태그 사이 |
-| `ITEM` | 8 | 나란히 놓인 요소, 칩 간격 |
+| `TIGHT` | 6 | 단계 점·태그 사이, 내 답 줄 사이 |
+| `ITEM` | 8 | 나란히 놓인 요소, 칩 간격, 설정 입력 줄 사이 |
 | `ROW` | 10 | 카드 안 줄 사이 |
-| `BLOCK` | 12 | 카드 ↔ 카드 |
-| `STACK` | 14 | 개입 시트·온보딩 세로 간격 |
-| `CARD` | 16 | 카드 안쪽 여백 |
-| `SECTION` | 18 | 섹션 제목 위 |
-| `SCREEN` | 20 | 화면 좌우 여백 |
-| `LARGE` | 24 | 화면 아래, 큰 섹션 위 |
-| `SHEET_TOP` / `REVIEW_SHEET_TOP` | 18 / 22 | 개입 시트 / 회고 시트 위 여백 |
+| `BLOCK` | 12 | 카드 ↔ 카드 (홈·리포트·기록·S03) |
+| `STACK` | 14 | 개입 시트·S01 세로 간격 |
+| `WIDE` | 16 | S02 블록 사이 |
+| `SECTION` | 18 | 섹션 제목 위 (설정) |
+| `LARGE` | 24 | 큰 섹션 위 (설정 테스트 도구) |
+
+### `Ui.Pad`: 안쪽 여백 (dp, `_H` 좌우 · `_V` 위아래)
+
+| 묶음 | 이름 (값) |
+|---|---|
+| 화면 틀 | `SCREEN_H` 20 · `SCREEN_TOP` 12 · `SCREEN_BOTTOM` 24 · `FOOTER_TOP` 8 · `STEPS_TOP` 14 · `STEPS_BOTTOM` 10 |
+| 시트 | `SHEET_H` 20 · `SHEET_TOP` 18 · `REVIEW_SHEET_TOP` 22 · `SHEET_BOTTOM` 24 |
+| 카드·상자 | `CARD` 16 · `TODAY_CARD` 18 · `TILE_H` 16 · `TILE_V` 14 · `REPORT_TILE` 14 · `HERO` 16 · `HERO_LARGE` 20 · `BOX_H` 16 · `BOX_V` 14 · `ANSWER_BOX` 14 · `TOAST_H` 18 · `TOAST_V` 14 |
+| 안내 상자 | `FACT_H` 12 · `FACT_V` 8 · `PRIVACY_NOTE` 12 · `RETRY_NOTE_H` 12 · `RETRY_NOTE_V` 10 · `FOOD_NOTE_H` 14 · `FOOD_NOTE_V` 10 |
+| 버튼·칩·태그 | `BUTTON_H` 20 · `BUTTON_V` 16 · `LINK` 8 · `ICON` 6 · `CHIP_H` 16 · `CHIP_V` 10 · `TAG_H` 10 · `TAG_V` 4 · `SMALL_TAG_H` 8 · `SMALL_TAG_V` 3 |
+| 대화·입력 | `BUBBLE_H` 14 · `BUBBLE_AI_V` 12 · `BUBBLE_USER_V` 10 · `INPUT_H` 14 · `INPUT_V` 12 · `SEND_LEFT` 10 |
+| 목록 | `LIST_ROW_V` 10 · `QA_INDENT` 10 |
+| 데모 결제 | `DEMO_SIDE` 16 · `DEMO_APPBAR_V` 12 · `DEMO_SECTION_V` 14 · `DEMO_PAYBAR_TOP` 10 · `DEMO_PAYBAR_BOTTOM` 18 · `DEMO_PAY_V` 15 · `DEMO_CONTENT_TOP` 8 · `DEMO_CONTENT_BOTTOM` 16 |
 
 ### `Ui.Radius`: 모서리 (dp)
 

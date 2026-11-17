@@ -105,7 +105,7 @@ public class DemoCheckoutActivity extends Activity {
         // AppBar: ← 주문하기
         LinearLayout bar = Ui.h(this);
         bar.setBackgroundColor(Ui.WHITE);
-        Ui.pad(bar, this, Ui.Space.CARD, Ui.Space.BLOCK);
+        Ui.pad(bar, this, Ui.Pad.DEMO_SIDE, Ui.Pad.DEMO_APPBAR_V);
         bar.addView(Ui.backButton(this, v -> finish()));
         String title = current.app == TargetApp.BAEMIN ? "주문하기" : current.app == TargetApp.COUPANG ? "주문/결제" : "주문서";
         Ui.inline(bar, Ui.heading(this, title), Ui.Space.BLOCK);
@@ -113,7 +113,7 @@ public class DemoCheckoutActivity extends Activity {
 
         ScrollView scroll = new ScrollView(this);
         content = Ui.v(this);
-        Ui.pad(content, this, 0, Ui.Space.ITEM, 0, Ui.Space.CARD);
+        Ui.pad(content, this, 0, Ui.Pad.DEMO_CONTENT_TOP, 0, Ui.Pad.DEMO_CONTENT_BOTTOM);
         scroll.addView(content);
         root.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
 
@@ -122,10 +122,10 @@ public class DemoCheckoutActivity extends Activity {
         else musinsa();
 
         statusView = Ui.caption(this, "");
-        Ui.pad(statusView, this, Ui.Space.CARD, Ui.Space.STACK, Ui.Space.CARD, 0);
+        Ui.pad(statusView, this, Ui.Pad.DEMO_SIDE, Ui.Space.STACK, Ui.Pad.DEMO_SIDE, 0);
         content.addView(statusView, Ui.fillW());
         TextView hint = Ui.text(this, "데모 · " + current.hint, Ui.Font.CAPTION, Ui.SUBTLE, Ui.REGULAR);
-        Ui.pad(hint, this, Ui.Space.CARD, Ui.Space.TIGHT, Ui.Space.CARD, 0);
+        Ui.pad(hint, this, Ui.Pad.DEMO_SIDE, Ui.Space.TIGHT, Ui.Pad.DEMO_SIDE, 0);
         content.addView(hint, Ui.fillW());
         TextView retry = Ui.linkButton(this, "같은 상품으로 다시 시도 (새 결제 화면)", v -> {
             status = "";
@@ -138,12 +138,12 @@ public class DemoCheckoutActivity extends Activity {
         // PayBar
         LinearLayout payBar = Ui.v(this);
         payBar.setBackgroundColor(Ui.WHITE);
-        Ui.pad(payBar, this, Ui.Space.CARD, Ui.Space.ROW, Ui.Space.CARD, Ui.Space.SECTION);
+        Ui.pad(payBar, this, Ui.Pad.DEMO_SIDE, Ui.Pad.DEMO_PAYBAR_TOP, Ui.Pad.DEMO_SIDE, Ui.Pad.DEMO_PAYBAR_BOTTOM);
         String payLabel = current.app == TargetApp.COUPANG ? "결제하기" : Money.won(current.amount) + " 결제하기";
         TextView pay = Ui.text(this, payLabel, Ui.Font.BUTTON, Ui.WHITE, Ui.BOLD);
         pay.setGravity(Gravity.CENTER);
         pay.setBackground(Ui.round(this, payColor(), PAY_BUTTON_RADIUS));
-        Ui.pad(pay, this, Ui.Space.CARD, Ui.Space.CARD - 1);
+        Ui.pad(pay, this, Ui.Pad.DEMO_SIDE, Ui.Pad.DEMO_PAY_V);
         pay.setOnClickListener(v -> payClick());
         payBar.addView(pay, Ui.fillW());
         root.addView(payBar, Ui.fillW());
@@ -156,7 +156,7 @@ public class DemoCheckoutActivity extends Activity {
     private LinearLayout section(String title, String right, int rightColor) {
         LinearLayout s = Ui.v(this);
         s.setBackgroundColor(Ui.WHITE);
-        Ui.pad(s, this, Ui.Space.CARD, Ui.Space.STACK);
+        Ui.pad(s, this, Ui.Pad.DEMO_SIDE, Ui.Pad.DEMO_SECTION_V);
         LinearLayout h = Ui.h(this);
         h.setGravity(Gravity.TOP);
         h.addView(Ui.text(this, title, Ui.Font.BODY, Ui.TEXT, Ui.MEDIUM), Ui.weight1());

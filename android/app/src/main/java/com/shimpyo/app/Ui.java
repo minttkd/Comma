@@ -29,7 +29,8 @@ import java.util.function.IntConsumer;
  *   색          Ui.TEXT, Ui.MUTED, Ui.BRAND …
  *   상태 색 묶음 Ui.Tone.SUCCESS · WARNING · DANGER …
  *   글자 크기    Ui.Font.TITLE · BODY · CAPTION …
- *   간격        Ui.Space.BLOCK · ROW · ITEM …
+ *   간격(사이)   Ui.Space.BLOCK · ROW · ITEM …
+ *   여백(안쪽)   Ui.Pad.CARD · BUTTON_H · CHIP_V …
  *   모서리      Ui.Radius.CARD · BOX · CHIP …
  *   고정 크기    Ui.Size.NAV_HEIGHT · ICON_BUTTON …
  * </pre>
@@ -102,24 +103,100 @@ final class Ui {
 
     // ================================================================== 간격 · 모서리 · 크기 (dp)
 
-    /** 간격. 이름은 주로 쓰는 자리. */
+    /**
+     * 요소와 요소 사이 간격 (바깥 여백, margin).
+     * 부품 안쪽 여백은 여기 말고 Pad에 있다. 그래서 Space 값을 바꿔도 카드·버튼 크기는 그대로다.
+     */
     static final class Space {
         private Space() {}
 
         static final int TEXT = 2;      // 제목 ↔ 바로 아래 설명
         static final int LINE = 4;      // 가까운 줄 사이
-        static final int TIGHT = 6;     // 단계 점 사이, 태그 사이
-        static final int ITEM = 8;      // 나란히 놓인 요소 사이, 칩 간격
+        static final int TIGHT = 6;     // 단계 점·태그 사이, 내 답 줄 사이
+        static final int ITEM = 8;      // 나란히 놓인 요소 사이, 칩 간격, 설정 입력 줄 사이
         static final int ROW = 10;      // 카드 안 줄 사이
-        static final int BLOCK = 12;    // 카드 ↔ 카드
-        static final int STACK = 14;    // 개입 시트·온보딩의 세로 간격
-        static final int CARD = 16;     // 카드 안쪽 여백
-        static final int SECTION = 18;  // 섹션 제목 위
-        static final int SCREEN = 20;   // 화면 좌우 여백
-        static final int LARGE = 24;    // 화면 아래 여백, 큰 섹션 위
+        static final int BLOCK = 12;    // 카드 ↔ 카드 (홈·리포트·기록·S03)
+        static final int STACK = 14;    // 개입 시트·S01의 세로 간격
+        static final int WIDE = 16;     // S02의 블록 사이
+        static final int SECTION = 18;  // 섹션 제목 위 (설정)
+        static final int LARGE = 24;    // 큰 섹션 위 (설정 테스트 도구)
+    }
 
-        static final int SHEET_TOP = 18;        // 개입 시트 위 여백 (Figma A2~C3)
-        static final int REVIEW_SHEET_TOP = 22; // 회고 시트 위 여백 (Figma S09)
+    /**
+     * 안쪽 여백 (padding). 부품·자리마다 따로 이름을 두어, 하나를 고쳐도 다른 곳은 바뀌지 않는다.
+     * _H는 좌우, _V는 위아래.
+     */
+    static final class Pad {
+        private Pad() {}
+
+        // 화면 틀
+        static final int SCREEN_H = 20;         // 화면 좌우
+        static final int SCREEN_TOP = 12;       // 스크롤 내용 위
+        static final int SCREEN_BOTTOM = 24;    // 스크롤 내용·하단 버튼 영역 아래
+        static final int FOOTER_TOP = 8;        // 온보딩 하단 버튼 영역 위
+        static final int STEPS_TOP = 14;        // S01 단계 점 위 (뒤로 버튼 없을 때)
+        static final int STEPS_BOTTOM = 10;     // S01 단계 점 아래
+
+        // 시트
+        static final int SHEET_H = 20;          // Sheet 좌우
+        static final int SHEET_TOP = 18;        // 개입 시트 위 (Figma A2~C3)
+        static final int REVIEW_SHEET_TOP = 22; // 회고 시트 위 (Figma S09)
+        static final int SHEET_BOTTOM = 24;     // Sheet 아래
+
+        // 카드·상자
+        static final int CARD = 16;             // Card
+        static final int TODAY_CARD = 18;       // 홈 "오늘 쓸 수 있는 돈"
+        static final int TILE_H = 16;           // 홈 요약 타일 좌우
+        static final int TILE_V = 14;           // 홈 요약 타일 위아래
+        static final int REPORT_TILE = 14;      // 리포트 요약 타일
+        static final int HERO = 16;             // 먹색 강조 카드 (S03)
+        static final int HERO_LARGE = 20;       // 먹색 강조 카드 (S10)
+        static final int BOX_H = 16;            // 경고·성과 상자 좌우
+        static final int BOX_V = 14;            // 경고·성과 상자 위아래
+        static final int ANSWER_BOX = 14;       // 개입 결정 화면 "내 답"
+        static final int TOAST_H = 18;          // 토스트 좌우
+        static final int TOAST_V = 14;          // 토스트 위아래
+        static final int FACT_H = 12;           // 사실 한 줄 상자 좌우
+        static final int FACT_V = 8;            // 사실 한 줄 상자 위아래
+        static final int PRIVACY_NOTE = 12;     // S01 개인정보 안내
+        static final int RETRY_NOTE_H = 12;     // 개입 재시도 안내 좌우
+        static final int RETRY_NOTE_V = 10;     // 개입 재시도 안내 위아래
+        static final int FOOD_NOTE_H = 14;      // 리포트 식비 안내 좌우
+        static final int FOOD_NOTE_V = 10;      // 리포트 식비 안내 위아래
+
+        // 버튼·칩·태그
+        static final int BUTTON_H = 20;         // Button 좌우
+        static final int BUTTON_V = 16;         // Button 위아래 (Secondary는 테두리만큼 1 작게)
+        static final int LINK = 8;              // Button/Text
+        static final int ICON = 6;              // ✕ 닫기
+        static final int CHIP_H = 16;
+        static final int CHIP_V = 10;
+        static final int TAG_H = 10;
+        static final int TAG_V = 4;
+        static final int SMALL_TAG_H = 8;
+        static final int SMALL_TAG_V = 3;
+
+        // 대화·입력
+        static final int BUBBLE_H = 14;         // 말풍선 좌우
+        static final int BUBBLE_AI_V = 12;      // 쉼표 말풍선 위아래
+        static final int BUBBLE_USER_V = 10;    // 내 말풍선 위아래
+        static final int INPUT_H = 14;          // Input 좌우
+        static final int INPUT_V = 12;          // Input 위아래
+        static final int SEND_LEFT = 10;        // [보내기] 왼쪽
+
+        // 목록
+        static final int LIST_ROW_V = 10;       // 데모 시나리오·테스트 도구 한 줄 위아래
+        static final int QA_INDENT = 10;        // 기록 탭 질문·답 들여쓰기
+
+        // 데모 결제 화면 (다른 앱 화면 재현)
+        static final int DEMO_SIDE = 16;        // AppBar·섹션·PayBar 좌우
+        static final int DEMO_APPBAR_V = 12;
+        static final int DEMO_SECTION_V = 14;
+        static final int DEMO_PAYBAR_TOP = 10;
+        static final int DEMO_PAYBAR_BOTTOM = 18;
+        static final int DEMO_PAY_V = 15;       // 결제 버튼 위아래
+        static final int DEMO_CONTENT_TOP = 8;
+        static final int DEMO_CONTENT_BOTTOM = 16;
     }
 
     /** 모서리 반지름. */
@@ -391,7 +468,7 @@ final class Ui {
     static LinearLayout card(Context c) {
         LinearLayout l = v(c);
         l.setBackground(round(c, WHITE, Radius.CARD));
-        pad(l, c, Space.CARD);
+        pad(l, c, Pad.CARD);
         return l;
     }
 
@@ -422,7 +499,7 @@ final class Ui {
     static LinearLayout bottomSheet(Context c, int padTop) {
         LinearLayout s = v(c);
         s.setBackground(corners(c, WHITE, Radius.SHEET, Radius.SHEET, 0, 0));
-        pad(s, c, Space.SCREEN, padTop, Space.SCREEN, Space.LARGE);
+        pad(s, c, Pad.SHEET_H, padTop, Pad.SHEET_H, Pad.SHEET_BOTTOM);
         s.setClickable(true);
         return s;
     }
@@ -450,7 +527,7 @@ final class Ui {
         b.setGravity(Gravity.CENTER);
         b.setBackground(primary ? round(c, BRAND, Radius.BOX) : roundStroke(c, WHITE, Radius.BOX, LINE));
         // Secondary는 1dp 테두리만큼 위아래를 줄여 Primary와 높이를 맞춘다.
-        pad(b, c, Space.SCREEN, primary ? Space.CARD : Space.CARD - 1);
+        pad(b, c, Pad.BUTTON_H, primary ? Pad.BUTTON_V : Pad.BUTTON_V - 1);
         b.setOnClickListener(click);
         b.setClickable(true);
         return b;
@@ -474,7 +551,7 @@ final class Ui {
     static TextView linkButton(Context c, String label, View.OnClickListener click) {
         TextView b = text(c, label, Font.CAPTION, MUTED, MEDIUM);
         b.setGravity(Gravity.CENTER);
-        pad(b, c, Space.ITEM);
+        pad(b, c, Pad.LINK);
         b.setOnClickListener(click);
         return b;
     }
@@ -498,7 +575,7 @@ final class Ui {
     /** ✕ 닫기 (17 Bold subtle, padding 6). */
     static TextView closeButton(Context c, View.OnClickListener click) {
         TextView x = text(c, "✕", Font.HEADING, SUBTLE, BOLD);
-        pad(x, c, Space.TIGHT);
+        pad(x, c, Pad.ICON);
         x.setContentDescription("닫기");
         x.setOnClickListener(click);
         return x;
@@ -511,7 +588,7 @@ final class Ui {
         TextView t = text(c, label, Font.BODY, TEXT, MEDIUM);
         t.setGravity(Gravity.CENTER);
         t.setBackground(selected ? roundStroke(c, BRAND_LIGHT, Radius.CHIP, BRAND, Size.STROKE_STRONG) : roundStroke(c, WHITE, Radius.CHIP, LINE));
-        pad(t, c, Space.CARD, Space.ROW);
+        pad(t, c, Pad.CHIP_H, Pad.CHIP_V);
         if (click != null) t.setOnClickListener(click);
         return t;
     }
@@ -520,7 +597,7 @@ final class Ui {
     static TextView tag(Context c, String label, Tone tone) {
         TextView t = text(c, label, Font.CAPTION, tone.fg, MEDIUM);
         t.setBackground(round(c, tone.bg, Radius.TAG));
-        pad(t, c, Space.ROW, Space.LINE);
+        pad(t, c, Pad.TAG_H, Pad.TAG_V);
         return t;
     }
 
@@ -528,7 +605,7 @@ final class Ui {
     static TextView smallTag(Context c, String label, Tone tone) {
         TextView t = text(c, label, Font.CAPTION, tone.fg, BOLD);
         t.setBackground(round(c, tone.bg, Radius.CHECK));
-        pad(t, c, Space.ITEM, 3);
+        pad(t, c, Pad.SMALL_TAG_H, Pad.SMALL_TAG_V);
         return t;
     }
 
@@ -599,11 +676,11 @@ final class Ui {
     static LinearLayout statTile(Context c, String label, String value, String sub, boolean outlined) {
         LinearLayout t;
         if (outlined) {
-            t = outlineCard(c, Space.CARD, Space.STACK);
+            t = outlineCard(c, Pad.TILE_H, Pad.TILE_V);
         } else {
             t = v(c);
             t.setBackground(round(c, WHITE, Radius.CARD));
-            pad(t, c, Space.STACK);
+            pad(t, c, Pad.REPORT_TILE);
         }
         t.addView(meta(c, label));
         stack(t, text(c, value, outlined ? Font.STAT : Font.HEADING, TEXT, BOLD), Space.TEXT);
@@ -627,7 +704,7 @@ final class Ui {
     static LinearLayout heroCard(Context c, String label, String value, String sub, boolean large) {
         LinearLayout h = v(c);
         h.setBackground(round(c, BRAND, Radius.CARD));
-        pad(h, c, large ? Space.SCREEN : Space.CARD);
+        pad(h, c, large ? Pad.HERO_LARGE : Pad.HERO);
         h.addView(text(c, label, Font.CAPTION, ON_BRAND_SUB, MEDIUM));
         stack(h, text(c, value, large ? Font.DISPLAY : Font.TITLE, ON_BRAND, BOLD), Space.LINE);
         stack(h, text(c, sub, Font.CAPTION, ON_BRAND_SUB, REGULAR), Space.LINE);
@@ -636,7 +713,7 @@ final class Ui {
 
     /** 경고 상자 (S04 결제 감지 꺼짐): 빨간 바탕, 제목 14 Bold · 설명 12 · 이동 링크. */
     static LinearLayout alertBox(Context c, String title, String desc, String action, View.OnClickListener click) {
-        LinearLayout w = tintBox(c, RED_BG, Space.CARD, Space.STACK);
+        LinearLayout w = tintBox(c, RED_BG, Pad.BOX_H, Pad.BOX_V);
         w.addView(text(c, title, Font.LABEL, RED, BOLD));
         stack(w, text(c, desc, Font.CAPTION, RED, REGULAR), Space.TEXT);
         TextView open = textLink(c, action, RED, click);
@@ -647,7 +724,7 @@ final class Ui {
 
     /** 성과 상자 (S04 이번 달 쉼표): 연초록 바탕, 라벨 12 · 값 16 Bold. */
     static LinearLayout highlightBox(Context c, String label, String value) {
-        LinearLayout b = tintBox(c, BRAND_LIGHT, Space.CARD, Space.STACK);
+        LinearLayout b = tintBox(c, BRAND_LIGHT, Pad.BOX_H, Pad.BOX_V);
         b.addView(text(c, label, Font.CAPTION, GREEN, REGULAR));
         stack(b, text(c, value, Font.BUTTON, GREEN, BOLD), Space.LINE);
         return b;
@@ -669,7 +746,7 @@ final class Ui {
         LayerDrawable ld = new LayerDrawable(new Drawable[]{line, fill});
         ld.setLayerInset(1, dp(c, 3), 0, 0, 0);
         t.setBackground(ld);
-        pad(t, c, Space.BLOCK, Space.ITEM);
+        pad(t, c, Pad.FACT_H, Pad.FACT_V);
         return t;
     }
 
@@ -692,7 +769,7 @@ final class Ui {
     static LinearLayout bubbleAi(Context c, String question, boolean faded) {
         LinearLayout b = v(c);
         b.setBackground(corners(c, BG, Radius.BAR, Radius.CARD, Radius.CARD, Radius.CARD));
-        pad(b, c, Space.STACK, Space.BLOCK);
+        pad(b, c, Pad.BUBBLE_H, Pad.BUBBLE_AI_V);
         b.addView(text(c, "쉼표", Font.CAPTION, BRAND, MEDIUM));
         stack(b, text(c, question, Font.BODY, TEXT, MEDIUM), Space.LINE);
         if (faded) b.setAlpha(0.6f);
@@ -710,7 +787,7 @@ final class Ui {
         row.setGravity(Gravity.END);
         TextView b = text(c, answer, Font.BODY, ON_BRAND, MEDIUM);
         b.setBackground(corners(c, BRAND, Radius.CARD, Radius.BAR, Radius.CARD, Radius.CARD));
-        pad(b, c, Space.STACK, Space.ROW);
+        pad(b, c, Pad.BUBBLE_H, Pad.BUBBLE_USER_V);
         row.addView(b, wrap());
         return row;
     }
@@ -781,7 +858,7 @@ final class Ui {
         e.setSingleLine(true);
         e.setLetterSpacing(-0.01f);
         e.setBackground(null);
-        pad(e, c, Space.STACK, Space.BLOCK);
+        pad(e, c, Pad.INPUT_H, Pad.INPUT_V);
         return e;
     }
 

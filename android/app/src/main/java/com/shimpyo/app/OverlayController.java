@@ -113,7 +113,7 @@ final class OverlayController {
         };
         root.setBackgroundColor(Ui.DIM);
         root.setClickable(true); // 아래 결제 화면 터치 차단
-        sheet = Ui.bottomSheet(ctx, Ui.Space.SHEET_TOP);
+        sheet = Ui.bottomSheet(ctx, Ui.Pad.SHEET_TOP);
         FrameLayout.LayoutParams sp = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM);
         root.addView(sheet, sp);
@@ -208,7 +208,7 @@ final class OverlayController {
     /** S08 처리 완료 토스트 (Figma Toast: 먹색 바탕, radius 14, 15 Medium / 12 Regular). */
     void toast(String line1, String line2) {
         removeToast();
-        LinearLayout box = Ui.tintBox(ctx, Ui.BRAND, Ui.Space.SECTION, Ui.Space.STACK);
+        LinearLayout box = Ui.tintBox(ctx, Ui.BRAND, Ui.Pad.TOAST_H, Ui.Pad.TOAST_V);
         box.setElevation(Ui.dp(ctx, Ui.Size.ELEVATION));
         box.addView(Ui.text(ctx, line1, Ui.Font.BODY, Ui.ON_BRAND, Ui.MEDIUM));
         if (line2 != null && !line2.isEmpty()) {
@@ -216,8 +216,8 @@ final class OverlayController {
         }
         FrameLayout wrap = new FrameLayout(ctx);
         FrameLayout.LayoutParams bp = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
-        bp.leftMargin = Ui.dp(ctx, Ui.Space.SCREEN);
-        bp.rightMargin = Ui.dp(ctx, Ui.Space.SCREEN);
+        bp.leftMargin = Ui.dp(ctx, Ui.Pad.SCREEN_H);
+        bp.rightMargin = Ui.dp(ctx, Ui.Pad.SCREEN_H);
         bp.bottomMargin = Ui.dp(ctx, Ui.Space.ROW);
         wrap.addView(box, bp);
         WindowManager.LayoutParams p = new WindowManager.LayoutParams(
@@ -260,7 +260,7 @@ final class OverlayController {
         add(headerRow(s), 0);
         // 방금 멈춘 뒤 다시 결제를 누른 경우: 첫 화면에만 맥락 한 줄을 붙인다.
         if (s.retryAfterStop && s.answers.isEmpty()) {
-            add(Ui.tintNote(ctx, QuestionTemplates.retryLine(s.attempt.app), Ui.Font.SMALL, Ui.BRAND, Ui.Radius.NOTE, Ui.Space.BLOCK, Ui.Space.ROW), Ui.Space.STACK);
+            add(Ui.tintNote(ctx, QuestionTemplates.retryLine(s.attempt.app), Ui.Font.SMALL, Ui.BRAND, Ui.Radius.NOTE, Ui.Pad.RETRY_NOTE_H, Ui.Pad.RETRY_NOTE_V), Ui.Space.STACK);
         }
         if (s.eval.intensity == Intensity.LIGHT) renderLight(s);
         else renderDialogue(s);
@@ -374,7 +374,7 @@ final class OverlayController {
         EditText in = bareInput("직접 입력 (선택)");
         box.addView(in, Ui.weight1());
         TextView send = Ui.text(ctx, "보내기", Ui.Font.BODY, Ui.BRAND, Ui.BOLD);
-        Ui.pad(send, ctx, Ui.Space.ROW, Ui.Space.BLOCK, Ui.Space.STACK, Ui.Space.BLOCK);
+        Ui.pad(send, ctx, Ui.Pad.SEND_LEFT, Ui.Pad.INPUT_V, Ui.Pad.INPUT_H, Ui.Pad.INPUT_V);
         send.setVisibility(draft.trim().isEmpty() ? View.GONE : View.VISIBLE);
         box.addView(send);
         Runnable submit = () -> {
@@ -411,7 +411,7 @@ final class OverlayController {
         in.setMaxLines(3);
         box.addView(in, Ui.fillW());
         TextView help = Ui.text(ctx, "이 질문은 직접 입력해야 다음으로 넘어가요", Ui.Font.CAPTION, Ui.BRAND, Ui.REGULAR);
-        Ui.pad(help, ctx, Ui.Space.STACK, 0, Ui.Space.STACK, Ui.Space.BLOCK);
+        Ui.pad(help, ctx, Ui.Pad.INPUT_H, 0, Ui.Pad.INPUT_H, Ui.Pad.INPUT_V);
         box.addView(help, Ui.fillW());
         in.addTextChangedListener(new android.text.TextWatcher() {
             public void beforeTextChanged(CharSequence a, int b, int c, int d) {}
@@ -459,7 +459,7 @@ final class OverlayController {
     private void renderDecision(Session s) {
         add(Ui.title(ctx, "어떻게 할까요?"), Ui.Space.STACK);
         add(Ui.factBox(ctx, QuestionTemplates.factLine(s.eval, s.attempt)), Ui.Space.STACK);
-        LinearLayout mine = Ui.tintBox(ctx, Ui.BG, Ui.Space.STACK, Ui.Space.STACK);
+        LinearLayout mine = Ui.tintBox(ctx, Ui.BG, Ui.Pad.ANSWER_BOX, Ui.Pad.ANSWER_BOX);
         mine.addView(Ui.caption(ctx, "내 답"));
         int n = Math.min(s.answers.size(), s.questions.size());
         for (int i = 0; i < n; i++) {

@@ -105,11 +105,11 @@ public class MainActivity extends Activity {
         scroll.setFillViewport(true);
         scroll.setVerticalScrollBarEnabled(false);
         content = Ui.v(this);
-        Ui.pad(content, this, Ui.Space.SCREEN, Ui.Space.BLOCK, Ui.Space.SCREEN, Ui.Space.LARGE);
+        Ui.pad(content, this, Ui.Pad.SCREEN_H, Ui.Pad.SCREEN_TOP, Ui.Pad.SCREEN_H, Ui.Pad.SCREEN_BOTTOM);
         scroll.addView(content);
         root.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
         footer = Ui.v(this);
-        Ui.pad(footer, this, Ui.Space.SCREEN, Ui.Space.ITEM, Ui.Space.SCREEN, Ui.Space.LARGE);
+        Ui.pad(footer, this, Ui.Pad.SCREEN_H, Ui.Pad.FOOTER_TOP, Ui.Pad.SCREEN_H, Ui.Pad.SCREEN_BOTTOM);
         root.addView(footer, Ui.fillW());
         nav = Ui.v(this);
         root.addView(nav, Ui.fillW());
@@ -283,7 +283,7 @@ public class MainActivity extends Activity {
             r.addView(Ui.backButton(this, v -> goOnboarding(step - 1)), Ui.square(this, Ui.Size.ICON_BUTTON));
             Ui.inline(r, Ui.steps(this, step, ONBOARD_BUDGET, true), Ui.Space.BLOCK);
         } else {
-            Ui.pad(r, this, 0, Ui.Space.STACK, 0, Ui.Space.ROW);
+            Ui.pad(r, this, 0, Ui.Pad.STEPS_TOP, 0, Ui.Pad.STEPS_BOTTOM);
             r.addView(Ui.steps(this, step, ONBOARD_BUDGET, true));
         }
         return r;
@@ -297,7 +297,7 @@ public class MainActivity extends Activity {
         add(Ui.bodySmall(this, "이번 달 돈 흐름에 무리가 될 때만 결제 화면 위에서 질문을 건네요. 결정은 언제나 내가 해요."), Ui.Space.STACK);
         add(permissionCard(on), Ui.Space.STACK);
         add(Ui.tintNote(this, "비밀번호·카드번호·메시지는 읽지 않아요. 상품명과 금액만 판단에 써요.",
-                Ui.Font.CAPTION, Ui.GREEN, Ui.Radius.BOX, Ui.Space.BLOCK, Ui.Space.BLOCK), Ui.Space.STACK);
+                Ui.Font.CAPTION, Ui.GREEN, Ui.Radius.BOX, Ui.Pad.PRIVACY_NOTE, Ui.Pad.PRIVACY_NOTE), Ui.Space.STACK);
 
         if (on) {
             footerButton(Ui.button(this, "다음", true, v -> goOnboarding(ONBOARD_INCOME)));
@@ -332,11 +332,11 @@ public class MainActivity extends Activity {
     private void onboardingIncomeScreen() {
         Settings s = store.settings();
         add(onboardingTopBar(ONBOARD_INCOME), 0);
-        add(Ui.title(this, "정기 수입을\n확인했어요"), Ui.Space.CARD);
-        add(Ui.body(this, "최근 6개월 입출금 내역으로 매달 들어오는 돈을 찾았어요. (데모: Mock 계좌)"), Ui.Space.CARD);
-        add(linkedAccountCard("쉼표은행 입출금 ****1234 (데모)"), Ui.Space.CARD);
-        add(incomeCard(s), Ui.Space.CARD);
-        add(consentCard(), Ui.Space.CARD);
+        add(Ui.title(this, "정기 수입을\n확인했어요"), Ui.Space.WIDE);
+        add(Ui.body(this, "최근 6개월 입출금 내역으로 매달 들어오는 돈을 찾았어요. (데모: Mock 계좌)"), Ui.Space.WIDE);
+        add(linkedAccountCard("쉼표은행 입출금 ****1234 (데모)"), Ui.Space.WIDE);
+        add(incomeCard(s), Ui.Space.WIDE);
+        add(consentCard(), Ui.Space.WIDE);
 
         TextView next = Ui.button(this, "다음", true, v -> {
             if (!bankConsent) return;
@@ -454,7 +454,7 @@ public class MainActivity extends Activity {
 
     /** "오늘 쓸 수 있는 돈" 카드: 신호 태그 · 큰 금액 · 진행 막대 · 한도 설명. */
     private View todayBudgetCard(BudgetEngine.State b) {
-        LinearLayout c = Ui.outlineCard(this, Ui.Space.SECTION, Ui.Space.SECTION);
+        LinearLayout c = Ui.outlineCard(this, Ui.Pad.TODAY_CARD, Ui.Pad.TODAY_CARD);
         LinearLayout head = Ui.h(this);
         head.addView(Ui.bodySmall(this, "오늘 쓸 수 있는 돈"), Ui.weight1());
         head.addView(signalTag(b.signal()));
@@ -475,7 +475,7 @@ public class MainActivity extends Activity {
     }
 
     private View recentRecordsCard(List<Record> recs) {
-        LinearLayout list = Ui.outlineCard(this, Ui.Space.CARD, Ui.Space.CARD);
+        LinearLayout list = Ui.outlineCard(this, Ui.Pad.CARD, Ui.Pad.CARD);
         List<Record> sorted = new ArrayList<>(recs);
         Collections.sort(sorted, (x, y) -> Long.compare(y.ts, x.ts));
         for (int i = 0; i < sorted.size() && i < HOME_RECENT_COUNT; i++) {
@@ -495,7 +495,7 @@ public class MainActivity extends Activity {
             final int idx = i;
             DemoCheckoutActivity.Preset p = DemoCheckoutActivity.PRESETS[i];
             LinearLayout r = Ui.h(this);
-            Ui.pad(r, this, 0, Ui.Space.ROW);
+            Ui.pad(r, this, 0, Ui.Pad.LIST_ROW_V);
             r.addView(Ui.text(this, p.label, Ui.Font.BODY, Ui.TEXT, Ui.MEDIUM), Ui.weight1());
             r.addView(Ui.text(this, Money.won(p.amount) + " › " + p.expect, Ui.Font.CAPTION, Ui.BRAND, Ui.MEDIUM));
             r.setOnClickListener(v -> startActivity(new Intent(this, DemoCheckoutActivity.class).putExtra(DemoCheckoutActivity.EXTRA_PRESET, idx)));
@@ -546,7 +546,7 @@ public class MainActivity extends Activity {
     }
 
     private View reviewSheetContent(Record r, int total) {
-        LinearLayout sheet = Ui.bottomSheet(this, Ui.Space.REVIEW_SHEET_TOP);
+        LinearLayout sheet = Ui.bottomSheet(this, Ui.Pad.REVIEW_SHEET_TOP);
         LinearLayout tags = Ui.h(this);
         tags.addView(Ui.tag(this, "어제 결제 돌아보기", Ui.Tone.BRAND), Ui.wrap());
         if (total > 1) Ui.inline(tags, Ui.text(this, total + "건 중 1번째", Ui.Font.CAPTION, Ui.SUBTLE, Ui.MEDIUM), Ui.Space.ITEM);
@@ -586,7 +586,7 @@ public class MainActivity extends Activity {
         add(Ui.bodySmall(this, "길게 누르면 지울 수 있어요 (결제하지 않았는데 기록된 건 등)."), Ui.Space.TIGHT);
         List<Record> sorted = store.records();
         Collections.sort(sorted, (x, y) -> Long.compare(y.ts, x.ts));
-        LinearLayout list = Ui.outlineCard(this, Ui.Space.CARD, Ui.Space.CARD);
+        LinearLayout list = Ui.outlineCard(this, Ui.Pad.CARD, Ui.Pad.CARD);
         boolean first = true;
         for (Record r : sorted) {
             if (!first) {
@@ -597,7 +597,7 @@ public class MainActivity extends Activity {
             Ui.stack(list, recordRow(r, true), first ? 0 : Ui.Space.BLOCK);
             for (String line : r.qa) {
                 TextView q = Ui.meta(this, line);
-                Ui.pad(q, this, Ui.Space.ROW, 0, 0, 0);
+                Ui.pad(q, this, Ui.Pad.QA_INDENT, 0, 0, 0);
                 Ui.stack(list, q, Ui.Space.LINE);
             }
             first = false;
@@ -633,7 +633,7 @@ public class MainActivity extends Activity {
                 Ui.Space.ROW), Ui.Space.BLOCK);
         add(outcomeCard(st), Ui.Space.BLOCK);
         add(Ui.tintNote(this, "식비 예산 " + Money.won(b.foodSpent) + " / " + Money.won(b.foodBudget) + " 사용 · 다음 달부터 쿠팡 식료품 실측값으로 보정해요",
-                Ui.Font.CAPTION, Ui.BRAND, Ui.Radius.INPUT, Ui.Space.STACK, Ui.Space.ROW), Ui.Space.BLOCK);
+                Ui.Font.CAPTION, Ui.BRAND, Ui.Radius.INPUT, Ui.Pad.FOOD_NOTE_H, Ui.Pad.FOOD_NOTE_V), Ui.Space.BLOCK);
     }
 
     /** 강도별 멈춘 비율: 강도 이름 · 막대 · "멈춤/전체 · %". */
@@ -865,7 +865,7 @@ public class MainActivity extends Activity {
             r.run();
             refresh();
         });
-        Ui.pad(t, this, 0, Ui.Space.ROW);
+        Ui.pad(t, this, 0, Ui.Pad.LIST_ROW_V);
         return t;
     }
 
