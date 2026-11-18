@@ -101,7 +101,7 @@
 
 ### `Ui.Size`: 고정 크기 (dp)
 
-`NAV_HEIGHT` 63 · `NAV_INSET` 28 · `NAV_DOT` 6 · `ICON_BUTTON` 24 · `CHECKBOX` 20 · `STEP_DOT` 8 · `STEP_ACTIVE` 24 · `BAR` 8 · `FIELD_WIDTH` 130 · `ROW_LABEL` 48 · `STROKE` 1 · `STROKE_STRONG` 1.5 · `GUARD_STROKE` 3 · `ELEVATION` 6 · `TOAST_OFFSET` 100 · (갤러리 전용) `SWATCH` 32 · `RADIUS_SAMPLE` 48 · `GALLERY_LABEL` 150
+`NAV_HEIGHT` 63 · `NAV_INSET` 28 · `NAV_DOT` 6 · `ICON_BUTTON` 24 · `CHECKBOX` 20 · `STEP_DOT` 8 · `STEP_ACTIVE` 24 · `BAR` 8 · `BAR_THIN` 6 · `LIST_DOT` 8 · `FIELD_WIDTH` 130 · `ROW_LABEL` 48 · `STROKE` 1 · `STROKE_STRONG` 1.5 · `GUARD_STROKE` 3 · `ELEVATION` 6 · `TOAST_OFFSET` 100 · (갤러리 전용) `SWATCH` 32 · `RADIUS_SAMPLE` 48 · `GALLERY_LABEL` 150
 
 ## 컴포넌트
 
@@ -165,15 +165,15 @@
 | 함수 | 모양 | 화면 |
 |---|---|---|
 | `kv(c, label, value, total)` | 왼쪽 라벨 · 오른쪽 값 | S03, 리포트, 설정 |
-| `listRow(c, title, sub, amount, tag)` | 제목·부가 / 금액·태그 | 홈 최근 기록, 기록 탭 |
-| `statTile(c, label, value, sub, outlined)` | 요약 타일 | 홈(outlined) · 리포트 |
+| `listRow(c, [dotColor,] title, sub, amount, tag)` | (결과 색 점) 제목·부가 / 금액·태그 | 홈 최근 기록, 기록 탭 |
+| `statTile(c, label, value, sub, outlined[, ratio, barColor, barTrack])` | 요약 타일 (+ 얇은 진행 막대) | 홈(outlined, 막대) · 리포트 |
 | `tilePair(c, left, right, gap)` | 타일 두 개 나란히 | 홈 · 리포트 |
 | `heroCard(c, label, value, sub, large)` | 먹색 강조 카드 | S03 여윳돈 · S10 마음 돌림 비율(large) |
 | `alertBox(c, title, desc, action, click)` | 빨간 경고 상자 | 홈 결제 감지 꺼짐 |
 | `highlightBox(c, label, value)` | 연초록 성과 상자 | 홈 이번 달 쉼표 |
 | `tintNote(c, s, Font, fg, Radius, padH, padV)` | 연초록 안내 한 줄 | S01, 리포트, 개입 재시도 |
 | `factBox(c, s)` | 사실 한 줄 (왼쪽 초록 선) | 개입 오버레이 |
-| `bar(c, ratio, fill, track)` | 진행 막대 | 홈, 리포트 |
+| `bar(c, ratio, fill, track[, heightDp])` | 진행 막대 | 홈, 리포트 |
 | `divider(c)` | 1dp 선 | 기록 탭, 하단 탭 |
 
 ### 대화 · 내비게이션 · 입력
@@ -187,6 +187,15 @@
 | `input(c, hint, value, number)` | Input (테두리) |
 | `plainInput(c, hint, value)` | 테두리 없는 입력칸 |
 | `labeledField(c, label, input)` | 라벨 + 고정 폭 입력칸 |
+
+## 홈(S04) 색 규칙
+
+| 자리 | 색 | 정하는 곳 (`MainActivity`) |
+|---|---|---|
+| 오늘 쓸 수 있는 돈 | 먹색 카드 (HERO) | `todayBudgetCard()` 위 주석에 다른 방식 |
+| 여유 / 주의 / 초과 태그 | 초록 / 노랑 / 빨강 | `signalTone()` |
+| 남은 여윳돈 · 식비 예산 막대 | 남으면 초록, 다 쓰면 빨강(바탕 연빨강) | `remainColor()` · `remainTrack()` |
+| 기록 태그 · 왼쪽 점 | 멈춤 초록, 이유 선택 결제 먹색 점, 숙고 후 결제 노랑, 식비 예산 초록, 나머지 회색 | `outcomeTone()` · `outcomeDotColor()` |
 
 ## 화면 메서드 (`MainActivity`)
 

@@ -253,26 +253,46 @@ public class MainActivity extends Activity {
 
     // ------------------------------------------------------------------ 공통 부품 (이 화면들에서만)
 
-    /** 기록 결과 태그: 결과마다 색이 정해져 있다. */
-    private TextView outcomeTag(Record r) {
+    /** 식비 예산에서 나간 기록인지 (계좌 동기화 식비, 또는 여윳돈 없이 식비만 쓴 결제). */
+    private static boolean isFoodOnly(Record r) {
+        return r.outcome == Outcome.SYNC ? r.food > 0 : r.food > 0 && r.discretionary == 0;
+    }
+
+    /** 기록 결과 이름 (태그 글자). */
+    private static String outcomeLabel(Record r) {
+        if (r.outcome == Outcome.PREVENTED || r.outcome == Outcome.REASON_PAY || r.outcome == Outcome.DELIBERATE_PAY) return r.outcome.label;
+        if (isFoodOnly(r)) return "식비 예산";
+        return r.outcome == Outcome.SYNC ? "여윳돈" : r.outcome.label;
+    }
+
+    /** 기록 결과 색. 태그와 왼쪽 점이 같은 규칙을 쓴다. */
+    private static Ui.Tone outcomeTone(Record r) {
         switch (r.outcome) {
             case PREVENTED:
-                return Ui.smallTag(this, r.outcome.label, Ui.Tone.SUCCESS);
+                return Ui.Tone.SUCCESS;      // 멈춤: 초록
             case REASON_PAY:
-                return Ui.smallTag(this, r.outcome.label, Ui.Tone.ACCENT);
+                return Ui.Tone.ACCENT;       // 이유 선택 결제: 연초록 태그, 먹색 점
             case DELIBERATE_PAY:
-                return Ui.smallTag(this, r.outcome.label, Ui.Tone.WARNING);
-            case SYNC:
-                return r.food > 0 ? Ui.smallTag(this, "식비 예산", Ui.Tone.SUCCESS) : Ui.smallTag(this, "여윳돈", Ui.Tone.NEUTRAL);
+                return Ui.Tone.WARNING;      // 숙고 후 결제: 노랑
             default:
-                if (r.food > 0 && r.discretionary == 0) return Ui.smallTag(this, "식비 예산", Ui.Tone.SUCCESS);
-                return Ui.smallTag(this, r.outcome.label, Ui.Tone.NEUTRAL);
+                return isFoodOnly(r) ? Ui.Tone.SUCCESS : Ui.Tone.NEUTRAL; // 식비 예산: 초록, 나머지: 회색
         }
     }
 
-    /** 기록 한 줄 (홈 최근 기록 · 기록 탭). deletable이면 길게 눌러 지운다. */
+    /** 기록 줄 왼쪽 점 색. 태그 글자색을 따르되, 멈춤(초록)과 구분되게 이유 선택 결제는 먹색. */
+    private static int outcomeDotColor(Ui.Tone tone) {
+        if (tone == Ui.Tone.ACCENT) return Ui.BRAND;
+        if (tone == Ui.Tone.NEUTRAL) return Ui.LINE;
+        return tone.fg;
+    }
+
+    private TextView outcomeTag(Record r) {
+        return Ui.smallTag(this, outcomeLabel(r), outcomeTone(r));
+    }
+
+    /** 기록 한 줄 (홈 최근 기록 · 기록 탭): 왼쪽 결과 색 점 · 제목 · 금액 · 태그. deletable이면 길게 눌러 지운다. */
     private View recordRow(Record r, boolean deletable) {
-        LinearLayout row = Ui.listRow(this, recordTitle(r), recordSub(r), Money.won(r.amount), outcomeTag(r));
+        LinearLayout row = Ui.listRow(this, outcomeDotColor(outcomeTone(r)), recordTitle(r), recordSub(r), Money.won(r.amount), outcomeTag(r));
         if (deletable) {
             row.setOnLongClickListener(v -> {
                 store.deleteRecord(r.id);
@@ -453,8 +473,10 @@ public class MainActivity extends Activity {
         }
         add(todayBudgetCard(b), Ui.Space.BLOCK);
         add(Ui.tilePair(this,
-                Ui.statTile(this, "남은 여윳돈", Money.won(b.remainingNow), "급여일까지 " + b.daysLeft + "일", true),
-                Ui.statTile(this, "식비 예산", Money.won(b.foodRemaining), man(b.foodBudget) + " 원 중 남음", true),
+                Ui.statTile(this, "남은 여윳돈", Money.won(b.remainingNow), "급여일까지 " + b.daysLeft + "일", true,
+                        remainRatio(b.remainingNow, b.monthly), remainColor(b.remainingNow), remainTrack(b.remainingNow)),
+                Ui.statTile(this, "식비 예산", Money.won(b.foodRemaining), man(b.foodBudget) + " 원 중 남음", true,
+                        remainRatio(b.foodRemaining, b.foodBudget), remainColor(b.foodRemaining), remainTrack(b.foodRemaining)),
                 Ui.Space.BLOCK), Ui.Space.BLOCK);
         add(Ui.highlightBox(this, "이번 달 쉼표", st.prevented == 0 ? "결제 직전에 멈춘 기록이 여기 쌓여요"
                 : st.prevented + "번 멈춰서 " + Money.won(st.preventedSum) + " 아꼈어요"), Ui.Space.BLOCK);
@@ -514,6 +536,21 @@ public class MainActivity extends Activity {
         Ui.stack(c, Ui.text(this, "오늘 한도 " + Money.won(b.limit) + " 중 " + Money.won(b.todaySpent) + " 사용 · 주기 " + b.dayIndex + "일째",
                 Ui.Font.CAPTION, meta, Ui.REGULAR), Ui.Space.ITEM);
         return c;
+    }
+
+    /** 남은 비율 (0~1). 전체가 0이면 0. */
+    private static float remainRatio(long remaining, long total) {
+        return total <= 0 ? 0f : Math.max(0f, Math.min(1f, (float) remaining / total));
+    }
+
+    /** 요약 타일 막대 색: 남아 있으면 초록, 다 쓰면 빨강. */
+    private static int remainColor(long remaining) {
+        return remaining > 0 ? Ui.GREEN : Ui.RED;
+    }
+
+    /** 요약 타일 막대 바탕: 평소 회색, 다 쓰면 연빨강 (빈 막대여도 다 쓴 게 보이게). */
+    private static int remainTrack(long remaining) {
+        return remaining > 0 ? Ui.BG : Ui.RED_BG;
     }
 
     /** 0 여유 · 1 주의 · 2 초과 */

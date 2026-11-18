@@ -288,10 +288,15 @@ public class UiGalleryActivity extends Activity {
         Ui.stack(kvs, Ui.kv(this, "합계", "500,000원", true), Ui.Space.ROW);
         sample("Ui.kv(total = false / true)", kvs);
         LinearLayout list = Ui.outlineCard(this, Ui.Pad.CARD, Ui.Pad.CARD);
-        list.addView(Ui.listRow(this, "배민 · 치킨 세트", "오늘 19:20 · 보통 · \"배고파서\"", "23,000원", Ui.smallTag(this, "이유 선택 결제", Ui.Tone.ACCENT)));
-        Ui.stack(list, Ui.listRow(this, "쿠팡 · 휴지·세제", "어제 21:05", "26,000원", Ui.smallTag(this, "멈춤", Ui.Tone.SUCCESS)), Ui.Space.BLOCK);
-        sample("Ui.listRow", list);
-        sample("Ui.statTile(outlined = true) · Ui.tilePair", Ui.tilePair(this,
+        list.addView(Ui.listRow(this, Ui.GREEN, "쿠팡 · 휴지·세제", "어제 21:05", "26,000원", Ui.smallTag(this, "멈춤", Ui.Tone.SUCCESS)));
+        Ui.stack(list, Ui.listRow(this, Ui.BRAND, "배민 · 치킨 세트", "오늘 19:20 · 보통 · \"배고파서\"", "23,000원", Ui.smallTag(this, "이유 선택 결제", Ui.Tone.ACCENT)), Ui.Space.BLOCK);
+        Ui.stack(list, Ui.listRow(this, Ui.AMBER, "무신사 · 울 코트", "어제 23:10 · 강함", "129,000원", Ui.smallTag(this, "숙고 후 결제", Ui.Tone.WARNING)), Ui.Space.BLOCK);
+        Ui.stack(list, Ui.listRow(this, Ui.LINE, "외식 · 학교 앞 식당", "오늘 12:30", "8,000원", Ui.smallTag(this, "여윳돈", Ui.Tone.NEUTRAL)), Ui.Space.BLOCK);
+        sample("Ui.listRow(dotColor, …)  — 점 없는 버전은 dotColor 없이", list);
+        sample("Ui.statTile(outlined = true, ratio, barColor, barTrack) · Ui.tilePair", Ui.tilePair(this,
+                Ui.statTile(this, "남은 여윳돈", "280,000원", "급여일까지 8일", true, 0.7f, Ui.GREEN, Ui.BG),
+                Ui.statTile(this, "식비 예산", "0원", "10만 원 중 남음", true, 0f, Ui.RED, Ui.RED_BG), Ui.Space.BLOCK));
+        sample("Ui.statTile(outlined = true)  — 막대 없는 버전", Ui.tilePair(this,
                 Ui.statTile(this, "남은 여윳돈", "280,000원", "급여일까지 8일", true),
                 Ui.statTile(this, "식비 예산", "64,000원", "10만 원 중 남음", true), Ui.Space.BLOCK));
         sample("Ui.statTile(outlined = false)", Ui.tilePair(this,

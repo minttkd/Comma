@@ -227,6 +227,8 @@ final class Ui {
         static final int STEP_DOT = 8;       // 온보딩 단계 점
         static final int STEP_ACTIVE = 24;   // 현재 단계 막대 폭
         static final int BAR = 8;            // 진행 막대 높이
+        static final int BAR_THIN = 6;       // 요약 타일 안 진행 막대 높이
+        static final int LIST_DOT = 8;       // 기록 줄 왼쪽 결과 색 점
         static final int FIELD_WIDTH = 130;  // 설정 입력칸 폭
         static final int ROW_LABEL = 48;     // 리포트 강도 이름 칸
         static final float STROKE = 1f;
@@ -658,11 +660,25 @@ final class Ui {
 
     /** 목록 한 줄 (S04 최근 기록): 왼쪽 제목 14 Medium · 부가 12, 오른쪽 금액 14 Bold · 태그. */
     static LinearLayout listRow(Context c, String title, String sub, String amount, View tag) {
+        return listRow(c, 0, title, sub, amount, tag);
+    }
+
+    /** 목록 한 줄 + 왼쪽 색 점 (dotColor가 0이면 점 없음). 점은 제목 줄 가운데에 맞춘다. */
+    static LinearLayout listRow(Context c, int dotColor, String title, String sub, String amount, View tag) {
         LinearLayout row = h(c);
+        if (dotColor != 0) {
+            row.setGravity(Gravity.TOP);
+            View dot = new View(c);
+            dot.setBackground(circle(dotColor));
+            LinearLayout.LayoutParams dotLp = square(c, Size.LIST_DOT);
+            dotLp.topMargin = dp(c, (lineHeight(Font.LABEL) - Size.LIST_DOT) / 2f);
+            row.addView(dot, dotLp);
+        }
         LinearLayout left = v(c);
         left.addView(text(c, title, Font.LABEL, TEXT, MEDIUM));
         stack(left, meta(c, sub), Space.TEXT);
-        row.addView(left, weight1());
+        if (dotColor != 0) inlineFill(row, left, Space.ROW);
+        else row.addView(left, weight1());
         LinearLayout right = v(c);
         right.setGravity(Gravity.END);
         right.addView(text(c, amount, Font.LABEL, TEXT, BOLD), wrap());
@@ -680,6 +696,15 @@ final class Ui {
      * false는 리포트(S10: 흰 카드 16, 값 17, 설명 12 subtle).
      */
     static LinearLayout statTile(Context c, String label, String value, String sub, boolean outlined) {
+        return statTile(c, label, value, sub, outlined, -1f, 0, 0);
+    }
+
+    /**
+     * 요약 타일 + 값 아래 얇은 진행 막대 (ratio 0~1, 음수면 막대 없음).
+     * 홈 S04: "남은 여윳돈", "식비 예산"이 얼마나 남았는지 보여 준다.
+     * barTrack은 막대 바탕색 (다 썼을 때 연빨강으로 바꿔 빈 막대도 눈에 띄게).
+     */
+    static LinearLayout statTile(Context c, String label, String value, String sub, boolean outlined, float ratio, int barColor, int barTrack) {
         LinearLayout t;
         if (outlined) {
             t = outlineCard(c, Pad.TILE_H, Pad.TILE_V);
@@ -690,7 +715,9 @@ final class Ui {
         }
         t.addView(meta(c, label));
         stack(t, text(c, value, outlined ? Font.STAT : Font.HEADING, TEXT, BOLD), Space.TEXT);
-        stack(t, outlined ? micro(c, sub, MUTED) : text(c, sub, Font.CAPTION, SUBTLE, REGULAR), Space.TEXT);
+        boolean withBar = ratio >= 0f;
+        if (withBar) stack(t, bar(c, ratio, barColor, barTrack, Size.BAR_THIN), Space.TIGHT);
+        stack(t, outlined ? micro(c, sub, MUTED) : text(c, sub, Font.CAPTION, SUBTLE, REGULAR), withBar ? Space.TIGHT : Space.TEXT);
         return t;
     }
 
@@ -758,13 +785,18 @@ final class Ui {
 
     /** 진행 막대 (높이 8, radius 4). */
     static LinearLayout bar(Context c, float ratio, int fillColor, int trackColor) {
+        return bar(c, ratio, fillColor, trackColor, Size.BAR);
+    }
+
+    /** 진행 막대 (높이 heightDp). */
+    static LinearLayout bar(Context c, float ratio, int fillColor, int trackColor, int heightDp) {
         LinearLayout track = h(c);
         track.setBackground(round(c, trackColor, Radius.BAR));
         float r = Math.max(0f, Math.min(1f, ratio));
         View fill = new View(c);
         fill.setBackground(round(c, fillColor, Radius.BAR));
-        track.addView(fill, new LinearLayout.LayoutParams(0, dp(c, Size.BAR), Math.max(0.0001f, r)));
-        track.addView(new View(c), new LinearLayout.LayoutParams(0, dp(c, Size.BAR), Math.max(0.0001f, 1f - r)));
+        track.addView(fill, new LinearLayout.LayoutParams(0, dp(c, heightDp), Math.max(0.0001f, r)));
+        track.addView(new View(c), new LinearLayout.LayoutParams(0, dp(c, heightDp), Math.max(0.0001f, 1f - r)));
         if (r <= 0f) fill.setVisibility(View.INVISIBLE);
         return track;
     }
