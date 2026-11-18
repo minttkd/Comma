@@ -48,9 +48,67 @@ public class UiGalleryActivity extends Activity {
         root.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
         setContentView(root);
 
+        UiPrefs.load(this);
         content.addView(Ui.bodySmall(this, "Ui.java의 토큰과 부품 모음이에요. 회색 글자가 코드에서 쓰는 이름이에요. 값을 고치고 다시 실행하면 여기서 바로 확인할 수 있어요."));
+        uiSettings();
         tokens();
         components();
+    }
+
+    // ================================================================== 앱 UI 설정 (UiPrefs)
+
+    /** 번호 칩으로 UI 방식을 고른다. 고르면 바로 저장되고, 홈으로 돌아가면 반영된다. */
+    private void uiSettings() {
+        section("앱 UI 설정");
+        Ui.stack(content, Ui.meta(this, "고르면 바로 저장돼요. 홈으로 돌아가면 반영돼요. 기록 색은 설정 › 테스트 도구의 \"결과별 예시 기록\"을 넣고 보면 잘 보여요."), Ui.Space.TIGHT);
+        LinearLayout c = Ui.card(this);
+
+        c.addView(Ui.caption(this, "홈 · 오늘 쓸 수 있는 돈 카드"));
+        List<TextView> today = new ArrayList<>();
+        for (UiPrefs.TodayCard t : UiPrefs.TodayCard.values()) {
+            today.add(Ui.chip(this, t.label, UiPrefs.todayCard == t, v -> apply(() -> UiPrefs.todayCard = t)));
+        }
+        Ui.stack(c, Ui.chipGrid(this, today, 3), Ui.Space.ITEM);
+
+        Ui.stack(c, Ui.caption(this, "홈 · 남은 여윳돈 · 식비 예산 진행 막대"), Ui.Space.SECTION);
+        Ui.stack(c, onOff(UiPrefs.tileBars, on -> UiPrefs.tileBars = on), Ui.Space.ITEM);
+
+        Ui.stack(c, Ui.caption(this, "홈 · 기록 · 카드 회색 테두리"), Ui.Space.SECTION);
+        Ui.stack(c, onOff(UiPrefs.cardOutline, on -> UiPrefs.cardOutline = on), Ui.Space.ITEM);
+
+        Ui.stack(c, Ui.caption(this, "홈 최근 기록 · 기록 탭 · 결과 색 표시"), Ui.Space.SECTION);
+        List<TextView> rec = new ArrayList<>();
+        for (UiPrefs.RecordColor r : UiPrefs.RecordColor.values()) {
+            rec.add(Ui.chip(this, r.label, UiPrefs.recordColor == r, v -> apply(() -> UiPrefs.recordColor = r)));
+        }
+        Ui.stack(c, Ui.chipGrid(this, rec, 2), Ui.Space.ITEM);
+
+        Ui.stack(c, Ui.buttonPair(this,
+                Ui.button(this, "기본값으로", false, v -> {
+                    UiPrefs.reset(this);
+                    recreate();
+                }),
+                Ui.button(this, "홈에서 보기", true, v -> finish())), Ui.Space.SECTION);
+        Ui.stack(content, c, Ui.Space.ITEM);
+    }
+
+    private interface BoolSetter {
+        void set(boolean on);
+    }
+
+    /** [켜기] [끄기] 칩 한 줄. */
+    private View onOff(boolean current, BoolSetter setter) {
+        List<TextView> chips = new ArrayList<>();
+        chips.add(Ui.chip(this, "켜기", current, v -> apply(() -> setter.set(true))));
+        chips.add(Ui.chip(this, "끄기", !current, v -> apply(() -> setter.set(false))));
+        return Ui.chipGrid(this, chips, 2);
+    }
+
+    /** 값을 바꾸고 저장한 뒤 갤러리를 다시 그린다 (아래 예시들도 새 설정으로). */
+    private void apply(Runnable change) {
+        change.run();
+        UiPrefs.save(this);
+        recreate();
     }
 
     // ================================================================== 공통

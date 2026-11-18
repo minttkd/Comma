@@ -92,7 +92,7 @@
 | 안내 상자 | `FACT_H` 12 · `FACT_V` 8 · `PRIVACY_NOTE` 12 · `RETRY_NOTE_H` 12 · `RETRY_NOTE_V` 10 · `FOOD_NOTE_H` 14 · `FOOD_NOTE_V` 10 |
 | 버튼·칩·태그 | `BUTTON_H` 20 · `BUTTON_V` 16 · `LINK` 8 · `ICON` 6 · `CHIP_H` 16 · `CHIP_V` 10 · `TAG_H` 10 · `TAG_V` 4 · `SMALL_TAG_H` 8 · `SMALL_TAG_V` 3 |
 | 대화·입력 | `BUBBLE_H` 14 · `BUBBLE_AI_V` 12 · `BUBBLE_USER_V` 10 · `INPUT_H` 14 · `INPUT_V` 12 · `SEND_LEFT` 10 |
-| 목록 | `LIST_ROW_V` 10 · `QA_INDENT` 10 |
+| 목록 | `LIST_ROW_V` 10 · `QA_INDENT` 10 · `TINT_ROW_H` 12 · `TINT_ROW_V` 10 |
 | 데모 결제 | `DEMO_SIDE` 16 · `DEMO_APPBAR_V` 12 · `DEMO_SECTION_V` 14 · `DEMO_PAYBAR_TOP` 10 · `DEMO_PAYBAR_BOTTOM` 18 · `DEMO_PAY_V` 15 · `DEMO_CONTENT_TOP` 8 · `DEMO_CONTENT_BOTTOM` 16 |
 
 ### `Ui.Radius`: 모서리 (dp)
@@ -101,7 +101,7 @@
 
 ### `Ui.Size`: 고정 크기 (dp)
 
-`NAV_HEIGHT` 63 · `NAV_INSET` 28 · `NAV_DOT` 6 · `ICON_BUTTON` 24 · `CHECKBOX` 20 · `STEP_DOT` 8 · `STEP_ACTIVE` 24 · `BAR` 8 · `BAR_THIN` 6 · `LIST_DOT` 8 · `FIELD_WIDTH` 130 · `ROW_LABEL` 48 · `STROKE` 1 · `STROKE_STRONG` 1.5 · `GUARD_STROKE` 3 · `ELEVATION` 6 · `TOAST_OFFSET` 100 · (갤러리 전용) `SWATCH` 32 · `RADIUS_SAMPLE` 48 · `GALLERY_LABEL` 150
+`NAV_HEIGHT` 63 · `NAV_INSET` 28 · `NAV_DOT` 6 · `ICON_BUTTON` 24 · `CHECKBOX` 20 · `STEP_DOT` 8 · `STEP_ACTIVE` 24 · `BAR` 8 · `BAR_THIN` 6 · `LIST_DOT` 8 · `LIST_BAR` 4 · `FIELD_WIDTH` 130 · `ROW_LABEL` 48 · `STROKE` 1 · `STROKE_STRONG` 1.5 · `GUARD_STROKE` 3 · `ELEVATION` 6 · `TOAST_OFFSET` 100 · (갤러리 전용) `SWATCH` 32 · `RADIUS_SAMPLE` 48 · `GALLERY_LABEL` 150
 
 ## 컴포넌트
 
@@ -166,6 +166,8 @@
 |---|---|---|
 | `kv(c, label, value, total)` | 왼쪽 라벨 · 오른쪽 값 | S03, 리포트, 설정 |
 | `listRow(c, [dotColor,] title, sub, amount, tag)` | (결과 색 점) 제목·부가 / 금액·태그 | 홈 최근 기록, 기록 탭 |
+| `listRowBar(c, barColor, title, sub, amount, tag)` | 왼쪽 세로 색 막대 + 목록 한 줄 | 기록 색 ② |
+| `tintRow(c, row, bg)` | 줄 전체 연한 바탕 | 기록 색 ③ |
 | `statTile(c, label, value, sub, outlined[, ratio, barColor, barTrack])` | 요약 타일 (+ 얇은 진행 막대) | 홈(outlined, 막대) · 리포트 |
 | `tilePair(c, left, right, gap)` | 타일 두 개 나란히 | 홈 · 리포트 |
 | `heroCard(c, label, value, sub, large)` | 먹색 강조 카드 | S03 여윳돈 · S10 마음 돌림 비율(large) |
@@ -195,7 +197,23 @@
 | 오늘 쓸 수 있는 돈 | 먹색 카드 (HERO) | `todayBudgetCard()` 위 주석에 다른 방식 |
 | 여유 / 주의 / 초과 태그 | 초록 / 노랑 / 빨강 | `signalTone()` |
 | 남은 여윳돈 · 식비 예산 막대 | 남으면 초록, 다 쓰면 빨강(바탕 연빨강) | `remainColor()` · `remainTrack()` |
-| 기록 태그 · 왼쪽 점 | 멈춤 초록, 이유 선택 결제 먹색 점, 숙고 후 결제 노랑, 식비 예산 초록, 나머지 회색 | `outcomeTone()` · `outcomeDotColor()` |
+| 기록 태그 · 결과 색 | 멈춤 초록, 이유 선택 결제 먹색(점·막대), 숙고 후 결제 노랑, 식비 예산 초록, 나머지 회색 | `outcomeTone()` · `outcomeDotColor()` · `recordRowView()` |
+
+## 앱 안에서 UI 바꿔 보기 (`UiPrefs`)
+
+설정 탭 › 테스트 도구 › **UI 갤러리 열기** › 맨 위 **앱 UI 설정**에서 번호 칩으로 고른다. 고르면 바로 저장되고 홈으로 돌아가면 반영된다.
+값은 프론트 전용 저장소(`ui_prefs`)에 있어 `Store`와 섞이지 않는다. **기본값으로** 버튼으로 언제든 돌아간다.
+
+| 설정 | 고를 수 있는 값 (굵게 = 기본) | 그리는 곳 |
+|---|---|---|
+| 오늘 쓸 수 있는 돈 카드 | **① 먹색** · ② 흰색 · ③ 상태 색 | `todayBudgetCard()` |
+| 남은 여윳돈 · 식비 예산 막대 | **켜기** · 끄기 | `tileBar()` |
+| 카드 회색 테두리 | **켜기** · 끄기 | `Ui.outlineCard()` |
+| 기록 결과 색 표시 | **① 점** · ② 왼쪽 막대 · ③ 줄 바탕 · ④ 없음 | `recordRowView()` |
+
+기록 색을 볼 때는 테스트 도구의 **결과별 예시 기록 4건 추가**로 멈춤·이유 선택·숙고 후·식비 기록을 넣고 보면 잘 보인다.
+
+새 방식을 추가하려면: `UiPrefs`의 enum에 값 추가 → 그리는 코드에서 분기 → `UiGalleryActivity.uiSettings()`에 칩 추가.
 
 ## 화면 메서드 (`MainActivity`)
 

@@ -93,6 +93,7 @@ public class MainActivity extends Activity {
         styleWindow(this);
         setContentView(buildLayout());
         BackendSlots.load(this);
+        UiPrefs.load(this);
         if (!store.settings().onboarded) onboardStep = ONBOARD_PERMISSION;
     }
 
@@ -290,9 +291,31 @@ public class MainActivity extends Activity {
         return Ui.smallTag(this, outcomeLabel(r), outcomeTone(r));
     }
 
-    /** 기록 한 줄 (홈 최근 기록 · 기록 탭): 왼쪽 결과 색 점 · 제목 · 금액 · 태그. deletable이면 길게 눌러 지운다. */
+    /**
+     * 기록 한 줄의 모양. 결과 색 표시는 UiPrefs.recordColor (UI 갤러리 › 앱 UI 설정, 기본 DOT).
+     * DOT 왼쪽 점 · BAR 왼쪽 세로 막대 · TINT 줄 전체 연한 바탕 · NONE 태그만.
+     */
+    private LinearLayout recordRowView(Record r) {
+        Ui.Tone tone = outcomeTone(r);
+        String title = recordTitle(r), sub = recordSub(r), amount = Money.won(r.amount);
+        switch (UiPrefs.recordColor) {
+            case BAR:
+                return Ui.listRowBar(this, outcomeDotColor(tone), title, sub, amount, outcomeTag(r));
+            case TINT: {
+                LinearLayout row = Ui.listRow(this, title, sub, amount, outcomeTag(r));
+                Ui.tintRow(this, row, tone.bg);
+                return row;
+            }
+            case NONE:
+                return Ui.listRow(this, title, sub, amount, outcomeTag(r));
+            default:
+                return Ui.listRow(this, outcomeDotColor(tone), title, sub, amount, outcomeTag(r));
+        }
+    }
+
+    /** 기록 한 줄 (홈 최근 기록 · 기록 탭): 결과 색 · 제목 · 금액 · 태그. deletable이면 길게 눌러 지운다. */
     private View recordRow(Record r, boolean deletable) {
-        LinearLayout row = Ui.listRow(this, outcomeDotColor(outcomeTone(r)), recordTitle(r), recordSub(r), Money.won(r.amount), outcomeTag(r));
+        LinearLayout row = recordRowView(r);
         if (deletable) {
             row.setOnLongClickListener(v -> {
                 store.deleteRecord(r.id);
@@ -474,9 +497,9 @@ public class MainActivity extends Activity {
         add(todayBudgetCard(b), Ui.Space.BLOCK);
         add(Ui.tilePair(this,
                 Ui.statTile(this, "남은 여윳돈", Money.won(b.remainingNow), "급여일까지 " + b.daysLeft + "일", true,
-                        remainRatio(b.remainingNow, b.monthly), remainColor(b.remainingNow), remainTrack(b.remainingNow)),
+                        tileBar(b.remainingNow, b.monthly), remainColor(b.remainingNow), remainTrack(b.remainingNow)),
                 Ui.statTile(this, "식비 예산", Money.won(b.foodRemaining), man(b.foodBudget) + " 원 중 남음", true,
-                        remainRatio(b.foodRemaining, b.foodBudget), remainColor(b.foodRemaining), remainTrack(b.foodRemaining)),
+                        tileBar(b.foodRemaining, b.foodBudget), remainColor(b.foodRemaining), remainTrack(b.foodRemaining)),
                 Ui.Space.BLOCK), Ui.Space.BLOCK);
         add(Ui.highlightBox(this, "이번 달 쉼표", st.prevented == 0 ? "결제 직전에 멈춘 기록이 여기 쌓여요"
                 : st.prevented + "번 멈춰서 " + Money.won(st.preventedSum) + " 아꼈어요"), Ui.Space.BLOCK);
@@ -500,30 +523,40 @@ public class MainActivity extends Activity {
     /**
      * "오늘 쓸 수 있는 돈" 카드: 신호 태그 · 큰 금액 · 진행 막대 · 한도 설명.
      *
-     * 지금은 HERO 방식: 먹색 바탕 + 흰 글자 (S03 월 여윳돈 · S10 마음 돌림 비율과 같은 강조 카드).
-     * 다른 방식으로 바꾸려면 아래 "색 정하기" 부분의 6줄만 바꾸면 된다.
-     *
-     * - OUTLINE (v0.5, 흰 바탕 + 테두리)
-     *     c = Ui.outlineCard(this, Ui.Pad.TODAY_CARD, Ui.Pad.TODAY_CARD);
-     *     label = Ui.MUTED;  amountColor = Ui.TEXT;  meta = Ui.MUTED;
-     *     barFill = over ? Ui.RED : Ui.BRAND;  barTrack = Ui.BG;
-     *
-     * - SIGNAL (신호에 따라 연초록 / 연노랑 / 연빨강 바탕)
-     *     c = Ui.tintBox(this, signalTone(b.signal()).bg, Ui.Pad.TODAY_CARD, Ui.Pad.TODAY_CARD);
-     *     label = Ui.MUTED;  amountColor = Ui.TEXT;  meta = Ui.MUTED;
-     *     barFill = over ? Ui.RED : Ui.BRAND;  barTrack = Ui.WHITE;
-     *   단, 초과일 때 화면이 많이 빨개지고 태그가 바탕과 같은 색이 되어 잘 안 보인다.
+     * 색 방식은 UiPrefs.todayCard (UI 갤러리 › 앱 UI 설정에서 바꿈, 기본 HERO).
+     * - HERO: 먹색 바탕 + 흰 글자 (S03 월 여윳돈 · S10 마음 돌림 비율과 같은 강조 카드)
+     * - OUTLINE: v0.5, 흰 바탕 + 테두리
+     * - SIGNAL: 신호에 따라 연초록 / 연노랑 / 연빨강 바탕.
+     *   초과일 때 화면이 많이 빨개지고 태그가 바탕과 같은 색이 되어 잘 안 보인다.
      */
     private View todayBudgetCard(BudgetEngine.State b) {
         boolean over = b.todaySpent > b.limit;
 
-        // ---- 색 정하기 (HERO)
-        LinearLayout c = Ui.tintBox(this, Ui.BRAND, Ui.Pad.TODAY_CARD, Ui.Pad.TODAY_CARD);
-        int label = Ui.ON_BRAND_SUB;                        // "오늘 쓸 수 있는 돈"
-        int amountColor = Ui.ON_BRAND;                      // 큰 금액
-        int meta = Ui.ON_BRAND_SUB;                         // 아래 한도 설명
-        int barFill = over ? Ui.RED_BG : Ui.ON_BRAND;       // 진행 막대 (초과면 연빨강)
-        int barTrack = Ui.ON_BRAND_TRACK;                   // 진행 막대 바탕
+        // ---- 색 정하기
+        LinearLayout c;
+        int label, amountColor, meta, barFill, barTrack; // 라벨 · 큰 금액 · 한도 설명 · 진행 막대 · 막대 바탕
+        if (UiPrefs.todayCard == UiPrefs.TodayCard.OUTLINE) {
+            c = Ui.outlineCard(this, Ui.Pad.TODAY_CARD, Ui.Pad.TODAY_CARD);
+            label = Ui.MUTED;
+            amountColor = Ui.TEXT;
+            meta = Ui.MUTED;
+            barFill = over ? Ui.RED : Ui.BRAND;
+            barTrack = Ui.BG;
+        } else if (UiPrefs.todayCard == UiPrefs.TodayCard.SIGNAL) {
+            c = Ui.tintBox(this, signalTone(b.signal()).bg, Ui.Pad.TODAY_CARD, Ui.Pad.TODAY_CARD);
+            label = Ui.MUTED;
+            amountColor = Ui.TEXT;
+            meta = Ui.MUTED;
+            barFill = over ? Ui.RED : Ui.BRAND;
+            barTrack = Ui.WHITE;
+        } else { // HERO
+            c = Ui.tintBox(this, Ui.BRAND, Ui.Pad.TODAY_CARD, Ui.Pad.TODAY_CARD);
+            label = Ui.ON_BRAND_SUB;
+            amountColor = Ui.ON_BRAND;
+            meta = Ui.ON_BRAND_SUB;
+            barFill = over ? Ui.RED_BG : Ui.ON_BRAND;
+            barTrack = Ui.ON_BRAND_TRACK;
+        }
 
         LinearLayout head = Ui.h(this);
         head.addView(Ui.text(this, "오늘 쓸 수 있는 돈", Ui.Font.SMALL, label, Ui.REGULAR), Ui.weight1());
@@ -541,6 +574,11 @@ public class MainActivity extends Activity {
     /** 남은 비율 (0~1). 전체가 0이면 0. */
     private static float remainRatio(long remaining, long total) {
         return total <= 0 ? 0f : Math.max(0f, Math.min(1f, (float) remaining / total));
+    }
+
+    /** 요약 타일 막대 비율. UiPrefs.tileBars가 꺼져 있으면 -1 (막대 없음). */
+    private static float tileBar(long remaining, long total) {
+        return UiPrefs.tileBars ? remainRatio(remaining, total) : -1f;
     }
 
     /** 요약 타일 막대 색: 남아 있으면 초록, 다 쓰면 빨강. */
@@ -873,6 +911,10 @@ public class MainActivity extends Activity {
             addSync("외식 · 학교 앞 식당", 8_000, LocalDate.now(zone), 12, 30, false);
             toast("오늘 누적에 8,000원 더했어요");
         }));
+        tc.addView(testButton("결과별 예시 기록 4건 추가 (멈춤·이유 선택·숙고 후·식비, 기록 색 확인용)", () -> {
+            addSampleOutcomes();
+            toast("예시 기록 4건을 넣었어요");
+        }));
         tc.addView(testButton("③ 지난 며칠 야식 3건 추가 (다음 배민 야식이 4번째)", () -> {
             long now = System.currentTimeMillis();
             int[] days = {5, 3, 1};
@@ -957,6 +999,38 @@ public class MainActivity extends Activity {
         });
         Ui.pad(t, this, 0, Ui.Pad.LIST_ROW_V);
         return t;
+    }
+
+    /**
+     * 기록 색 확인용 예시: 결과마다 1건씩 오늘 기록으로 넣는다 (Mock).
+     * 실제 개입 기록처럼 결제한 건만 여윳돈·식비에 반영한다. 오늘 시각이라 다음 날 회고 시트는 뜨지 않는다.
+     */
+    private void addSampleOutcomes() {
+        long now = System.currentTimeMillis();
+        Object[][] samples = {
+                // 앱, 제목, 금액, 결과, 강도, 고른 이유, 식비
+                {TargetApp.MUSINSA, "울 코트 (Mock)", 129_000L, Outcome.PREVENTED, Intensity.STRONG, null, false},
+                {TargetApp.BAEMIN, "치킨 세트 (Mock)", 23_000L, Outcome.REASON_PAY, Intensity.MEDIUM, "배고파서", false},
+                {TargetApp.MUSINSA, "셔츠 (Mock)", 39_000L, Outcome.DELIBERATE_PAY, Intensity.MEDIUM, null, false},
+                {TargetApp.COUPANG, "식료품 (Mock)", 18_000L, Outcome.PASS, null, null, true},
+        };
+        for (int i = 0; i < samples.length; i++) {
+            Object[] s = samples[i];
+            Record r = new Record();
+            r.ts = now - (samples.length - i) * 60_000L;
+            r.app = (TargetApp) s[0];
+            r.title = (String) s[1];
+            r.amount = (Long) s[2];
+            r.outcome = (Outcome) s[3];
+            r.intensity = (Intensity) s[4];
+            r.chip = (String) s[5];
+            boolean food = (Boolean) s[6];
+            if (r.outcome.spend) {
+                if (food) r.food = r.amount;
+                else r.discretionary = r.amount;
+            }
+            store.addRecord(r);
+        }
     }
 
     private void addSync(String title, long amount, LocalDate day, int hour, int min, boolean food) {

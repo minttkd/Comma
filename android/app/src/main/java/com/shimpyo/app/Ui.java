@@ -188,6 +188,8 @@ final class Ui {
         // 목록
         static final int LIST_ROW_V = 10;       // 데모 시나리오·테스트 도구 한 줄 위아래
         static final int QA_INDENT = 10;        // 기록 탭 질문·답 들여쓰기
+        static final int TINT_ROW_H = 12;       // 기록 줄 "줄 바탕" 방식 좌우
+        static final int TINT_ROW_V = 10;       // 기록 줄 "줄 바탕" 방식 위아래
 
         // 데모 결제 화면 (다른 앱 화면 재현)
         static final int DEMO_SIDE = 16;        // AppBar·섹션·PayBar 좌우
@@ -229,6 +231,7 @@ final class Ui {
         static final int BAR = 8;            // 진행 막대 높이
         static final int BAR_THIN = 6;       // 요약 타일 안 진행 막대 높이
         static final int LIST_DOT = 8;       // 기록 줄 왼쪽 결과 색 점
+        static final int LIST_BAR = 4;       // 기록 줄 왼쪽 결과 색 막대 폭
         static final int FIELD_WIDTH = 130;  // 설정 입력칸 폭
         static final int ROW_LABEL = 48;     // 리포트 강도 이름 칸
         static final float STROKE = 1f;
@@ -490,7 +493,8 @@ final class Ui {
     /** 테두리 있는 흰 카드 (S04 홈: radius 14, 1dp line). */
     static LinearLayout outlineCard(Context c, int padH, int padV) {
         LinearLayout l = v(c);
-        l.setBackground(roundStroke(c, WHITE, Radius.BOX, LINE));
+        // UI 갤러리 › 앱 UI 설정 › "카드 테두리"를 끄면 테두리 없이 흰 바탕만
+        l.setBackground(UiPrefs.cardOutline ? roundStroke(c, WHITE, Radius.BOX, LINE) : round(c, WHITE, Radius.BOX));
         pad(l, c, padH, padV);
         return l;
     }
@@ -688,6 +692,23 @@ final class Ui {
         }
         inline(row, right, Space.BLOCK);
         return row;
+    }
+
+    /** 목록 한 줄 + 왼쪽 세로 색 막대 (줄 높이만큼, 폭 4). */
+    static LinearLayout listRowBar(Context c, int barColor, String title, String sub, String amount, View tag) {
+        LinearLayout row = listRow(c, title, sub, amount, tag);
+        View bar = new View(c);
+        bar.setBackground(round(c, barColor, Size.LIST_BAR / 2f));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(c, Size.LIST_BAR), ViewGroup.LayoutParams.MATCH_PARENT);
+        lp.rightMargin = dp(c, Space.ROW);
+        row.addView(bar, 0, lp);
+        return row;
+    }
+
+    /** 줄 전체에 연한 색 바탕을 깐다 (radius 10). 기록 줄 "줄 바탕" 방식. */
+    static void tintRow(Context c, View row, int bg) {
+        row.setBackground(round(c, bg, Radius.NOTE));
+        pad(row, c, Pad.TINT_ROW_H, Pad.TINT_ROW_V);
     }
 
     /**
