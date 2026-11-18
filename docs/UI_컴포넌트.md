@@ -4,7 +4,7 @@
 화면 코드(`MainActivity`, `OverlayController`, `DemoCheckoutActivity`)에는 숫자 dp·sp·색을 쓰지 않고 아래 이름만 쓴다.
 값을 바꾸면 그 이름을 쓰는 모든 화면이 함께 바뀐다.
 
-앱의 설정 탭 › 테스트 도구 › **UI 갤러리 열기**에서 아래 토큰과 부품을 실제 모양으로 볼 수 있다 (`UiGalleryActivity.java`).
+앱의 설정(홈 오른쪽 위 톱니바퀴) › 테스트 도구 › **UI 갤러리 열기**에서 아래 토큰과 부품을 실제 모양으로 볼 수 있다 (`UiGalleryActivity.java`).
 토큰 목록은 `Ui.java`에서 자동으로 읽으므로 새 토큰은 갤러리에 바로 나온다. 새 부품을 만들면 갤러리의 `components()`에 예시를 하나 추가한다.
 
 ## 토큰
@@ -165,25 +165,28 @@
 | 함수 | 모양 | 화면 |
 |---|---|---|
 | `kv(c, label, value, total)` | 왼쪽 라벨 · 오른쪽 값 | S03, 리포트, 설정 |
-| `listRow(c, [dotColor,] title, sub, amount, tag)` | (결과 색 점) 제목·부가 / 금액·태그 | 홈 최근 기록, 기록 탭 |
+| `listRow(c, [dotColor,] title, sub, amount, tag)` | (결과 색 점) 제목·부가 / 금액·태그 | 홈 최근 기록, 기록 화면 |
 | `listRowBar(c, barColor, title, sub, amount, tag)` | 왼쪽 세로 색 막대 + 목록 한 줄 | 기록 색 ② |
 | `tintRow(c, row, bg)` | 줄 전체 연한 바탕 | 기록 색 ③ |
 | `statTile(c, label, value, sub, outlined[, ratio, barColor, barTrack])` | 요약 타일 (+ 얇은 진행 막대) | 홈(outlined, 막대) · 리포트 |
 | `tilePair(c, left, right, gap)` | 타일 두 개 나란히 | 홈 · 리포트 |
 | `heroCard(c, label, value, sub, large)` | 먹색 강조 카드 | S03 여윳돈 · S10 마음 돌림 비율(large) |
 | `alertBox(c, title, desc, action, click)` | 빨간 경고 상자 | 홈 결제 감지 꺼짐 |
-| `highlightBox(c, label, value)` | 연초록 성과 상자 | 홈 이번 달 쉼표 |
+| `highlightBox(c, label, value[, click])` | 연초록 성과 상자 (click이 있으면 오른쪽 → 화살표, 누르면 이동) | 홈 이번 달 쉼표 → 리포트 |
 | `tintNote(c, s, Font, fg, Radius, padH, padV)` | 연초록 안내 한 줄 | S01, 리포트, 개입 재시도 |
 | `factBox(c, s)` | 사실 한 줄 (왼쪽 초록 선) | 개입 오버레이 |
 | `bar(c, ratio, fill, track[, heightDp])` | 진행 막대 | 홈, 리포트 |
-| `divider(c)` | 1dp 선 | 기록 탭, 하단 탭 |
+| `divider(c)` | 1dp 선 | 기록 화면 |
 
 ### 대화 · 내비게이션 · 입력
 
 | 함수 | 모양 |
 |---|---|
 | `bubbleAi(c, question, faded)` · `bubbleUser(c, answer)` | Bubble/AI · Bubble/User |
-| `bottomNav(c, labels, selected, onSelect)` | BottomNav |
+| `screenHeader(c, title, back)` | ← 뒤로 + 화면 제목 (기록 · 리포트 · 설정) |
+| `sectionHeader(c, title, link, click)` | 섹션 머리말 + 오른쪽 글자 링크 (홈 "최근 기록 · 더보기 ›") |
+| `settingsButton(c, click)` | 톱니바퀴 아이콘 (코드로 그림, `GearDrawable`) |
+| `bottomNav(c, labels, selected, onSelect)` | BottomNav (지금 앱에서는 안 씀) |
 | `steps(c, current, total, doneFilled)` | 온보딩 단계 점 |
 | `checkRow(c, label, checked, click)` | 체크 상자 + 문구 |
 | `input(c, hint, value, number)` | Input (테두리) |
@@ -201,7 +204,7 @@
 
 ## 앱 안에서 UI 바꿔 보기 (`UiPrefs`)
 
-설정 탭 › 테스트 도구 › **UI 갤러리 열기** › 맨 위 **앱 UI 설정**에서 번호 칩으로 고른다. 고르면 바로 저장되고 홈으로 돌아가면 반영된다.
+설정(톱니바퀴) › 테스트 도구 › **UI 갤러리 열기** › 맨 위 **앱 UI 설정**에서 번호 칩으로 고른다. 고르면 바로 저장되고 홈으로 돌아가면 반영된다.
 값은 프론트 전용 저장소(`ui_prefs`)에 있어 `Store`와 섞이지 않는다. 각 설정의 **①이 팀이 정한 기본**이고 나머지는 비교용 후보다. **기본값으로** 버튼으로 언제든 ①로 돌아간다.
 
 | 설정 | 고를 수 있는 값 (굵게 = 기본) | 그리는 곳 |
@@ -222,11 +225,13 @@
 | S01 권한 | `onboardingPermissionScreen()` | `permissionCard`, `permissionRow` |
 | S02 정기 수입 | `onboardingIncomeScreen()` | `linkedAccountCard`, `incomeCard`, `consentCard` |
 | S03 예산 | `onboardingBudgetScreen()` | `amountListCard`, heroCard |
-| S04 홈 | `homeScreen()` | `homeHeader`, `todayBudgetCard`, `recentRecordsCard`, `demoCard` |
+| S04 홈 | `homeScreen()` | `homeHeader`(톱니바퀴), `todayBudgetCard`, 이번 달 쉼표(→ 리포트), 최근 기록(더보기 → 기록), `recentRecordsCard`, `demoCard` |
 | S09 회고 | `showReview()` | `reviewSheetContent` |
-| 기록 | `recordsScreen()` | `recordRow` |
-| S10 리포트 | `reportScreen()` | `intensityCard`, `outcomeCard` |
-| 설정 | `settingsScreen()` | `statusCard`, `numberField`, `testTools`, `logCard`, `screenTextCard` |
+| 기록 (홈 › 더보기) | `recordsScreen()` | `recordRow` |
+| S10 리포트 (홈 › 이번 달 쉼표) | `reportScreen()` | `intensityCard`, `outcomeCard` |
+| 설정 (홈 › 톱니바퀴) | `settingsScreen()` | `statusCard`, `numberField`, `testTools`, `logCard`, `screenTextCard` |
+
+하단 탭은 없다. 홈이 기본 화면이고 기록 · 리포트 · 설정은 홈에서 들어가는 하위 화면이다 (`open(PAGE_...)`, ← 뒤로나 기기 뒤로가기로 홈).
 
 각 화면 메서드는 맨 위에서 데이터(`Store`, `BudgetEngine`, `Stats`, `BackendSlots`)를 한 번 읽고 카드 메서드에 값으로 넘긴다.
 
@@ -236,7 +241,7 @@
 |---|---|---|
 | `Store` · `core/` (차민상) | 설정, 결제 기록, 예산 계산, 통계 | 연결됨 |
 | `BackendSlots.java` (프론트) | 연결된 계좌, 정기 수입 내역, 수입 연속 개월 수, 알림 허용 여부 | **데모 값**. 백엔드가 생기면 채운다 |
-| `PackageManager` | 앱 버전 (설정 탭) | `build.gradle.kts`의 `versionName`에서 자동으로 |
+| `PackageManager` | 앱 버전 (설정) | `build.gradle.kts`의 `versionName`에서 자동으로 |
 
 ### `BackendSlots` 연결하는 법
 

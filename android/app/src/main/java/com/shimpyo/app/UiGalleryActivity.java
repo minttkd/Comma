@@ -88,7 +88,10 @@ public class UiGalleryActivity extends Activity {
                     UiPrefs.reset(this);
                     recreate();
                 }),
-                Ui.button(this, "홈에서 보기", true, v -> finish())), Ui.Space.SECTION);
+                Ui.button(this, "홈에서 보기", true, v -> {
+                    setResult(RESULT_OK); // MainActivity가 설정 대신 홈을 연다
+                    finish();
+                })), Ui.Space.SECTION);
         Ui.stack(content, c, Ui.Space.ITEM);
     }
 
@@ -300,7 +303,10 @@ public class UiGalleryActivity extends Activity {
         LinearLayout icons = Ui.h(this);
         icons.addView(Ui.backButton(this, tap), Ui.square(this, Ui.Size.ICON_BUTTON));
         Ui.inline(icons, Ui.closeButton(this, tap), Ui.Space.BLOCK);
-        sample("Ui.backButton · Ui.closeButton", icons);
+        Ui.inline(icons, Ui.settingsButton(this, tap), Ui.Space.BLOCK, Ui.Size.ICON_BUTTON + 2 * Ui.Pad.ICON);
+        sample("Ui.backButton · Ui.closeButton · Ui.settingsButton", icons);
+        sample("Ui.screenHeader (기록 · 리포트 · 설정 윗줄)", Ui.screenHeader(this, "기록", tap));
+        sample("Ui.sectionHeader (홈 최근 기록)", Ui.sectionHeader(this, "최근 기록", "더보기 ›", tap));
 
         section("칩 · 태그");
         List<TextView> chips = new ArrayList<>();
@@ -364,6 +370,7 @@ public class UiGalleryActivity extends Activity {
         sample("Ui.heroCard(large = true)", Ui.heroCard(this, "마음 돌림 비율", "67%", "쉼표가 말을 건 3번 중 2번 그만뒀어요", true));
         sample("Ui.alertBox", Ui.alertBox(this, "결제 감지가 꺼져 있어요", "설정 › 접근성에서 '쉼표'를 켜 주세요.", "접근성 설정 열기 ›", tap));
         sample("Ui.highlightBox", Ui.highlightBox(this, "이번 달 쉼표", "2번 멈춰서 52,000원 아꼈어요"));
+        sample("Ui.highlightBox(..., click) · 누르면 이동 (홈 → 리포트)", Ui.highlightBox(this, "이번 달 쉼표", "2번 멈춰서 52,000원 아꼈어요", tap));
         sample("Ui.tintNote(…)", Ui.tintNote(this, "비밀번호·카드번호·메시지는 읽지 않아요.", Ui.Font.CAPTION, Ui.GREEN, Ui.Radius.BOX, Ui.Pad.PRIVACY_NOTE, Ui.Pad.PRIVACY_NOTE));
         sampleOnCard("Ui.factBox", Ui.factBox(this, "23,000원을 결제하면 오늘 31,000원 · 오늘 한도 14,000원"));
         LinearLayout bars = Ui.card(this);
@@ -386,7 +393,7 @@ public class UiGalleryActivity extends Activity {
         sample("Ui.bubbleAi(faded) · Ui.bubbleUser", conv);
 
         section("내비게이션 · 온보딩");
-        sample("Ui.bottomNav", Ui.bottomNav(this, new String[]{"홈", "기록", "리포트", "설정"}, 0, i -> toast("탭 " + i)));
+        sample("Ui.bottomNav (지금 앱에서는 안 씀)", Ui.bottomNav(this, new String[]{"홈", "기록", "리포트", "설정"}, 0, i -> toast("탭 " + i)));
         LinearLayout steps = Ui.v(this);
         steps.addView(Ui.steps(this, 1, 3, true));
         Ui.stack(steps, Ui.steps(this, 2, 3, true), Ui.Space.ITEM);

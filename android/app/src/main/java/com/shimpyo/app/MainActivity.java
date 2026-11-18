@@ -49,8 +49,9 @@ import java.util.Locale;
 public class MainActivity extends Activity {
 
     // 하단 탭 순서
-    private static final int TAB_HOME = 0, TAB_RECORDS = 1, TAB_REPORT = 2, TAB_SETTINGS = 3;
-    private static final String[] TAB_LABELS = {"홈", "기록", "리포트", "설정"};
+    // 화면: 홈이 기본이고, 나머지는 홈에서 들어가는 하위 화면 (← 뒤로 · 기기 뒤로가기로 홈)
+    private static final int PAGE_HOME = 0, PAGE_RECORDS = 1, PAGE_REPORT = 2, PAGE_SETTINGS = 3;
+    private static final int REQ_GALLERY = 1; // UI 갤러리 [홈에서 보기] → 홈으로
 
     // 온보딩 단계 (0이면 온보딩이 끝난 상태)
     private static final int ONBOARD_DONE = 0, ONBOARD_PERMISSION = 1, ONBOARD_INCOME = 2, ONBOARD_BUDGET = 3;
@@ -65,10 +66,9 @@ public class MainActivity extends Activity {
     private LinearLayout content;
     private ScrollView scroll;
     private LinearLayout footer;
-    private LinearLayout nav;
     private FrameLayout layer;
     private View reviewSheet;
-    private int tab = TAB_HOME;
+    private int page = PAGE_HOME;
     private int onboardStep = ONBOARD_DONE;
     private boolean bankConsent = true;
     private boolean cycleConsent = true;
@@ -94,10 +94,11 @@ public class MainActivity extends Activity {
         setContentView(buildLayout());
         BackendSlots.load(this);
         UiPrefs.load(this);
+        getWindow().setNavigationBarColor(Ui.BG); // 하단 탭이 없어 시스템 내비게이션 바도 바탕색으로
         if (!store.settings().onboarded) onboardStep = ONBOARD_PERMISSION;
     }
 
-    /** 화면 뼈대: 스크롤 내용(content) · 하단 버튼 영역(footer, 온보딩) · 하단 탭(nav). */
+    /** 화면 뼈대: 스크롤 내용(content) · 하단 버튼 영역(footer, 온보딩). */
     View buildLayout() {
         store = Store.get(this);
         layer = new FrameLayout(this);
@@ -113,10 +114,14 @@ public class MainActivity extends Activity {
         footer = Ui.v(this);
         Ui.pad(footer, this, Ui.Pad.SCREEN_H, Ui.Pad.FOOTER_TOP, Ui.Pad.SCREEN_H, Ui.Pad.SCREEN_BOTTOM);
         root.addView(footer, Ui.fillW());
-        nav = Ui.v(this);
-        root.addView(nav, Ui.fillW());
         layer.addView(root, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
         return layer;
+    }
+
+    @Override
+    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
+        super.onActivityResult(requestCode, resultCode, data);
+        if (requestCode == REQ_GALLERY && resultCode == RESULT_OK) page = PAGE_HOME; // 이어서 onResume이 홈을 그린다
     }
 
     @Override
@@ -137,23 +142,26 @@ public class MainActivity extends Activity {
             refresh();
             return;
         }
-        if (onboardStep == ONBOARD_DONE && tab != TAB_HOME) {
-            tab = TAB_HOME;
-            refresh();
+        if (onboardStep == ONBOARD_DONE && page != PAGE_HOME) {
+            open(PAGE_HOME);
             return;
         }
         super.onBackPressed();
     }
 
-    /** 지금 상태(온보딩 단계·탭)에 맞는 화면을 처음부터 다시 그린다. */
+    /** 화면 하나로 이동 (홈 · 기록 · 리포트 · 설정). */
+    private void open(int p) {
+        page = p;
+        refresh();
+    }
+
+    /** 지금 상태(온보딩 단계·화면)에 맞는 화면을 처음부터 다시 그린다. */
     void refresh() {
         content.removeAllViews();
         footer.removeAllViews();
-        nav.removeAllViews();
         hideReview();
         scroll.scrollTo(0, 0);
         if (onboardStep != ONBOARD_DONE) {
-            nav.setVisibility(View.GONE);
             footer.setVisibility(View.VISIBLE);
             if (onboardStep == ONBOARD_PERMISSION) onboardingPermissionScreen();
             else if (onboardStep == ONBOARD_INCOME) onboardingIncomeScreen();
@@ -161,14 +169,9 @@ public class MainActivity extends Activity {
             return;
         }
         footer.setVisibility(View.GONE);
-        nav.setVisibility(View.VISIBLE);
-        nav.addView(Ui.bottomNav(this, TAB_LABELS, tab, idx -> {
-            tab = idx;
-            refresh();
-        }), Ui.fillW());
-        if (tab == TAB_HOME) homeScreen();
-        else if (tab == TAB_RECORDS) recordsScreen();
-        else if (tab == TAB_REPORT) reportScreen();
+        if (page == PAGE_HOME) homeScreen();
+        else if (page == PAGE_RECORDS) recordsScreen();
+        else if (page == PAGE_REPORT) reportScreen();
         else settingsScreen();
     }
 
@@ -465,8 +468,7 @@ public class MainActivity extends Activity {
             st.onboarded = true;
             store.saveSettings(st);
             onboardStep = ONBOARD_DONE;
-            tab = TAB_HOME;
-            refresh();
+            open(PAGE_HOME);
         }));
     }
 
@@ -502,21 +504,22 @@ public class MainActivity extends Activity {
                         tileBar(b.foodRemaining, b.foodBudget), remainColor(b.foodRemaining), remainTrack(b.foodRemaining)),
                 Ui.Space.BLOCK), Ui.Space.BLOCK);
         add(Ui.highlightBox(this, "이번 달 쉼표", st.prevented == 0 ? "결제 직전에 멈춘 기록이 여기 쌓여요"
-                : st.prevented + "번 멈춰서 " + Money.won(st.preventedSum) + " 아꼈어요"), Ui.Space.BLOCK);
-        add(Ui.sectionTitle(this, "최근 기록"), Ui.Space.BLOCK);
+                : st.prevented + "번 멈춰서 " + Money.won(st.preventedSum) + " 아꼈어요", v -> open(PAGE_REPORT)), Ui.Space.BLOCK);
+        add(Ui.sectionHeader(this, "최근 기록", "더보기 ›", v -> open(PAGE_RECORDS)), Ui.Space.BLOCK);
         add(recentRecordsCard(recs), Ui.Space.BLOCK);
         add(demoCard(), Ui.Space.BLOCK);
 
         maybeShowReview(recs, now);
     }
 
-    /** 홈 윗줄: "쉼표" + 마지막 동기화 시각. */
+    /** 홈 윗줄: "쉼표" + 마지막 동기화 시각 + 톱니바퀴(설정). */
     private View homeHeader(long lastSyncTs, long now) {
         LinearLayout top = Ui.h(this);
         top.addView(Ui.title(this, "쉼표"), Ui.weight1());
         long mins = lastSyncTs == 0 ? -1 : (now - lastSyncTs) / 60_000;
         String sync = mins < 0 ? "동기화 전" : mins < 1 ? "마지막 동기화 방금 전" : "마지막 동기화 " + (mins < 60 ? mins + "분 전" : (mins / 60) + "시간 전");
         top.addView(Ui.meta(this, sync));
+        Ui.inline(top, Ui.settingsButton(this, v -> open(PAGE_SETTINGS)), Ui.Space.LINE, Ui.Size.ICON_BUTTON + 2 * Ui.Pad.ICON);
         return top;
     }
 
@@ -706,10 +709,10 @@ public class MainActivity extends Activity {
         }
     }
 
-    // ================================================================== 기록 탭
+    // ================================================================== 기록 (홈 › 최근 기록 더보기)
 
     private void recordsScreen() {
-        add(Ui.title(this, "기록"), 0);
+        add(Ui.screenHeader(this, "기록", v -> open(PAGE_HOME)), 0);
         add(Ui.bodySmall(this, "길게 누르면 지울 수 있어요 (결제하지 않았는데 기록된 건 등)."), Ui.Space.TIGHT);
         List<Record> sorted = store.records();
         Collections.sort(sorted, (x, y) -> Long.compare(y.ts, x.ts));
@@ -733,7 +736,7 @@ public class MainActivity extends Activity {
         add(list, Ui.Space.BLOCK);
     }
 
-    // ================================================================== 리포트 (S10)
+    // ================================================================== 리포트 (S10, 홈 › 이번 달 쉼표)
 
     private void reportScreen() {
         Settings s = store.settings();
@@ -742,7 +745,7 @@ public class MainActivity extends Activity {
         Stats st = Stats.of(s, recs, now, zone);
         BudgetEngine.State b = BudgetEngine.compute(s, recs, now, zone);
 
-        add(Ui.title(this, LocalDate.now(zone).getMonthValue() + "월 리포트"), 0);
+        add(Ui.screenHeader(this, LocalDate.now(zone).getMonthValue() + "월 리포트", v -> open(PAGE_HOME)), 0);
         add(Ui.text(this, b.cycleStart + " ~ " + b.nextPayday.minusDays(1) + " (급여일 기준)", Ui.Font.CAPTION, Ui.SUBTLE, Ui.REGULAR), Ui.Space.LINE);
 
         int rate = st.mindChangeRate();
@@ -794,11 +797,11 @@ public class MainActivity extends Activity {
         return c;
     }
 
-    // ================================================================== 설정 · 테스트 도구
+    // ================================================================== 설정 · 테스트 도구 (홈 › 톱니바퀴)
 
     private void settingsScreen() {
         Settings s = store.settings();
-        add(Ui.title(this, "설정"), 0);
+        add(Ui.screenHeader(this, "설정", v -> open(PAGE_HOME)), 0);
         add(statusCard(), Ui.Space.BLOCK);
 
         // AI
@@ -952,7 +955,7 @@ public class MainActivity extends Activity {
             store.saveSettings(st);
         }));
         tc.addView(testButton("데모 결제 화면 열기", () -> startActivity(new Intent(this, DemoCheckoutActivity.class))));
-        tc.addView(testButton("UI 갤러리 열기 (토큰·컴포넌트 모음)", () -> startActivity(new Intent(this, UiGalleryActivity.class))));
+        tc.addView(testButton("UI 갤러리 열기 (토큰·컴포넌트 모음)", () -> startActivityForResult(new Intent(this, UiGalleryActivity.class), REQ_GALLERY)));
         tc.addView(testButton("기록 전체 삭제", () -> {
             store.clearRecords();
             toast("기록을 모두 지웠어요");

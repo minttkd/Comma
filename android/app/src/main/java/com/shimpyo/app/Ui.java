@@ -1,7 +1,14 @@
 package com.shimpyo.app;
 
 import android.content.Context;
+import android.graphics.Canvas;
 import android.graphics.Color;
+import android.graphics.ColorFilter;
+import android.graphics.Matrix;
+import android.graphics.Paint;
+import android.graphics.Path;
+import android.graphics.PixelFormat;
+import android.graphics.RectF;
 import android.graphics.Typeface;
 import android.graphics.drawable.Drawable;
 import android.graphics.drawable.GradientDrawable;
@@ -13,6 +20,7 @@ import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
 import android.widget.EditText;
+import android.widget.ImageView;
 import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
@@ -444,6 +452,14 @@ final class Ui {
         return child;
     }
 
+    /** 가로 묶음: 정사각형(sizeDp) child를 gapDp 띄워 붙인다 (아이콘 버튼). */
+    static <T extends View> T inline(LinearLayout row, T child, int gapDp, int sizeDp) {
+        LinearLayout.LayoutParams p = square(row.getContext(), sizeDp);
+        p.leftMargin = dp(row.getContext(), gapDp);
+        row.addView(child, p);
+        return child;
+    }
+
     /** 가로 묶음: 남은 폭을 나눠 갖는 child를 붙인다. */
     static <T extends View> T inlineFill(LinearLayout row, T child, int gapDp) {
         LinearLayout.LayoutParams p = weight1();
@@ -582,6 +598,78 @@ final class Ui {
         b.setContentDescription("뒤로");
         b.setOnClickListener(click);
         return b;
+    }
+
+    /** 톱니바퀴 설정 버튼 (홈 오른쪽 위). 아이콘 24dp + 누르는 여백 6 → square(c, Size.ICON_BUTTON + 2 * Pad.ICON)로 붙인다. */
+    static ImageView settingsButton(Context c, View.OnClickListener click) {
+        ImageView b = new ImageView(c);
+        b.setImageDrawable(new GearDrawable(MUTED));
+        pad(b, c, Pad.ICON);
+        b.setContentDescription("설정");
+        b.setOnClickListener(click);
+        return b;
+    }
+
+    /** 톱니바퀴 모양: 몸통 원 + 이 8개 − 가운데 구멍. 이미지 파일 없이 코드로 그린다. */
+    static final class GearDrawable extends Drawable {
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+
+        GearDrawable(int color) {
+            paint.setColor(color);
+        }
+
+        @Override
+        public void draw(Canvas canvas) {
+            RectF b = new RectF(getBounds());
+            float cx = b.centerX(), cy = b.centerY();
+            float r = Math.min(b.width(), b.height()) / 2f * 0.9f; // 이 끝
+            Path gear = new Path();
+            gear.addCircle(cx, cy, r * 0.7f, Path.Direction.CW); // 몸통
+            float tooth = r * 0.36f;
+            for (int i = 0; i < 4; i++) { // 막대 4개를 45°씩 돌리면 이 8개
+                Path bar = new Path();
+                bar.addRoundRect(new RectF(cx - tooth / 2, cy - r, cx + tooth / 2, cy + r), tooth * 0.25f, tooth * 0.25f, Path.Direction.CW);
+                Matrix m = new Matrix();
+                m.setRotate(i * 45f, cx, cy);
+                bar.transform(m);
+                gear.op(bar, Path.Op.UNION);
+            }
+            Path hole = new Path();
+            hole.addCircle(cx, cy, r * 0.3f, Path.Direction.CW);
+            gear.op(hole, Path.Op.DIFFERENCE);
+            canvas.drawPath(gear, paint);
+        }
+
+        @Override
+        public void setAlpha(int alpha) {
+            paint.setAlpha(alpha);
+        }
+
+        @Override
+        public void setColorFilter(ColorFilter cf) {
+            paint.setColorFilter(cf);
+        }
+
+        @Override
+        public int getOpacity() {
+            return PixelFormat.TRANSLUCENT;
+        }
+    }
+
+    /** 하위 화면 윗줄: ← 뒤로 + 화면 제목 (기록 · 리포트 · 설정). */
+    static LinearLayout screenHeader(Context c, String title, View.OnClickListener back) {
+        LinearLayout r = h(c);
+        r.addView(backButton(c, back), square(c, Size.ICON_BUTTON));
+        inline(r, title(c, title), Space.ITEM);
+        return r;
+    }
+
+    /** 섹션 머리말 + 오른쪽 글자 링크 ("최근 기록 · 더보기 ›"). */
+    static LinearLayout sectionHeader(Context c, String title, String link, View.OnClickListener click) {
+        LinearLayout r = h(c);
+        r.addView(sectionTitle(c, title), new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        r.addView(textLink(c, link, MUTED, click));
+        return r;
     }
 
     /** ✕ 닫기 (17 Bold subtle, padding 6). */
@@ -784,6 +872,20 @@ final class Ui {
         return b;
     }
 
+    /** 누르는 성과 상자 (S04 이번 달 쉼표 → 리포트): 왼쪽 라벨·값, 오른쪽 → 화살표. */
+    static LinearLayout highlightBox(Context c, String label, String value, View.OnClickListener click) {
+        LinearLayout b = tintBox(c, BRAND_LIGHT, Pad.BOX_H, Pad.BOX_V);
+        b.setOrientation(LinearLayout.HORIZONTAL);
+        b.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout texts = v(c);
+        texts.addView(text(c, label, Font.CAPTION, GREEN, REGULAR));
+        stack(texts, text(c, value, Font.BUTTON, GREEN, BOLD), Space.LINE);
+        b.addView(texts, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        inline(b, text(c, "→", Font.HEADING, GREEN, BOLD), Space.ITEM);
+        b.setOnClickListener(click);
+        return b;
+    }
+
     /** 연초록 안내 한 줄 (radius·글자는 자리마다 Figma 값이 달라 인자로 받는다). */
     static TextView tintNote(Context c, String s, float sp, int fg, int radius, int padH, int padV) {
         TextView t = text(c, s, sp, fg, MEDIUM);
@@ -853,7 +955,8 @@ final class Ui {
 
     // ================================================================== 내비게이션 · 온보딩
 
-    /** BottomNav: 위 1dp 선, 탭마다 6dp 점 + 12 Medium 글자. 선택된 탭만 점이 보인다. */
+    /** BottomNav: 위 1dp 선, 탭마다 6dp 점 + 12 Medium 글자. 선택된 탭만 점이 보인다.
+     *  지금 앱에서는 안 쓴다 (하단 탭을 없애고 홈에서 더보기 · 이번 달 쉼표 · 톱니바퀴로 이동). 다시 쓸 때를 위해 남겨 둠. */
     static LinearLayout bottomNav(Context c, String[] labels, int selected, IntConsumer onSelect) {
         LinearLayout nav = v(c);
         nav.setBackgroundColor(WHITE);
