@@ -292,8 +292,8 @@ public class MainActivity extends Activity {
     }
 
     /**
-     * 기록 한 줄의 모양. 결과 색 표시는 UiPrefs.recordColor (UI 갤러리 › 앱 UI 설정, 기본 DOT).
-     * DOT 왼쪽 점 · BAR 왼쪽 세로 막대 · TINT 줄 전체 연한 바탕 · NONE 태그만.
+     * 기록 한 줄의 모양. 결과 색 표시는 UiPrefs.recordColor (UI 갤러리 › 앱 UI 설정, 기본 TINT).
+     * TINT 줄 전체 연한 바탕(기본) · 후보: DOT 왼쪽 점 · BAR 왼쪽 세로 막대 · NONE 태그만.
      */
     private LinearLayout recordRowView(Record r) {
         Ui.Tone tone = outcomeTone(r);
@@ -523,11 +523,11 @@ public class MainActivity extends Activity {
     /**
      * "오늘 쓸 수 있는 돈" 카드: 신호 태그 · 큰 금액 · 진행 막대 · 한도 설명.
      *
-     * 색 방식은 UiPrefs.todayCard (UI 갤러리 › 앱 UI 설정에서 바꿈, 기본 HERO).
-     * - HERO: 먹색 바탕 + 흰 글자 (S03 월 여윳돈 · S10 마음 돌림 비율과 같은 강조 카드)
-     * - OUTLINE: v0.5, 흰 바탕 + 테두리
-     * - SIGNAL: 신호에 따라 연초록 / 연노랑 / 연빨강 바탕.
-     *   초과일 때 화면이 많이 빨개지고 태그가 바탕과 같은 색이 되어 잘 안 보인다.
+     * 색 방식은 UiPrefs.todayCard (UI 갤러리 › 앱 UI 설정에서 바꿈, 기본 SIGNAL).
+     * - SIGNAL (기본): 신호에 따라 연초록 / 연노랑 / 연빨강 바탕.
+     *   초과일 때 태그 바탕이 카드 바탕과 같은 색이라 태그 테두리가 잘 안 보인다.
+     * - 후보 HERO: 먹색 바탕 + 흰 글자 (S03 월 여윳돈 · S10 마음 돌림 비율과 같은 강조 카드)
+     * - 후보 OUTLINE: v0.5, 흰 바탕 + 테두리
      */
     private View todayBudgetCard(BudgetEngine.State b) {
         boolean over = b.todaySpent > b.limit;

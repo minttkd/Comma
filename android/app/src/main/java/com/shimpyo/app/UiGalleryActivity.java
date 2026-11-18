@@ -60,7 +60,7 @@ public class UiGalleryActivity extends Activity {
     /** 번호 칩으로 UI 방식을 고른다. 고르면 바로 저장되고, 홈으로 돌아가면 반영된다. */
     private void uiSettings() {
         section("앱 UI 설정");
-        Ui.stack(content, Ui.meta(this, "고르면 바로 저장돼요. 홈으로 돌아가면 반영돼요. 기록 색은 설정 › 테스트 도구의 \"결과별 예시 기록\"을 넣고 보면 잘 보여요."), Ui.Space.TIGHT);
+        Ui.stack(content, Ui.meta(this, "①이 기본 디자인이고 나머지는 비교용 후보예요. 고르면 바로 저장돼요. 홈으로 돌아가면 반영돼요. 기록 색은 설정 › 테스트 도구의 \"결과별 예시 기록\"을 넣고 보면 잘 보여요."), Ui.Space.TIGHT);
         LinearLayout c = Ui.card(this);
 
         c.addView(Ui.caption(this, "홈 · 오늘 쓸 수 있는 돈 카드"));
