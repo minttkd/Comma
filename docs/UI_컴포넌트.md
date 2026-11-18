@@ -26,6 +26,7 @@
 | `GREEN` / `GREEN_BG` | #37624C / #E8EFE9 | status/green |
 | `DIM` | #17201A 55% | dim |
 | `ON_BRAND` / `ON_BRAND_SUB` | WHITE / LINE | 먹색 바탕 위 글자 |
+| `ON_BRAND_TRACK` | 흰색 20% | 먹색 바탕 위 진행 막대 바탕 (홈 오늘 카드) |
 | `GUARD_FILL` | status/green 16% | 결제 버튼 가드 표시 |
 
 ### `Ui.Tone`: 상태 색 묶음 (바탕 + 글자)

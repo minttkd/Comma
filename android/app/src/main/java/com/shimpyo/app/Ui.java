@@ -60,6 +60,7 @@ final class Ui {
 
     static final int ON_BRAND = WHITE;                         // 먹색 바탕 위 글자
     static final int ON_BRAND_SUB = LINE;                      // 먹색 바탕 위 보조 글자
+    static final int ON_BRAND_TRACK = Color.argb(51, 255, 255, 255); // 먹색 바탕 위 진행 막대 바탕 (흰색 20%)
     static final int GUARD_FILL = Color.argb(40, 0x37, 0x62, 0x4C); // status/green 16% · 결제 버튼 가드 표시
 
     /** 상태 색 묶음 (바탕, 글자). 태그·알림에 쓴다. */

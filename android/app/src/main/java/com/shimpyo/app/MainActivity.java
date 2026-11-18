@@ -475,26 +475,55 @@ public class MainActivity extends Activity {
         return top;
     }
 
-    /** "오늘 쓸 수 있는 돈" 카드: 신호 태그 · 큰 금액 · 진행 막대 · 한도 설명. */
+    /**
+     * "오늘 쓸 수 있는 돈" 카드: 신호 태그 · 큰 금액 · 진행 막대 · 한도 설명.
+     *
+     * 지금은 HERO 방식: 먹색 바탕 + 흰 글자 (S03 월 여윳돈 · S10 마음 돌림 비율과 같은 강조 카드).
+     * 다른 방식으로 바꾸려면 아래 "색 정하기" 부분의 6줄만 바꾸면 된다.
+     *
+     * - OUTLINE (v0.5, 흰 바탕 + 테두리)
+     *     c = Ui.outlineCard(this, Ui.Pad.TODAY_CARD, Ui.Pad.TODAY_CARD);
+     *     label = Ui.MUTED;  amountColor = Ui.TEXT;  meta = Ui.MUTED;
+     *     barFill = over ? Ui.RED : Ui.BRAND;  barTrack = Ui.BG;
+     *
+     * - SIGNAL (신호에 따라 연초록 / 연노랑 / 연빨강 바탕)
+     *     c = Ui.tintBox(this, signalTone(b.signal()).bg, Ui.Pad.TODAY_CARD, Ui.Pad.TODAY_CARD);
+     *     label = Ui.MUTED;  amountColor = Ui.TEXT;  meta = Ui.MUTED;
+     *     barFill = over ? Ui.RED : Ui.BRAND;  barTrack = Ui.WHITE;
+     *   단, 초과일 때 화면이 많이 빨개지고 태그가 바탕과 같은 색이 되어 잘 안 보인다.
+     */
     private View todayBudgetCard(BudgetEngine.State b) {
-        LinearLayout c = Ui.outlineCard(this, Ui.Pad.TODAY_CARD, Ui.Pad.TODAY_CARD);
+        boolean over = b.todaySpent > b.limit;
+
+        // ---- 색 정하기 (HERO)
+        LinearLayout c = Ui.tintBox(this, Ui.BRAND, Ui.Pad.TODAY_CARD, Ui.Pad.TODAY_CARD);
+        int label = Ui.ON_BRAND_SUB;                        // "오늘 쓸 수 있는 돈"
+        int amountColor = Ui.ON_BRAND;                      // 큰 금액
+        int meta = Ui.ON_BRAND_SUB;                         // 아래 한도 설명
+        int barFill = over ? Ui.RED_BG : Ui.ON_BRAND;       // 진행 막대 (초과면 연빨강)
+        int barTrack = Ui.ON_BRAND_TRACK;                   // 진행 막대 바탕
+
         LinearLayout head = Ui.h(this);
-        head.addView(Ui.bodySmall(this, "오늘 쓸 수 있는 돈"), Ui.weight1());
+        head.addView(Ui.text(this, "오늘 쓸 수 있는 돈", Ui.Font.SMALL, label, Ui.REGULAR), Ui.weight1());
         head.addView(signalTag(b.signal()));
         c.addView(head, Ui.fillW());
         String amount = b.available >= 0 ? Money.won(b.available) + " 남음" : Money.won(-b.available) + " 넘었어요";
-        Ui.stack(c, Ui.text(this, amount, Ui.Font.AMOUNT, Ui.TEXT, Ui.BOLD), Ui.Space.ITEM);
+        Ui.stack(c, Ui.text(this, amount, Ui.Font.AMOUNT, amountColor, Ui.BOLD), Ui.Space.ITEM);
         float ratio = b.limit == 0 ? 1f : Math.min(1f, (float) b.todaySpent / b.limit);
-        Ui.stack(c, Ui.bar(this, ratio, b.todaySpent > b.limit ? Ui.RED : Ui.BRAND, Ui.BG), Ui.Space.ITEM);
-        Ui.stack(c, Ui.meta(this, "오늘 한도 " + Money.won(b.limit) + " 중 " + Money.won(b.todaySpent) + " 사용 · 주기 " + b.dayIndex + "일째"), Ui.Space.ITEM);
+        Ui.stack(c, Ui.bar(this, ratio, barFill, barTrack), Ui.Space.ITEM);
+        Ui.stack(c, Ui.text(this, "오늘 한도 " + Money.won(b.limit) + " 중 " + Money.won(b.todaySpent) + " 사용 · 주기 " + b.dayIndex + "일째",
+                Ui.Font.CAPTION, meta, Ui.REGULAR), Ui.Space.ITEM);
         return c;
     }
 
     /** 0 여유 · 1 주의 · 2 초과 */
+    private static Ui.Tone signalTone(int signal) {
+        return signal == 0 ? Ui.Tone.SUCCESS : signal == 1 ? Ui.Tone.WARNING : Ui.Tone.DANGER;
+    }
+
+    /** 0 여유 · 1 주의 · 2 초과 */
     private TextView signalTag(int signal) {
-        if (signal == 0) return Ui.smallTag(this, "여유", Ui.Tone.SUCCESS);
-        if (signal == 1) return Ui.smallTag(this, "주의", Ui.Tone.WARNING);
-        return Ui.smallTag(this, "초과", Ui.Tone.DANGER);
+        return Ui.smallTag(this, signal == 0 ? "여유" : signal == 1 ? "주의" : "초과", signalTone(signal));
     }
 
     private View recentRecordsCard(List<Record> recs) {
