@@ -158,6 +158,7 @@ public class UiGalleryActivity extends Activity {
         e.triggers.add(Trigger.LATE_NIGHT);
         e.lateHour = true;
         e.lateCountNow = in == Intensity.LIGHT ? 2 : 3;
+        e.lateSumNow = a.amount * e.lateCountNow; // 미리보기용 야식 합계
         Session s = new Session("gallery-" + in, now);
         s.attempt = a;
         s.eval = e;
