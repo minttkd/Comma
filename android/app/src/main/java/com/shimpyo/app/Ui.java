@@ -315,6 +315,8 @@ final class Ui {
         static final int LIST_DOT = 8;       // 기록 줄 왼쪽 결과 색 점
         static final int LIST_BAR = 4;       // 기록 줄 왼쪽 결과 색 막대 폭
         static final int AVATAR = 28;        // 개입 채팅 쉼표 얼굴 (채팅 ②·③)
+        static final int LEVEL_DOT = 7;      // 리포트 대화 깊이 ●●○
+        static final int TALK_DOT = 14;      // 리포트 대화 하나 = 점 하나
         static final int FIELD_WIDTH = 130;  // 설정 입력칸 폭
         static final int ROW_LABEL = 48;     // 리포트 강도 이름 칸
         static final float STROKE = 1f;
@@ -1016,6 +1018,30 @@ final class Ui {
         return track;
     }
 
+    /** 깊이 표시 ●●○: level개는 초록, 나머지는 회색 (리포트 대화 깊이). */
+    static LinearLayout levelDots(Context c, int level, int total) {
+        LinearLayout r = h(c);
+        for (int i = 1; i <= total; i++) {
+            View d = new View(c);
+            d.setBackground(circle(i <= level ? GREEN : LINE));
+            LinearLayout.LayoutParams p = square(c, Size.LEVEL_DOT);
+            if (i > 1) p.leftMargin = dp(c, Space.TEXT + Space.TEXT);
+            r.addView(d, p);
+        }
+        return r;
+    }
+
+    /** 점 여러 개를 줄바꿈하며 늘어놓는다. 점 하나 = 대화 하나 (리포트 대화 깊이). */
+    static FlowLayout dotFlow(Context c, int[] colors) {
+        FlowLayout f = new FlowLayout(c, dp(c, Space.TIGHT), dp(c, Space.TIGHT));
+        for (int color : colors) {
+            View d = new View(c);
+            d.setBackground(circle(color));
+            f.addView(d, new ViewGroup.LayoutParams(dp(c, Size.TALK_DOT), dp(c, Size.TALK_DOT)));
+        }
+        return f;
+    }
+
     /** 범례 한 줄: 색 점 · 이름 · 값 (리포트 만족·후회). */
     static LinearLayout legendRow(Context c, int color, String label, String value) {
         LinearLayout r = h(c);
@@ -1027,15 +1053,6 @@ final class Ui {
         r.addView(text(c, label, Font.BODY, MUTED, REGULAR), lp);
         r.addView(text(c, value, Font.BODY, TEXT, MEDIUM));
         return r;
-    }
-
-    /** 문장 카드: 머리말 · 한 문장(17 Bold) · 부가 설명 (리포트 ③ 한 달 이야기). */
-    static LinearLayout sentenceCard(Context c, String caption, String sentence, String sub) {
-        LinearLayout card = card(c);
-        card.addView(caption(c, caption));
-        stack(card, heading(c, sentence), Space.ITEM);
-        if (sub != null && !sub.isEmpty()) stack(card, meta(c, sub), Space.TIGHT);
-        return card;
     }
 
     // ================================================================== 대화 (개입 오버레이)

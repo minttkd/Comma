@@ -1,9 +1,11 @@
 package com.shimpyo.app;
 
 import android.content.Context;
+import android.view.View;
 import android.widget.LinearLayout;
 
 import com.shimpyo.app.core.BudgetEngine;
+import com.shimpyo.app.core.Enums.Intensity;
 import com.shimpyo.app.core.Enums.Outcome;
 import com.shimpyo.app.core.Enums.TargetApp;
 import com.shimpyo.app.core.Money;
@@ -15,6 +17,7 @@ import java.time.LocalDate;
 import java.time.ZoneId;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -26,6 +29,7 @@ import java.util.Map;
  * - 결제할 때 고른 이유 (가벼움 이유 칩)
  * - 다음 날 돌아본 마음 (S09 회고: 만족해요 / 후회돼요)
  * - 대화하다 멈춘 결제 (방지 실적)
+ * - 강도(가벼움 · 보통 · 강함)는 "쉼표가 얼마나 깊게 물었는지"로 바꿔 부른다 (③ 대화 깊이)
  *
  * 집계는 화면 전용이라 core/Stats를 건드리지 않고 여기서 기록을 직접 센다.
  * 후보가 정해지면 필요한 집계만 Stats(core)로 옮기는 걸 차민상과 상의한다.
@@ -51,9 +55,17 @@ final class ReportViews {
         final Map<String, int[]> reasons = new LinkedHashMap<>();
         int lateCount;
         long lateSum;
+        /** 깊이(강도)별 대화, 시간 순. */
+        final Map<Intensity, List<Record>> byDepth = new EnumMap<>(Intensity.class);
 
-        boolean empty() {
-            return talks == 0 && satisfied.isEmpty() && regretted.isEmpty() && reasons.isEmpty();
+        /** 깊이 하나의 [대화 수, 멈춘 수]. */
+        int[] depth(Intensity i) {
+            int[] v = new int[2];
+            List<Record> l = byDepth.get(i);
+            if (l == null) return v;
+            v[0] = l.size();
+            for (Record r : l) if (r.outcome == Outcome.PREVENTED) v[1]++;
+            return v;
         }
 
         static Data of(Settings s, List<Record> records, long now, ZoneId zone) {
@@ -66,6 +78,9 @@ final class ReportViews {
                 if (day.isBefore(cycle[0]) || !day.isBefore(cycle[1])) continue;
                 if (r.isIntervention()) {
                     d.talks++;
+                    List<Record> l = d.byDepth.get(r.intensity);
+                    if (l == null) d.byDepth.put(r.intensity, l = new ArrayList<>());
+                    l.add(r);
                     if (r.outcome == Outcome.PREVENTED) {
                         d.stopped++;
                         d.saved += r.amount;
@@ -98,6 +113,7 @@ final class ReportViews {
             List<Map.Entry<String, int[]>> sorted = new ArrayList<>(reasons.entrySet());
             Collections.sort(sorted, (a, b) -> b.getValue()[0] - a.getValue()[0]);
             for (Map.Entry<String, int[]> e : sorted) d.reasons.put(e.getKey(), e.getValue());
+            for (List<Record> l : d.byDepth.values()) Collections.sort(l, (a, b) -> Long.compare(a.ts, b.ts));
             Collections.sort(d.satisfied, (a, b) -> Long.compare(b.amount, a.amount));
             Collections.sort(d.regretted, (a, b) -> Long.compare(b.amount, a.amount));
             return d;
@@ -147,6 +163,19 @@ final class ReportViews {
         Ui.stack(out, card, Ui.Space.BLOCK);
     }
 
+    /** 결제할 때 내가 고른 이유: 이유별 횟수 · 후회 · 만족. */
+    private static LinearLayout reasonsCard(Context c, Data d) {
+        LinearLayout why = Ui.card(c);
+        why.addView(Ui.caption(c, "결제할 때 내가 고른 이유"));
+        if (d.reasons.isEmpty()) {
+            Ui.stack(why, Ui.bodySmall(c, "쉼표가 \"지금 사려는 이유가 뭐예요?\"라고 물을 때 고른 답이 여기에 모여요."), Ui.Space.ITEM);
+        }
+        for (Map.Entry<String, int[]> e : d.reasons.entrySet()) {
+            Ui.stack(why, Ui.kv(c, "'" + e.getKey() + "'", reasonCount(e.getValue()), false), Ui.Space.ITEM);
+        }
+        return why;
+    }
+
     // ================================================================== ② 만족 · 후회
 
     /** ② 다음 날 돌아본 마음(만족·후회)을 중심에, 그 결제를 할 때 고른 이유를 아래에. */
@@ -170,59 +199,106 @@ final class ReportViews {
         reviewList(c, out, "후회한 결제", d.regretted, Ui.RED, "후회돼요", Ui.Tone.DANGER, zone);
         reviewList(c, out, "만족한 결제", d.satisfied, Ui.GREEN, "만족해요", Ui.Tone.SUCCESS, zone);
 
-        LinearLayout why = Ui.card(c);
-        why.addView(Ui.caption(c, "결제할 때 내가 고른 이유"));
-        if (d.reasons.isEmpty()) {
-            Ui.stack(why, Ui.bodySmall(c, "쉼표가 \"지금 사려는 이유가 뭐예요?\"라고 물을 때 고른 답이 여기에 모여요."), Ui.Space.ITEM);
-        }
-        for (Map.Entry<String, int[]> e : d.reasons.entrySet()) {
-            Ui.stack(why, Ui.kv(c, "'" + e.getKey() + "'", reasonCount(e.getValue()), false), Ui.Space.ITEM);
-        }
-        Ui.stack(out, why, Ui.Space.BLOCK);
+        Ui.stack(out, reasonsCard(c, d), Ui.Space.BLOCK);
 
         Ui.stack(out, Ui.highlightBox(c, "쉼표와 이야기하다 멈춘 결제", d.stopped == 0 ? "멈춘 결제가 생기면 여기 쌓여요"
                 : d.stopped + "번 멈춰서 " + Money.won(d.saved) + " 아꼈어요"), Ui.Space.BLOCK);
     }
 
-    // ================================================================== ③ 한 달 이야기
+    // ================================================================== ③ 대화 깊이
 
-    /** ③ 한 달을 문장 몇 개로: 가장 잘한 결정 · 다시 생각해 볼 결제 · 잘 산 결제 · 자주 고른 이유. */
-    static void story(Context c, LinearLayout out, Data d, ZoneId zone) {
+    /**
+     * 강도(가벼움 · 보통 · 강함)를 사용자 말로: 쉼표가 얼마나 깊게 물었는지.
+     * 시스템 용어 대신 "그때 무슨 일이 있었는지"로 부른다.
+     */
+    static String depthName(Intensity i) {
+        switch (i) {
+            case LIGHT: return "살짝 물어봤을 때";
+            case MEDIUM: return "이야기를 나눴을 때";
+            default: return "깊게 이야기했을 때";
+        }
+    }
+
+    /** 그 깊이에서 사용자가 한 일. */
+    static String depthHow(Intensity i) {
+        switch (i) {
+            case LIGHT: return "이유 하나만 골랐어요";
+            case MEDIUM: return "질문 두 개에 답했어요";
+            default: return "질문 세 개, 한 번은 직접 적었어요";
+        }
+    }
+
+    private static int rate(int[] v) {
+        return v[0] == 0 ? -1 : Math.round(v[1] * 100f / v[0]);
+    }
+
+    /** 깊이별 멈춘 비율을 한 문장으로. 비교할 깊이가 두 개 미만이면 null. */
+    static String depthInsight(Data d) {
+        List<Intensity> has = new ArrayList<>();
+        for (Intensity i : Intensity.values()) if (d.depth(i)[0] > 0) has.add(i);
+        if (has.size() < 2) return null;
+        Intensity first = has.get(0), last = has.get(has.size() - 1);
+        int a = rate(d.depth(first)), b = rate(d.depth(last));
+        boolean up = true, down = true;
+        for (int k = 1; k < has.size(); k++) {
+            int prev = rate(d.depth(has.get(k - 1))), cur = rate(d.depth(has.get(k)));
+            if (cur < prev) up = false;
+            if (cur > prev) down = false;
+        }
+        if (up && b > a) return "깊게 이야기할수록 더 자주 멈췄어요";
+        if (down && a > b) return "살짝 물어봤을 때 오히려 더 잘 멈췄어요";
+        Intensity best = has.get(0);
+        for (Intensity i : has) if (rate(d.depth(i)) > rate(d.depth(best))) best = i;
+        return "'" + depthName(best) + "' 가장 자주 멈췄어요";
+    }
+
+    /** 깊이 하나: ●●○ 이름 · "6번 중 2번 멈춤" / 대화마다 점 하나 (초록 = 멈춤, 회색 = 결제) / 한 일 · 아낀 돈. */
+    private static View depthBlock(Context c, Data d, Intensity i) {
+        LinearLayout b = Ui.v(c);
+        int[] v = d.depth(i);
+        LinearLayout head = Ui.h(c);
+        head.addView(Ui.levelDots(c, i.ordinal() + 1, Intensity.values().length));
+        Ui.inlineFill(head, Ui.text(c, depthName(i), Ui.Font.BODY, Ui.TEXT, Ui.BOLD), Ui.Space.ITEM);
+        Ui.inline(head, Ui.text(c, v[0] == 0 ? "아직 없어요" : v[0] + "번 중 " + v[1] + "번 멈춤", Ui.Font.SMALL, v[0] == 0 ? Ui.SUBTLE : Ui.TEXT, Ui.MEDIUM), Ui.Space.ITEM);
+        b.addView(head, Ui.fillW());
+        List<Record> talks = d.byDepth.get(i);
+        if (talks != null && !talks.isEmpty()) {
+            int[] colors = new int[talks.size()];
+            for (int k = 0; k < colors.length; k++) colors[k] = talks.get(k).outcome == Outcome.PREVENTED ? Ui.GREEN : Ui.LINE;
+            Ui.stack(b, Ui.dotFlow(c, colors), Ui.Space.ITEM);
+        }
+        long saved = 0;
+        if (talks != null) for (Record r : talks) if (r.outcome == Outcome.PREVENTED) saved += r.amount;
+        Ui.stack(b, Ui.meta(c, depthHow(i) + (saved > 0 ? " · " + Money.won(saved) + " 아낌" : "")), Ui.Space.TIGHT);
+        return b;
+    }
+
+    /** ③ 대화 깊이: 강도 세 단계를 "쉼표가 얼마나 깊게 물었는지"로 보여 준다. 대화 하나가 점 하나. */
+    static void depth(Context c, LinearLayout out, Data d) {
         Ui.stack(out, Ui.heroCard(c, "이번 달 쉼표", d.stopped + "번 멈췄어요",
                 d.talks == 0 ? "아직 쉼표가 말을 건 결제가 없어요"
                         : "쉼표가 말을 건 " + d.talks + "번 중 · " + Money.won(d.saved) + " 아낌", true), Ui.Space.BLOCK);
-        if (d.empty()) {
-            Ui.stack(out, Ui.sentenceCard(c, "한 달 이야기", "쉼표와 대화한 결제가 생기면 여기에 이야기가 채워져요",
-                    "결제할 때 고른 이유와 다음 날 돌아본 마음으로 만들어요."), Ui.Space.BLOCK);
-            return;
+        String insight = depthInsight(d);
+        if (insight != null) {
+            Ui.stack(out, Ui.tintNote(c, insight, Ui.Font.BODY, Ui.GREEN, Ui.Radius.INPUT, Ui.Pad.FOOD_NOTE_H, Ui.Pad.FOOD_NOTE_V), Ui.Space.BLOCK);
         }
-        if (d.bestStop != null) {
-            Record r = d.bestStop;
-            Ui.stack(out, Ui.sentenceCard(c, "가장 잘한 결정", date(r, zone) + " " + app(r) + r.title + " 결제를 멈췄어요",
-                    Money.won(r.amount) + " 아꼈어요" + (r.stoppedAt > 0 ? " · " + r.stoppedAt + "번째 질문에서 마음을 돌렸어요" : "")), Ui.Space.BLOCK);
+        LinearLayout card = Ui.card(c);
+        card.addView(Ui.caption(c, "쉼표가 얼마나 깊게 물었나요"));
+        Intensity[] all = Intensity.values();
+        for (int k = 0; k < all.length; k++) {
+            if (k > 0) {
+                View line = Ui.divider(c);
+                card.addView(line);
+                Ui.gapTop(line, c, Ui.Space.STACK);
+            }
+            Ui.stack(card, depthBlock(c, d, all[k]), Ui.Space.STACK);
         }
-        if (!d.regretted.isEmpty()) {
-            Record r = d.regretted.get(0);
-            String w = why(r);
-            Ui.stack(out, Ui.sentenceCard(c, "다시 생각해 볼 결제", app(r) + r.title + ", 다음 날 후회된다고 했어요",
-                    Money.won(r.amount) + (w.isEmpty() ? "" : " · 그때 " + w)), Ui.Space.BLOCK);
-        }
-        if (!d.satisfied.isEmpty()) {
-            Record r = d.satisfied.get(0);
-            String w = why(r);
-            Ui.stack(out, Ui.sentenceCard(c, "잘 샀다고 한 결제", app(r) + r.title + ", 다음 날 만족한다고 했어요",
-                    Money.won(r.amount) + (w.isEmpty() ? "" : " · 그때 " + w)), Ui.Space.BLOCK);
-        }
-        if (!d.reasons.isEmpty()) {
-            Map.Entry<String, int[]> top = d.reasons.entrySet().iterator().next();
-            int[] v = top.getValue();
-            String after = v[1] > 0 ? "그중 " + v[1] + "번은 다음 날 후회했어요"
-                    : v[2] == v[0] ? "모두 다음 날 만족했어요" : "아직 돌아보지 않은 결제가 있어요";
-            Ui.stack(out, Ui.sentenceCard(c, "가장 자주 고른 이유", "'" + top.getKey() + "' 이유로 " + v[0] + "번 결제했어요", after), Ui.Space.BLOCK);
-        }
-        if (d.lateCount > 0) {
-            Ui.stack(out, Ui.sentenceCard(c, "야식", "야식을 " + d.lateCount + "번 시켰어요", Money.won(d.lateSum)), Ui.Space.BLOCK);
-        }
+        LinearLayout legend = Ui.h(c);
+        legend.addView(Ui.legendRow(c, Ui.GREEN, "멈췄어요", ""), Ui.weight1());
+        legend.addView(Ui.legendRow(c, Ui.LINE, "결제했어요", ""), Ui.weight1());
+        Ui.stack(card, legend, Ui.Space.SECTION);
+        Ui.stack(out, card, Ui.Space.BLOCK);
+        Ui.stack(out, reasonsCard(c, d), Ui.Space.BLOCK);
     }
 
     // ================================================================== ④ 숫자 세 개

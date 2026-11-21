@@ -777,7 +777,7 @@ public class MainActivity extends Activity {
         if (UiPrefs.reportStyle != UiPrefs.ReportStyle.NOW) {
             ReportViews.Data d = ReportViews.Data.of(s, recs, now, zone);
             if (UiPrefs.reportStyle == UiPrefs.ReportStyle.VALUES) ReportViews.values(this, content, d, zone);
-            else if (UiPrefs.reportStyle == UiPrefs.ReportStyle.STORY) ReportViews.story(this, content, d, zone);
+            else if (UiPrefs.reportStyle == UiPrefs.ReportStyle.DEPTH) ReportViews.depth(this, content, d);
             else ReportViews.simple(this, content, d);
             add(foodNote(b), Ui.Space.BLOCK);
             return;

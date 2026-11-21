@@ -23,8 +23,13 @@ final class FlowLayout extends ViewGroup {
         for (int i = 0; i < getChildCount(); i++) {
             View ch = getChildAt(i);
             if (ch.getVisibility() == GONE) continue;
-            ch.measure(MeasureSpec.makeMeasureSpec(unbounded ? 0 : maxW, unbounded ? MeasureSpec.UNSPECIFIED : MeasureSpec.AT_MOST),
-                    MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED));
+            // 크기를 정해 붙인 자식(점 등)은 그 크기 그대로, 나머지(칩·태그)는 내용 크기로
+            LayoutParams lp = ch.getLayoutParams();
+            int ws = lp != null && lp.width >= 0 ? MeasureSpec.makeMeasureSpec(lp.width, MeasureSpec.EXACTLY)
+                    : MeasureSpec.makeMeasureSpec(unbounded ? 0 : maxW, unbounded ? MeasureSpec.UNSPECIFIED : MeasureSpec.AT_MOST);
+            int hs = lp != null && lp.height >= 0 ? MeasureSpec.makeMeasureSpec(lp.height, MeasureSpec.EXACTLY)
+                    : MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED);
+            ch.measure(ws, hs);
             int w = ch.getMeasuredWidth(), h = ch.getMeasuredHeight();
             if (!unbounded && x > 0 && x + w > maxW) {
                 x = 0;

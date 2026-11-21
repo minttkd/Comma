@@ -71,7 +71,7 @@ final class UiPrefs {
     enum ReportStyle {
         NOW("① 지금"),        // 마음 돌림 비율 · 강도별 · 결과 분류
         VALUES("② 만족·후회"), // 다음 날 돌아본 마음 + 고른 이유
-        STORY("③ 한 달 이야기"), // 문장 카드 몇 개
+        DEPTH("③ 대화 깊이"),   // 가벼움·보통·강함을 "쉼표가 얼마나 깊게 물었는지"로, 대화 하나 = 점 하나
         SIMPLE("④ 숫자 세 개"); // 아낀 돈 · 만족한 소비 · 후회한 소비
 
         final String label;
