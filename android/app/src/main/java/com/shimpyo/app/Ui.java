@@ -764,10 +764,15 @@ final class Ui {
     static TextView chip(Context c, String label, boolean selected, View.OnClickListener click) {
         TextView t = text(c, label, Font.BODY, TEXT, MEDIUM);
         t.setGravity(Gravity.CENTER);
-        t.setBackground(selected ? roundStroke(c, BRAND_LIGHT, Radius.CHIP, BRAND, Size.STROKE_STRONG) : roundStroke(c, WHITE, Radius.CHIP, LINE));
+        setChipSelected(c, t, selected);
         pad(t, c, Pad.CHIP_H, Pad.CHIP_V);
         if (click != null) t.setOnClickListener(click);
         return t;
+    }
+
+    /** 칩 선택 모양만 바꾼다 (화면을 다시 그리지 않고 고를 때). */
+    static void setChipSelected(Context c, TextView t, boolean selected) {
+        t.setBackground(selected ? roundStroke(c, BRAND_LIGHT, Radius.CHIP, BRAND, Size.STROKE_STRONG) : roundStroke(c, WHITE, Radius.CHIP, LINE));
     }
 
     /** Tag/Blue · Red · Amber · Green (radius 8, padding 4/10, 12 Medium). */
@@ -928,6 +933,41 @@ final class Ui {
         stack(h, text(c, value, large ? Font.DISPLAY : Font.TITLE, ON_HERO, BOLD), Space.LINE);
         stack(h, text(c, sub, Font.CAPTION, ON_HERO_SUB, REGULAR), Space.LINE);
         return h;
+    }
+
+    /** 한국어 줄바꿈을 글자 단위 대신 어절 단위로 (Android 13+). 긴 문장 한 개를 크게 보여 줄 때. */
+    static TextView wordBreak(TextView t) {
+        if (Build.VERSION.SDK_INT >= 33) {
+            t.setLineBreakWordStyle(android.graphics.text.LineBreakConfig.LINE_BREAK_WORD_STYLE_PHRASE);
+        }
+        return t;
+    }
+
+    /** 강조 카드 + 한 문장 (리포트 가치 회고 "이번 달 내 기준"): 라벨 12 · 문장 17 Bold · 부가 12. */
+    static LinearLayout heroSentence(Context c, String label, String sentence, String sub) {
+        LinearLayout h = v(c);
+        h.setBackground(round(c, HERO_BG, Radius.CARD));
+        pad(h, c, Pad.HERO_LARGE);
+        h.addView(text(c, label, Font.CAPTION, ON_HERO_SUB, MEDIUM));
+        stack(h, wordBreak(text(c, sentence, Font.HEADING, ON_HERO, BOLD)), Space.ITEM);
+        if (sub != null && !sub.isEmpty()) stack(h, wordBreak(text(c, sub, Font.CAPTION, ON_HERO_SUB, REGULAR)), Space.ITEM);
+        return h;
+    }
+
+    /** 내가 한 말 인용: 왼쪽 초록 선 + "말" + 부가 설명 (리포트 가치 회고). */
+    static LinearLayout quote(Context c, String said, String sub) {
+        LinearLayout row = h(c);
+        row.setGravity(Gravity.TOP);
+        View bar = new View(c);
+        bar.setBackground(round(c, GREEN, Radius.BAR));
+        row.addView(bar, new LinearLayout.LayoutParams(dp(c, Size.LIST_BAR), ViewGroup.LayoutParams.MATCH_PARENT));
+        LinearLayout texts = v(c);
+        texts.addView(text(c, "“" + said + "”", Font.BODY, TEXT, MEDIUM));
+        stack(texts, meta(c, sub), Space.LINE);
+        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        p.leftMargin = dp(c, Space.BLOCK);
+        row.addView(texts, p);
+        return row;
     }
 
     /** 경고 상자 (S04 결제 감지 꺼짐): 빨간 바탕, 제목 14 Bold · 설명 12 · 이동 링크. */

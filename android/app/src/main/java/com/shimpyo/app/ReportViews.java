@@ -3,6 +3,7 @@ package com.shimpyo.app;
 import android.content.Context;
 import android.view.View;
 import android.widget.LinearLayout;
+import android.widget.TextView;
 
 import com.shimpyo.app.core.BudgetEngine;
 import com.shimpyo.app.core.Enums.Intensity;
@@ -55,6 +56,12 @@ final class ReportViews {
         final Map<String, int[]> reasons = new LinkedHashMap<>();
         int lateCount;
         long lateSum;
+        /** 대화 뒤 결제한 건 (이유 선택 · 숙고 후), 최근 순. */
+        final List<Record> paidAfterTalk = new ArrayList<>();
+        /** 쉼표가 말을 건 결제 전체, 최근 순. */
+        final List<Record> talked = new ArrayList<>();
+        /** 멈춘 결제, 금액 큰 순. */
+        final List<Record> stoppedList = new ArrayList<>();
         /** 깊이(강도)별 대화, 시간 순. */
         final Map<Intensity, List<Record>> byDepth = new EnumMap<>(Intensity.class);
 
@@ -81,13 +88,16 @@ final class ReportViews {
                     List<Record> l = d.byDepth.get(r.intensity);
                     if (l == null) d.byDepth.put(r.intensity, l = new ArrayList<>());
                     l.add(r);
+                    d.talked.add(r);
                     if (r.outcome == Outcome.PREVENTED) {
                         d.stopped++;
                         d.saved += r.amount;
                         if (d.bestStop == null || r.amount > d.bestStop.amount) d.bestStop = r;
+                        d.stoppedList.add(r);
                     }
                 }
                 boolean paidAfterTalk = r.outcome == Outcome.REASON_PAY || r.outcome == Outcome.DELIBERATE_PAY;
+                if (paidAfterTalk) d.paidAfterTalk.add(r);
                 if (r.review != null && r.review.contains("후회")) {
                     d.regretted.add(r);
                     d.regrettedSum += r.amount;
@@ -114,6 +124,9 @@ final class ReportViews {
             Collections.sort(sorted, (a, b) -> b.getValue()[0] - a.getValue()[0]);
             for (Map.Entry<String, int[]> e : sorted) d.reasons.put(e.getKey(), e.getValue());
             for (List<Record> l : d.byDepth.values()) Collections.sort(l, (a, b) -> Long.compare(a.ts, b.ts));
+            Collections.sort(d.paidAfterTalk, (a, b) -> Long.compare(b.ts, a.ts));
+            Collections.sort(d.talked, (a, b) -> Long.compare(b.ts, a.ts));
+            Collections.sort(d.stoppedList, (a, b) -> Long.compare(b.amount, a.amount));
             Collections.sort(d.satisfied, (a, b) -> Long.compare(b.amount, a.amount));
             Collections.sort(d.regretted, (a, b) -> Long.compare(b.amount, a.amount));
             return d;
@@ -174,6 +187,215 @@ final class ReportViews {
             Ui.stack(why, Ui.kv(c, "'" + e.getKey() + "'", reasonCount(e.getValue()), false), Ui.Space.ITEM);
         }
         return why;
+    }
+
+    // ================================================================== ② 가치 회고
+
+    /**
+     * 결제 이유를 가치로 묶는다 (초안 · 기획 확인 필요).
+     * 가벼움에서 고른 이유 칩 → 필요 / 사람 / 기분. 이유 없이 대화 끝에 [그래도 살게요]면 TALKED.
+     */
+    enum Value {
+        NEED("필요해서", "떨어졌거나 끼니라서"),
+        PEOPLE("사람 때문에", "약속 · 선물"),
+        MOOD("기분으로", "그냥 · 습관처럼"),
+        TALKED("대화 끝에", "쉼표와 이야기하고도 [그래도 살게요]"),
+        OTHER("다른 이유로", "");
+
+        final String name, desc;
+
+        Value(String name, String desc) {
+            this.name = name;
+            this.desc = desc;
+        }
+
+        static Value of(Record r) {
+            if (r.chip == null || r.chip.isEmpty()) return r.outcome == Outcome.DELIBERATE_PAY ? TALKED : OTHER;
+            switch (r.chip) {
+                case "다 떨어졌어요": case "끼니 대용이에요": case "한 달치 장보기예요":
+                case "진짜 배고파요": case "공부하느라요": case "배고파서":
+                    return NEED;
+                case "약속이 있어요": case "선물이에요":
+                    return PEOPLE;
+                case "그냥 먹고 싶어요": case "그냥 사고 싶어요": case "습관처럼 시켰어요":
+                    return MOOD;
+                default:
+                    return OTHER;
+            }
+        }
+    }
+
+    /** 가치 하나의 묶음: 결제들 · 금액 · 다음 날 만족/후회/아직 · 고른 이유들. */
+    static final class ValueGroup {
+        final List<Record> records = new ArrayList<>();
+        long sum, satSum, regSum, unrevSum;
+        int sat, reg, unrev;
+        final List<String> reasons = new ArrayList<>();
+    }
+
+    /** 대화 뒤 결제한 건(이유 선택 · 숙고 후)을 가치별로. 많은 순서. */
+    static Map<Value, ValueGroup> valueGroups(Data d) {
+        Map<Value, ValueGroup> m = new EnumMap<>(Value.class);
+        for (Record r : d.paidAfterTalk) {
+            Value v = Value.of(r);
+            ValueGroup g = m.get(v);
+            if (g == null) m.put(v, g = new ValueGroup());
+            g.records.add(r);
+            g.sum += r.amount;
+            if (r.review == null) { g.unrev++; g.unrevSum += r.amount; }
+            else if (r.review.contains("후회")) { g.reg++; g.regSum += r.amount; }
+            else { g.sat++; g.satSum += r.amount; }
+            if (r.chip != null && !r.chip.isEmpty() && !g.reasons.contains(r.chip)) g.reasons.add(r.chip);
+        }
+        List<Map.Entry<Value, ValueGroup>> l = new ArrayList<>(m.entrySet());
+        Collections.sort(l, (a, b) -> b.getValue().records.size() - a.getValue().records.size());
+        Map<Value, ValueGroup> out = new LinkedHashMap<>();
+        for (Map.Entry<Value, ValueGroup> e : l) out.put(e.getKey(), e.getValue());
+        return out;
+    }
+
+    private static String joinNames(List<Value> l) {
+        StringBuilder b = new StringBuilder();
+        for (Value v : l) b.append(b.length() == 0 ? "" : "·").append(v.name);
+        return b.toString();
+    }
+
+    /** "필요해서·사람 때문에 쓴 돈엔 만족했고, 기분으로 쓴 돈은 후회했어요". 답이 없으면 null. */
+    static String valueInsight(Map<Value, ValueGroup> groups) {
+        List<Value> good = new ArrayList<>(), bad = new ArrayList<>();
+        for (Map.Entry<Value, ValueGroup> e : groups.entrySet()) {
+            ValueGroup g = e.getValue();
+            if (g.sat > g.reg) good.add(e.getKey());
+            else if (g.reg > g.sat) bad.add(e.getKey());
+        }
+        if (!good.isEmpty() && !bad.isEmpty()) return joinNames(good) + " 쓴 돈엔 만족했고, " + joinNames(bad) + " 쓴 돈은 후회했어요";
+        if (!good.isEmpty()) return joinNames(good) + " 쓴 돈엔 대부분 만족했어요";
+        if (!bad.isEmpty()) return joinNames(bad) + " 쓴 돈은 후회가 남았어요";
+        return null;
+    }
+
+    /** "Q1. 질문 / A. 답"에서 답만. */
+    static String answerOf(String qa) {
+        int i = qa.lastIndexOf(" / A. ");
+        if (i >= 0) return qa.substring(i + 6).trim();
+        i = qa.lastIndexOf("A:");
+        return i >= 0 ? qa.substring(i + 2).trim() : qa.trim();
+    }
+
+    /** 그 대화에서 가장 "내 말"에 가까운 답: 가장 긴 답 (칩 답 "그래도 살래요"보다 직접 적은 말이 길다). 없으면 "". */
+    static String ownWords(Record r) {
+        String best = "";
+        for (String line : r.qa) {
+            String a = answerOf(line);
+            if (a.length() > best.length()) best = a;
+        }
+        return best;
+    }
+
+    /** 그 결제가 어떻게 끝났는지: 멈췄어요 / 샀고, 다음 날 만족 · 후회 / 샀어요. */
+    private static String ending(Record r) {
+        if (r.outcome == Outcome.PREVENTED) return "멈췄어요";
+        if (r.review == null) return "샀어요";
+        return r.review.contains("후회") ? "샀고, 다음 날 후회" : "샀고, 다음 날 만족";
+    }
+
+    /** 미리보기 칩 한 줄: 하나만 고를 수 있고, 아직 저장하지 않는다. */
+    private static View previewChoice(Context c, String... labels) {
+        List<TextView> chips = new ArrayList<>();
+        for (String l : labels) chips.add(Ui.chip(c, l, false, null));
+        for (TextView t : chips) {
+            t.setOnClickListener(v -> {
+                for (TextView o : chips) Ui.setChipSelected(c, o, o == t);
+            });
+        }
+        return Ui.chipFlow(c, chips);
+    }
+
+    /**
+     * ② 가치 회고: 숫자 대신 "내가 무엇에 돈을 쓰고, 다음 날 어떻게 느꼈는지"로 돌아보게 한다.
+     * 1) 이번 달 내 기준 한 문장  2) 이유를 가치로 묶어 만족/후회  3) 그때 내가 한 말
+     * 4) 멈춘 결제, 지금은 어때요? · 5) 다음 달엔 — 4·5는 화면만 (답 저장은 기록 구조 · 후회율 계산과 엮여 차민상과 합의 후 연결)
+     */
+    static void reflect(Context c, LinearLayout out, Data d, ZoneId zone) {
+        Map<Value, ValueGroup> groups = valueGroups(d);
+        String insight = valueInsight(groups);
+        int answered = 0;
+        for (ValueGroup g : groups.values()) answered += g.sat + g.reg;
+        Ui.stack(out, Ui.heroSentence(c, "이번 달 내 기준",
+                insight != null ? insight : "다음 날 돌아본 답이 모이면 내 기준이 보여요",
+                insight != null ? "대화 뒤 결제하고 다음 날 '만족해요 / 후회돼요'로 답한 " + answered + "건으로 봤어요"
+                        : "쉼표와 대화한 뒤 결제하면, 다음 날 만족했는지 물어봐요"), Ui.Space.BLOCK);
+
+        // 2) 이유를 가치로
+        if (!groups.isEmpty()) {
+            LinearLayout card = Ui.card(c);
+            card.addView(Ui.caption(c, "무엇 때문에 썼고, 다음 날 어땠나요"));
+            boolean first = true;
+            for (Map.Entry<Value, ValueGroup> e : groups.entrySet()) {
+                Value v = e.getKey();
+                ValueGroup g = e.getValue();
+                if (!first) {
+                    View line = Ui.divider(c);
+                    card.addView(line);
+                    Ui.gapTop(line, c, Ui.Space.STACK);
+                }
+                LinearLayout b = Ui.v(c);
+                LinearLayout head = Ui.h(c);
+                head.addView(Ui.text(c, v.name, Ui.Font.BODY, Ui.TEXT, Ui.BOLD), Ui.weight1());
+                head.addView(Ui.text(c, g.records.size() + "번 · " + Money.won(g.sum), Ui.Font.SMALL, Ui.TEXT, Ui.MEDIUM));
+                b.addView(head, Ui.fillW());
+                if (!v.desc.isEmpty()) Ui.stack(b, Ui.meta(c, v.desc), Ui.Space.LINE);
+                Ui.stack(b, Ui.splitBar(c, new long[]{g.satSum, g.regSum, g.unrevSum}, new int[]{Ui.GREEN, Ui.RED, Ui.LINE}), Ui.Space.ITEM);
+                String mood = (g.sat > 0 ? "만족 " + g.sat : "") + (g.reg > 0 ? (g.sat > 0 ? " · " : "") + "후회 " + g.reg : "")
+                        + (g.unrev > 0 ? (g.sat + g.reg > 0 ? " · " : "") + "아직 안 돌아봄 " + g.unrev : "");
+                Ui.stack(b, Ui.text(c, mood, Ui.Font.CAPTION, g.reg > g.sat ? Ui.RED : g.sat > g.reg ? Ui.GREEN : Ui.MUTED, Ui.MEDIUM), Ui.Space.TIGHT);
+                if (!g.reasons.isEmpty()) {
+                    FlowLayout tags = Ui.tagFlow(c);
+                    for (String r : g.reasons) tags.addView(Ui.smallTag(c, "'" + r + "'", Ui.Tone.NEUTRAL));
+                    Ui.stack(b, tags, Ui.Space.ITEM);
+                }
+                Ui.stack(card, b, first ? Ui.Space.ITEM : Ui.Space.STACK);
+                first = false;
+            }
+            Ui.stack(card, Ui.legendRow(c, Ui.GREEN, "다음 날 만족", ""), Ui.Space.SECTION);
+            Ui.stack(card, Ui.legendRow(c, Ui.RED, "다음 날 후회", ""), Ui.Space.TIGHT);
+            Ui.stack(out, card, Ui.Space.BLOCK);
+        }
+
+        // 3) 그때 내가 한 말
+        List<Record> said = new ArrayList<>();
+        for (Record r : d.talked) if (ownWords(r).length() >= 8) said.add(r); // 칩 한마디가 아니라 직접 적은 말만
+        if (!said.isEmpty()) {
+            LinearLayout card = Ui.card(c);
+            card.addView(Ui.caption(c, "그때 내가 한 말"));
+            for (int i = 0; i < said.size() && i < TOP_LIST; i++) {
+                Record r = said.get(i);
+                Ui.stack(card, Ui.quote(c, ownWords(r),
+                        date(r, zone) + " " + app(r) + r.title + " · " + ending(r)), i == 0 ? Ui.Space.ITEM : Ui.Space.ROW);
+            }
+            Ui.stack(out, card, Ui.Space.BLOCK);
+        }
+
+        // 4) 멈춘 결제, 지금은 어때요? (미리보기)
+        if (!d.stoppedList.isEmpty()) {
+            LinearLayout card = Ui.card(c);
+            card.addView(Ui.caption(c, "멈춘 결제, 지금은 어때요?"));
+            for (int i = 0; i < d.stoppedList.size() && i < TOP_LIST; i++) {
+                Record r = d.stoppedList.get(i);
+                Ui.stack(card, Ui.kv(c, app(r) + r.title, Money.won(r.amount), false), i == 0 ? Ui.Space.ITEM : Ui.Space.STACK);
+                Ui.stack(card, previewChoice(c, "아직 사고 싶어요", "안 사길 잘했어요"), Ui.Space.ITEM);
+            }
+            Ui.stack(card, Ui.micro(c, "미리보기예요. 아직 답이 저장되지 않아요.", Ui.SUBTLE), Ui.Space.BLOCK);
+            Ui.stack(out, card, Ui.Space.BLOCK);
+        }
+
+        // 5) 다음 달엔 (미리보기)
+        LinearLayout next = Ui.card(c);
+        next.addView(Ui.caption(c, "다음 달엔"));
+        Ui.stack(next, Ui.heading(c, "어떤 결제를 줄이고 싶어요?"), Ui.Space.ITEM);
+        Ui.stack(next, previewChoice(c, "기분으로 쓰는 돈", "야식", "큰 금액 쇼핑", "지금이 좋아요"), Ui.Space.BLOCK);
+        Ui.stack(next, Ui.micro(c, "미리보기예요. 고른 답은 다음 달 대화의 질문 재료로 쓸 예정이에요 (아직 저장 안 됨).", Ui.SUBTLE), Ui.Space.BLOCK);
+        Ui.stack(out, next, Ui.Space.BLOCK);
     }
 
     // ================================================================== ② 만족 · 후회

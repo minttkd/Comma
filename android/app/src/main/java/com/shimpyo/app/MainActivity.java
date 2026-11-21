@@ -776,7 +776,8 @@ public class MainActivity extends Activity {
         // 내용 후보: UiPrefs.reportStyle (UI 갤러리 › 앱 UI 설정 › 리포트 내용). ②~④는 ReportViews.
         if (UiPrefs.reportStyle != UiPrefs.ReportStyle.NOW) {
             ReportViews.Data d = ReportViews.Data.of(s, recs, now, zone);
-            if (UiPrefs.reportStyle == UiPrefs.ReportStyle.VALUES) ReportViews.values(this, content, d, zone);
+            if (UiPrefs.reportStyle == UiPrefs.ReportStyle.REFLECT) ReportViews.reflect(this, content, d, zone);
+            else if (UiPrefs.reportStyle == UiPrefs.ReportStyle.VALUES) ReportViews.values(this, content, d, zone);
             else if (UiPrefs.reportStyle == UiPrefs.ReportStyle.DEPTH) ReportViews.depth(this, content, d);
             else ReportViews.simple(this, content, d);
             add(foodNote(b), Ui.Space.BLOCK);
@@ -1135,8 +1136,30 @@ public class MainActivity extends Activity {
                 if (food) r.food = r.amount;
                 else r.discretionary = r.amount;
             }
+            String[] qa = SAMPLE_QA.get(r.title);
+            if (qa != null) for (String line : qa) r.qa.add(line);
             store.addRecord(r);
         }
+    }
+
+    /** 리포트 예시 기록의 대화 (가치 회고 "그때 내가 한 말" 확인용). 형식은 Session.transcript()와 같다. */
+    private static final java.util.Map<String, String[]> SAMPLE_QA = new java.util.HashMap<>();
+
+    static {
+        SAMPLE_QA.put("울 코트 (예시)", new String[]{
+                "Q1. 가진 게 없어서예요, 마음에 들어서예요? / A. 마음에 들어서요",
+                "Q2. 지난달 외투를 두 번 샀어요. 이번엔 뭐가 다를까요? / A. 사실 입던 코트로도 이번 겨울은 괜찮을 것 같아요",
+                "Q3. 결제하면 급여일까지 하루 약 7,500원으로 지내야 해요. 그래도 지금 살래요? / A. 다음으로 미룰게요"});
+        SAMPLE_QA.put("셔츠 (예시)", new String[]{
+                "Q1. 가진 게 없어서예요, 마음에 들어서예요? / A. 마음에 들어서요",
+                "Q2. 다음에 사도 괜찮을까요? / A. 세일이 오늘까지라 놓치기 싫어요"});
+        SAMPLE_QA.put("운동화 (예시)", new String[]{
+                "Q1. 지금 쓰던 건 어떤 상태예요? / A. 다 떨어졌어요",
+                "Q2. 이번 달 쿠팡에서 벌써 3번 결제했어요. 이번엔 뭐가 다를까요? / A. 신던 운동화 밑창이 다 닳아서 매일 신을 거예요",
+                "Q3. 결제하면 급여일까지 하루 약 9,000원으로 지내야 해요. 그래도 지금 살래요? / A. 그래도 살래요"});
+        SAMPLE_QA.put("회·초밥 세트 (예시)", new String[]{
+                "Q1. 4만 원이 넘는 야식이에요. 오늘 특별한 날이에요? / A. 그냥 먹고 싶어요",
+                "Q2. 지난주 야식 뒤에 '후회돼요'라고 답했어요. 오늘은 뭐가 달라요? / A. 다를 게 없네요, 내일 아침에 후회할 것 같아요"});
     }
 
     private void addSync(String title, long amount, LocalDate day, int hour, int min, boolean food) {
