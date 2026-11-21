@@ -80,6 +80,7 @@ final class OverlayController {
     void show(Session s) {
         session = s;
         UiPrefs.load(ctx); // 접근성 서비스에서는 MainActivity를 거치지 않을 수 있어 여기서 읽는다
+        Ui.applyTheme(ctx); // 다크 모드
         if (root == null) {
             buildRoot();
             WindowManager.LayoutParams p = new WindowManager.LayoutParams(
@@ -209,6 +210,8 @@ final class OverlayController {
     /** S08 처리 완료 토스트 (Figma Toast: 먹색 바탕, radius 14, 15 Medium / 12 Regular). */
     void toast(String line1, String line2) {
         removeToast();
+        UiPrefs.load(ctx);
+        Ui.applyTheme(ctx);
         LinearLayout box = Ui.tintBox(ctx, Ui.BRAND, Ui.Pad.TOAST_H, Ui.Pad.TOAST_V);
         box.setElevation(Ui.dp(ctx, Ui.Size.ELEVATION));
         box.addView(Ui.text(ctx, line1, Ui.Font.BODY, Ui.ON_BRAND, Ui.MEDIUM));

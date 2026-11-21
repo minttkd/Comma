@@ -75,25 +75,36 @@ public class MainActivity extends Activity {
     private boolean showAllDemos = false;
     private boolean reviewDismissed = false;
 
-    /** 상태바·내비게이션바를 앱 바탕색에 맞춘다 (Figma StatusBar: 밝은 바탕 + 어두운 글자). */
+    /**
+     * 상태바·내비게이션바·창 바탕을 앱 바탕색에 맞춘다 (Figma StatusBar: 밝은 바탕 + 어두운 글자).
+     * 어두운 화면(Ui.dark)이면 시스템 아이콘도 밝게. Ui.applyTheme() 다음에 부른다.
+     */
     static void styleWindow(Activity a) {
         Window w = a.getWindow();
+        w.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Ui.BG)); // 화면이 그려지기 전 흰 번쩍임 방지
         w.setStatusBarColor(Ui.BG);
-        int flags = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+        int flags = 0;
+        if (!Ui.dark) flags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
         if (Build.VERSION.SDK_INT >= 26) {
             w.setNavigationBarColor(Ui.WHITE);
-            flags |= View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+            if (!Ui.dark) flags |= View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
         }
         w.getDecorView().setSystemUiVisibility(flags);
     }
 
+    /** 이 화면을 만들 때 쓴 색 한 벌 (어두운 화면이었는지). 돌아왔을 때 바뀌었으면 다시 만든다. */
+    private boolean builtDark;
+
     @Override
     protected void onCreate(Bundle b) {
         super.onCreate(b);
+        UiPrefs.load(this);
+        Ui.applyTheme(this); // 다크 모드: 화면을 만들기 전에 색 한 벌을 고른다
+        builtDark = Ui.dark;
+        if (b != null) page = b.getInt("page", PAGE_HOME); // 화면 모드를 바꿔 다시 만들어도 보던 화면 그대로
         styleWindow(this);
         setContentView(buildLayout());
         BackendSlots.load(this);
-        UiPrefs.load(this);
         getWindow().setNavigationBarColor(Ui.BG); // 하단 탭이 없어 시스템 내비게이션 바도 바탕색으로
         if (!store.settings().onboarded) onboardStep = ONBOARD_PERMISSION;
     }
@@ -127,8 +138,20 @@ public class MainActivity extends Activity {
     }
 
     @Override
+    protected void onSaveInstanceState(Bundle out) {
+        super.onSaveInstanceState(out);
+        out.putInt("page", page);
+    }
+
+    @Override
     protected void onResume() {
         super.onResume();
+        // 데모 결제 화면(항상 밝게)이나 UI 갤러리(화면 모드 변경)에서 돌아오면 색을 다시 고른다
+        Ui.applyTheme(this);
+        if (Ui.dark != builtDark) {
+            recreate();
+            return;
+        }
         refresh();
     }
 
@@ -555,12 +578,12 @@ public class MainActivity extends Activity {
             barFill = over ? Ui.RED : Ui.BRAND;
             barTrack = Ui.WHITE;
         } else { // HERO
-            c = Ui.tintBox(this, Ui.BRAND, Ui.Pad.TODAY_CARD, Ui.Pad.TODAY_CARD);
-            label = Ui.ON_BRAND_SUB;
-            amountColor = Ui.ON_BRAND;
-            meta = Ui.ON_BRAND_SUB;
-            barFill = over ? Ui.RED_BG : Ui.ON_BRAND;
-            barTrack = Ui.ON_BRAND_TRACK;
+            c = Ui.tintBox(this, Ui.HERO_BG, Ui.Pad.TODAY_CARD, Ui.Pad.TODAY_CARD);
+            label = Ui.ON_HERO_SUB;
+            amountColor = Ui.ON_HERO;
+            meta = Ui.ON_HERO_SUB;
+            barFill = over ? Ui.RED_BG : Ui.ON_HERO;
+            barTrack = Ui.ON_HERO_TRACK;
         }
 
         LinearLayout head = Ui.h(this);
@@ -816,10 +839,27 @@ public class MainActivity extends Activity {
 
     // ================================================================== 설정 · 테스트 도구 (홈 › 톱니바퀴)
 
+    /** 화면 모드: 기기 따라 · 밝게 · 어둡게 (UiPrefs.theme). 고르면 바로 다시 그린다. */
+    private View themeCard() {
+        LinearLayout c = Ui.card(this);
+        c.addView(Ui.caption(this, "화면 모드 (자동: 휴대폰 다크 모드 설정을 따라요)"));
+        List<TextView> chips = new ArrayList<>();
+        for (UiPrefs.Theme t : UiPrefs.Theme.values()) {
+            chips.add(Ui.chip(this, t.label, UiPrefs.theme == t, v -> {
+                UiPrefs.theme = t;
+                UiPrefs.save(this);
+                recreate();
+            }));
+        }
+        Ui.stack(c, Ui.chipGrid(this, chips, 3), Ui.Space.ITEM);
+        return c;
+    }
+
     private void settingsScreen() {
         Settings s = store.settings();
         add(Ui.screenHeader(this, "설정", v -> open(PAGE_HOME)), 0);
         add(statusCard(), Ui.Space.BLOCK);
+        add(themeCard(), Ui.Space.BLOCK);
 
         // AI
         add(Ui.sectionTitle(this, "AI (Claude API)"), Ui.Space.SECTION);

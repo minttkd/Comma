@@ -26,7 +26,7 @@
 | `GREEN` / `GREEN_BG` | #37624C / #E8EFE9 | status/green |
 | `DIM` | #17201A 55% | dim |
 | `ON_BRAND` / `ON_BRAND_SUB` | WHITE / LINE | 먹색 바탕 위 글자 |
-| `ON_BRAND_TRACK` | 흰색 20% | 먹색 바탕 위 진행 막대 바탕 (홈 오늘 카드) |
+| `HERO_BG` / `ON_HERO` / `ON_HERO_SUB` / `ON_HERO_TRACK` | BRAND / WHITE / LINE / 흰색 20% | 먹색 강조 카드 (heroCard · 홈 오늘 카드 먹색). 어두운 화면에서는 짙은 초록 바탕 |
 | `GUARD_FILL` | status/green 16% | 결제 버튼 가드 표시 |
 
 ### `Ui.Tone`: 상태 색 묶음 (바탕 + 글자)
@@ -207,6 +207,16 @@
 | 남은 여윳돈 · 식비 예산 막대 | 남으면 초록, 다 쓰면 빨강(바탕 연빨강) | `remainColor()` · `remainTrack()` |
 | 기록 태그 · 결과 색 | 줄 바탕(TINT), 태그와 같은 연한 색: 멈춤·식비 예산 연초록, 이유 선택 결제 연한 먹색, 숙고 후 결제 연노랑, 나머지 회색 | `outcomeTone()` · `outcomeDotColor()` · `recordRowView()` |
 
+## 다크 모드
+
+색은 밝은 화면 · 어두운 화면 두 벌이다 (`Ui.applyPalette()` 안의 표: 왼쪽 밝게 · 오른쪽 어둡게).
+화면 모드는 `UiPrefs.theme`: **① 자동**(기본, 휴대폰이 다크 모드면 어둡게) · ② 밝게 · ③ 어둡게. 설정 화면 맨 위 "화면 모드" 카드나 UI 갤러리에서 바꾼다.
+
+- 색 이름은 밝은 화면 기준이다. `WHITE`는 "카드 바탕(surface)", `BRAND`는 "가장 진한 강조 색"이라 어두운 화면에서는 `WHITE`가 짙은 회색, `BRAND`(Primary 버튼)가 밝은 색, `ON_BRAND`가 어두운 글자가 된다. 먹색 강조 카드는 밝은 덩어리가 눈부셔서 `HERO_BG`(짙은 초록)로 따로 둔다.
+- 화면을 만들기 전에 `Ui.applyTheme(context)`를 부른다: `MainActivity` · `UiGalleryActivity` onCreate, 개입 오버레이 `show()` · `toast()`. 다크 모드 색을 고치려면 `applyPalette()` 오른쪽 값만 바꾸면 된다.
+- 데모 결제 화면은 다른 앱 흉내라 항상 밝은 색이다 (`Ui.applyPalette(false)`).
+- 색을 새로 쓸 때 `Color.WHITE` 같은 고정 색을 쓰면 다크 모드에서 안 바뀐다. 꼭 `Ui.` 색 이름을 쓴다.
+
 ## 앱 안에서 UI 바꿔 보기 (`UiPrefs`)
 
 설정(톱니바퀴) › 테스트 도구 › **UI 갤러리 열기** › 맨 위 **앱 UI 설정**에서 번호 칩으로 고른다. 고르면 바로 저장되고 홈으로 돌아가면 반영된다.
@@ -214,6 +224,7 @@
 
 | 설정 | 고를 수 있는 값 (굵게 = 기본) | 그리는 곳 |
 |---|---|---|
+| 화면 모드 (다크 모드) | **① 자동** · ② 밝게 · ③ 어둡게 | `Ui.applyTheme()` |
 | 오늘 쓸 수 있는 돈 카드 | **① 상태 색** · ② 먹색 · ③ 흰색 | `todayBudgetCard()` |
 | 남은 여윳돈 · 식비 예산 막대 | **켜기** · 끄기 | `tileBar()` |
 | 카드 회색 테두리 | **켜기** · 끄기 | `Ui.outlineCard()` |

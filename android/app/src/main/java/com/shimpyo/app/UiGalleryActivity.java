@@ -42,6 +42,8 @@ public class UiGalleryActivity extends Activity {
     @Override
     protected void onCreate(Bundle b) {
         super.onCreate(b);
+        UiPrefs.load(this);
+        Ui.applyTheme(this);
         MainActivity.styleWindow(this);
         LinearLayout root = Ui.v(this);
         root.setBackgroundColor(Ui.BG);
@@ -75,7 +77,14 @@ public class UiGalleryActivity extends Activity {
         Ui.stack(content, Ui.meta(this, "①이 기본 디자인이고 나머지는 비교용 후보예요. 고르면 바로 저장돼요. 홈으로 돌아가면 반영돼요. 기록 색은 설정 › 테스트 도구의 \"결과별 예시 기록\"을 넣고 보면 잘 보여요."), Ui.Space.TIGHT);
         LinearLayout c = Ui.card(this);
 
-        c.addView(Ui.caption(this, "홈 · 오늘 쓸 수 있는 돈 카드"));
+        c.addView(Ui.caption(this, "화면 모드 (다크 모드)"));
+        List<TextView> themes = new ArrayList<>();
+        for (UiPrefs.Theme t : UiPrefs.Theme.values()) {
+            themes.add(Ui.chip(this, t.label, UiPrefs.theme == t, v -> apply(() -> UiPrefs.theme = t)));
+        }
+        Ui.stack(c, Ui.chipGrid(this, themes, 3), Ui.Space.ITEM);
+
+        Ui.stack(c, Ui.caption(this, "홈 · 오늘 쓸 수 있는 돈 카드"), Ui.Space.SECTION);
         List<TextView> today = new ArrayList<>();
         for (UiPrefs.TodayCard t : UiPrefs.TodayCard.values()) {
             today.add(Ui.chip(this, t.label, UiPrefs.todayCard == t, v -> apply(() -> UiPrefs.todayCard = t)));
@@ -235,7 +244,8 @@ public class UiGalleryActivity extends Activity {
         List<Object[]> out = new ArrayList<>();
         for (Field f : cls.getDeclaredFields()) {
             int m = f.getModifiers();
-            if (!Modifier.isStatic(m) || !Modifier.isFinal(m) || skip.contains(f.getName())) continue;
+            // 색은 밝은/어두운 두 벌이라 final이 아니다 → static이면 모두 보여 준다
+            if (!Modifier.isStatic(m) || skip.contains(f.getName())) continue;
             Class<?> t = f.getType();
             if (t != int.class && t != float.class) continue;
             try {

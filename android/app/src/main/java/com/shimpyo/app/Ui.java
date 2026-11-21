@@ -49,41 +49,115 @@ final class Ui {
 
     // ================================================================== 색 (Figma Color 변수)
     // brand/blue는 이름과 달리 짙은 먹색이다.
+    //
+    // 밝은 화면 · 어두운 화면 두 벌이 있다 (applyPalette 아래 표). 그래서 final이 아니다.
+    // 화면을 만들기 전에 applyTheme(context)를 부르면 UiPrefs.theme(기기 따라 · 밝게 · 어둡게)대로 한 벌을 고른다.
+    // 이름은 밝은 화면 기준이다: WHITE는 "카드 바탕(surface)", BRAND는 "가장 진한 강조 색"이라
+    // 어두운 화면에서는 WHITE가 짙은 회색, BRAND가 밝은 색이 된다.
 
-    static final int BRAND = Color.parseColor("#292D2B");      // brand/blue · brand/navy
-    static final int BRAND_LIGHT = Color.parseColor("#EAF1EC"); // brand/blue-light
-    static final int TEXT = Color.parseColor("#292D2B");       // text/primary
-    static final int MUTED = Color.parseColor("#737A75");      // text/muted
-    static final int SUBTLE = Color.parseColor("#879A8A");     // text/subtle
-    static final int LINE = Color.parseColor("#DFE3DF");       // line · chip/stroke
-    static final int BG = Color.parseColor("#F3F5F2");         // bg
-    static final int WHITE = Color.WHITE;                      // surface
-    static final int RED = Color.parseColor("#A14D46");        // status/red
-    static final int RED_BG = Color.parseColor("#F7EAE8");     // status/red-bg
-    static final int AMBER = Color.parseColor("#8C6C23");      // status/amber
-    static final int AMBER_BG = Color.parseColor("#F7F0DE");   // status/amber-bg
-    static final int GREEN = Color.parseColor("#37624C");      // status/green
-    static final int GREEN_BG = Color.parseColor("#E8EFE9");   // status/green-bg
-    static final int DIM = Color.argb(140, 0x17, 0x20, 0x1A);  // dim #17201A · 55%
+    static int BRAND;          // brand/blue · brand/navy · Primary 버튼, 먹색 카드
+    static int BRAND_LIGHT;    // brand/blue-light
+    static int TEXT;           // text/primary
+    static int MUTED;          // text/muted
+    static int SUBTLE;         // text/subtle
+    static int LINE;           // line · chip/stroke
+    static int BG;             // bg
+    static int WHITE;          // surface (카드 · 시트 바탕)
+    static int RED;            // status/red
+    static int RED_BG;         // status/red-bg
+    static int AMBER;          // status/amber
+    static int AMBER_BG;       // status/amber-bg
+    static int GREEN;          // status/green
+    static int GREEN_BG;       // status/green-bg
+    static int DIM;            // dim · 개입 시트 뒤 어두운 막
+    static int ON_BRAND;       // 먹색(BRAND) 바탕 위 글자
+    static int ON_BRAND_SUB;   // 먹색 바탕 위 보조 글자
+    static int HERO_BG;        // 먹색 강조 카드 바탕 (heroCard · 홈 오늘 카드 ② 먹색). 밝은 화면은 BRAND와 같고, 어두운 화면은 짙은 초록
+    static int ON_HERO;        // 먹색 강조 카드 위 글자
+    static int ON_HERO_SUB;    // 먹색 강조 카드 위 보조 글자
+    static int ON_HERO_TRACK;  // 먹색 강조 카드 위 진행 막대 바탕
+    static int GUARD_FILL;     // 결제 버튼 가드 표시
 
-    static final int ON_BRAND = WHITE;                         // 먹색 바탕 위 글자
-    static final int ON_BRAND_SUB = LINE;                      // 먹색 바탕 위 보조 글자
-    static final int ON_BRAND_TRACK = Color.argb(51, 255, 255, 255); // 먹색 바탕 위 진행 막대 바탕 (흰색 20%)
-    static final int GUARD_FILL = Color.argb(40, 0x37, 0x62, 0x4C); // status/green 16% · 결제 버튼 가드 표시
+    /** 지금 어두운 화면 색을 쓰는 중인지. */
+    static boolean dark;
 
-    /** 상태 색 묶음 (바탕, 글자). 태그·알림에 쓴다. */
+    static {
+        applyPalette(false);
+    }
+
+    /** UiPrefs.theme대로 색 한 벌을 고른다. 화면(Activity · 오버레이)을 만들기 전에 부른다. */
+    static void applyTheme(Context c) {
+        boolean d;
+        switch (UiPrefs.theme) {
+            case LIGHT: d = false; break;
+            case DARK: d = true; break;
+            default: d = systemDark(c);
+        }
+        applyPalette(d);
+    }
+
+    /** 기기 설정이 다크 모드인지. */
+    static boolean systemDark(Context c) {
+        int night = c.getResources().getConfiguration().uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK;
+        return night == android.content.res.Configuration.UI_MODE_NIGHT_YES;
+    }
+
+    /** 색 두 벌. 왼쪽 밝은 화면(Figma 값) · 오른쪽 어두운 화면. */
+    static void applyPalette(boolean d) {
+        dark = d;
+        BRAND = c(d, "#292D2B", "#DCE4DE");
+        BRAND_LIGHT = c(d, "#EAF1EC", "#22302A");
+        TEXT = c(d, "#292D2B", "#E6EBE7");
+        MUTED = c(d, "#737A75", "#A3ACA6");
+        SUBTLE = c(d, "#879A8A", "#7F9486");
+        LINE = c(d, "#DFE3DF", "#333A35");
+        BG = c(d, "#F3F5F2", "#121513");
+        WHITE = c(d, "#FFFFFF", "#1C211E");
+        RED = c(d, "#A14D46", "#E8968C");
+        RED_BG = c(d, "#F7EAE8", "#3A2522");
+        AMBER = c(d, "#8C6C23", "#DDB96B");
+        AMBER_BG = c(d, "#F7F0DE", "#352D1A");
+        GREEN = c(d, "#37624C", "#88C8A3");
+        GREEN_BG = c(d, "#E8EFE9", "#1E2D24");
+        DIM = d ? Color.argb(170, 0, 0, 0) : Color.argb(140, 0x17, 0x20, 0x1A); // 밝은 화면: #17201A 55%
+        ON_BRAND = c(d, "#FFFFFF", "#151916");
+        ON_BRAND_SUB = c(d, "#DFE3DF", "#55605A");
+        // 강조 카드는 어두운 화면에서 밝은 덩어리가 되면 눈이 부셔서 BRAND와 따로 둔다
+        HERO_BG = c(d, "#292D2B", "#24342B");
+        ON_HERO = c(d, "#FFFFFF", "#E6EBE7");
+        ON_HERO_SUB = c(d, "#DFE3DF", "#A6B6AB");
+        ON_HERO_TRACK = Color.argb(51, 255, 255, 255); // 흰색 20%
+        GUARD_FILL = d ? Color.argb(48, 0x88, 0xC8, 0xA3) : Color.argb(40, 0x37, 0x62, 0x4C); // status/green 16%
+        Tone.refresh();
+    }
+
+    private static int c(boolean dark, String light, String darkHex) {
+        return Color.parseColor(dark ? darkHex : light);
+    }
+
+    /** 상태 색 묶음 (바탕, 글자). 태그·알림에 쓴다. 색 한 벌이 바뀌면 refresh()로 다시 채운다. */
     enum Tone {
-        SUCCESS(GREEN_BG, GREEN),       // Tag/Green · 멈춤, 여유
-        WARNING(AMBER_BG, AMBER),       // Tag/Amber · 주의, 숙고 후 결제
-        DANGER(RED_BG, RED),            // Tag/Red · 초과, 재무 위험
-        BRAND(BRAND_LIGHT, Ui.BRAND),   // Tag/Blue · 강도, 회고
-        ACCENT(BRAND_LIGHT, GREEN),     // 연초록 바탕 + 초록 글자 · 필수, 이유 선택 결제
-        NEUTRAL(BG, MUTED),             // 회색 · 선택, 기타
-        INVERSE(Ui.BRAND, WHITE);       // 먹색 바탕 · 강한 개입
+        SUCCESS,   // Tag/Green · 멈춤, 여유              (GREEN_BG, GREEN)
+        WARNING,   // Tag/Amber · 주의, 숙고 후 결제        (AMBER_BG, AMBER)
+        DANGER,    // Tag/Red · 초과, 재무 위험             (RED_BG, RED)
+        BRAND,     // Tag/Blue · 강도, 회고                 (BRAND_LIGHT, BRAND)
+        ACCENT,    // 연초록 바탕 + 초록 글자 · 필수, 이유 선택 결제 (BRAND_LIGHT, GREEN)
+        NEUTRAL,   // 회색 · 선택, 기타                     (BG, MUTED)
+        INVERSE;   // 먹색 바탕 · 강한 개입                  (BRAND, ON_BRAND)
 
-        final int bg, fg;
+        int bg, fg;
 
-        Tone(int bg, int fg) {
+        static void refresh() {
+            SUCCESS.set(GREEN_BG, GREEN);
+            WARNING.set(AMBER_BG, AMBER);
+            DANGER.set(RED_BG, RED);
+            BRAND.set(BRAND_LIGHT, Ui.BRAND);
+            ACCENT.set(BRAND_LIGHT, GREEN);
+            NEUTRAL.set(BG, MUTED);
+            INVERSE.set(Ui.BRAND, ON_BRAND);
+        }
+
+        private void set(int bg, int fg) {
             this.bg = bg;
             this.fg = fg;
         }
@@ -846,11 +920,11 @@ final class Ui {
      */
     static LinearLayout heroCard(Context c, String label, String value, String sub, boolean large) {
         LinearLayout h = v(c);
-        h.setBackground(round(c, BRAND, Radius.CARD));
+        h.setBackground(round(c, HERO_BG, Radius.CARD));
         pad(h, c, large ? Pad.HERO_LARGE : Pad.HERO);
-        h.addView(text(c, label, Font.CAPTION, ON_BRAND_SUB, MEDIUM));
-        stack(h, text(c, value, large ? Font.DISPLAY : Font.TITLE, ON_BRAND, BOLD), Space.LINE);
-        stack(h, text(c, sub, Font.CAPTION, ON_BRAND_SUB, REGULAR), Space.LINE);
+        h.addView(text(c, label, Font.CAPTION, ON_HERO_SUB, MEDIUM));
+        stack(h, text(c, value, large ? Font.DISPLAY : Font.TITLE, ON_HERO, BOLD), Space.LINE);
+        stack(h, text(c, sub, Font.CAPTION, ON_HERO_SUB, REGULAR), Space.LINE);
         return h;
     }
 
