@@ -240,6 +240,7 @@ final class Ui {
         static final int BAR_THIN = 6;       // 요약 타일 안 진행 막대 높이
         static final int LIST_DOT = 8;       // 기록 줄 왼쪽 결과 색 점
         static final int LIST_BAR = 4;       // 기록 줄 왼쪽 결과 색 막대 폭
+        static final int AVATAR = 28;        // 개입 채팅 쉼표 얼굴 (채팅 ②·③)
         static final int FIELD_WIDTH = 130;  // 설정 입력칸 폭
         static final int ROW_LABEL = 48;     // 리포트 강도 이름 칸
         static final float STROKE = 1f;
@@ -924,6 +925,45 @@ final class Ui {
         return track;
     }
 
+    /** 나눠진 막대: values 비율대로 colors를 이어 붙인다 (리포트 만족·후회). 합이 0이면 빈 막대. */
+    static LinearLayout splitBar(Context c, long[] values, int[] colors) {
+        LinearLayout track = h(c);
+        track.setBackground(round(c, BG, Radius.BAR));
+        track.setClipToOutline(true); // 양 끝만 둥글게
+        long total = 0;
+        for (long v : values) total += Math.max(0, v);
+        for (int i = 0; i < values.length; i++) {
+            if (values[i] <= 0) continue;
+            View part = new View(c);
+            part.setBackgroundColor(colors[i]);
+            track.addView(part, new LinearLayout.LayoutParams(0, dp(c, Size.BAR), values[i]));
+        }
+        if (total == 0) track.addView(new View(c), new LinearLayout.LayoutParams(0, dp(c, Size.BAR), 1f));
+        return track;
+    }
+
+    /** 범례 한 줄: 색 점 · 이름 · 값 (리포트 만족·후회). */
+    static LinearLayout legendRow(Context c, int color, String label, String value) {
+        LinearLayout r = h(c);
+        View dot = new View(c);
+        dot.setBackground(circle(color));
+        r.addView(dot, square(c, Size.LIST_DOT));
+        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f);
+        lp.leftMargin = dp(c, Space.ITEM);
+        r.addView(text(c, label, Font.BODY, MUTED, REGULAR), lp);
+        r.addView(text(c, value, Font.BODY, TEXT, MEDIUM));
+        return r;
+    }
+
+    /** 문장 카드: 머리말 · 한 문장(17 Bold) · 부가 설명 (리포트 ③ 한 달 이야기). */
+    static LinearLayout sentenceCard(Context c, String caption, String sentence, String sub) {
+        LinearLayout card = card(c);
+        card.addView(caption(c, caption));
+        stack(card, heading(c, sentence), Space.ITEM);
+        if (sub != null && !sub.isEmpty()) stack(card, meta(c, sub), Space.TIGHT);
+        return card;
+    }
+
     // ================================================================== 대화 (개입 오버레이)
 
     /** Bubble/AI: "쉼표" 라벨 + 질문 (bg, 모서리 4/16/16/16). */
@@ -939,6 +979,40 @@ final class Ui {
         // Figma: 말풍선 276 : 오른쪽 빈칸 44
         row.addView(b, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 276f));
         row.addView(new View(c), new LinearLayout.LayoutParams(0, 1, 44f));
+        return row;
+    }
+
+    /** 쉼표 얼굴: 초록 동그라미 안 "쉼" (개입 채팅 ②·③). square(c, Size.AVATAR)로 붙인다. */
+    static TextView avatar(Context c) {
+        TextView t = text(c, "쉼", Font.CAPTION, ON_BRAND, BOLD);
+        t.setGravity(Gravity.CENTER);
+        t.setBackground(circle(GREEN));
+        t.setIncludeFontPadding(false);
+        return t;
+    }
+
+    /** 쉼표 얼굴 + 말풍선 (개입 채팅 ②·③): 얼굴이 "쉼표" 이름표를 대신한다. bg는 말풍선 바탕. */
+    static LinearLayout bubbleAi(Context c, String question, boolean faded, int bg) {
+        LinearLayout row = h(c);
+        row.setGravity(Gravity.TOP);
+        row.addView(avatar(c), square(c, Size.AVATAR));
+        TextView b = text(c, question, Font.BODY, TEXT, MEDIUM);
+        b.setBackground(corners(c, bg, Radius.BAR, Radius.CARD, Radius.CARD, Radius.CARD));
+        pad(b, c, Pad.BUBBLE_H, Pad.BUBBLE_AI_V);
+        LinearLayout.LayoutParams p = new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 276f);
+        p.leftMargin = dp(c, Space.ITEM);
+        row.addView(b, p);
+        row.addView(new View(c), new LinearLayout.LayoutParams(0, 1, 44f - Size.AVATAR));
+        if (faded) row.setAlpha(0.6f);
+        return row;
+    }
+
+    /** 내 답 말풍선 (색 지정). */
+    static LinearLayout bubbleUser(Context c, String answer, int bg, int fg) {
+        LinearLayout row = bubbleUser(c, answer);
+        TextView b = (TextView) row.getChildAt(0);
+        b.setTextColor(fg);
+        b.setBackground(corners(c, bg, Radius.CARD, Radius.BAR, Radius.CARD, Radius.CARD));
         return row;
     }
 

@@ -121,7 +121,9 @@ public class MainActivity extends Activity {
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
         super.onActivityResult(requestCode, resultCode, data);
-        if (requestCode == REQ_GALLERY && resultCode == RESULT_OK) page = PAGE_HOME; // 이어서 onResume이 홈을 그린다
+        // 이어서 onResume이 그 화면을 그린다
+        if (requestCode == REQ_GALLERY && resultCode == RESULT_OK) page = PAGE_HOME;
+        if (requestCode == REQ_GALLERY && resultCode == UiGalleryActivity.RESULT_REPORT) page = PAGE_REPORT;
     }
 
     @Override
@@ -748,6 +750,16 @@ public class MainActivity extends Activity {
         add(Ui.screenHeader(this, LocalDate.now(zone).getMonthValue() + "월 리포트", v -> open(PAGE_HOME)), 0);
         add(Ui.text(this, b.cycleStart + " ~ " + b.nextPayday.minusDays(1) + " (급여일 기준)", Ui.Font.CAPTION, Ui.SUBTLE, Ui.REGULAR), Ui.Space.LINE);
 
+        // 내용 후보: UiPrefs.reportStyle (UI 갤러리 › 앱 UI 설정 › 리포트 내용). ②~④는 ReportViews.
+        if (UiPrefs.reportStyle != UiPrefs.ReportStyle.NOW) {
+            ReportViews.Data d = ReportViews.Data.of(s, recs, now, zone);
+            if (UiPrefs.reportStyle == UiPrefs.ReportStyle.VALUES) ReportViews.values(this, content, d, zone);
+            else if (UiPrefs.reportStyle == UiPrefs.ReportStyle.STORY) ReportViews.story(this, content, d, zone);
+            else ReportViews.simple(this, content, d);
+            add(foodNote(b), Ui.Space.BLOCK);
+            return;
+        }
+
         int rate = st.mindChangeRate();
         add(Ui.heroCard(this, "마음 돌림 비율", rate < 0 ? "–" : rate + "%",
                 st.interventions == 0 ? "아직 쉼표가 말을 건 결제가 없어요"
@@ -762,8 +774,13 @@ public class MainActivity extends Activity {
                 Ui.statTile(this, "회고 후회", st.regret + "/" + st.reviewed, "후회 응답 " + pct(st.regret, st.reviewed) + "%", false),
                 Ui.Space.ROW), Ui.Space.BLOCK);
         add(outcomeCard(st), Ui.Space.BLOCK);
-        add(Ui.tintNote(this, "식비 예산 " + Money.won(b.foodSpent) + " / " + Money.won(b.foodBudget) + " 사용 · 다음 달부터 쿠팡 식료품 실측값으로 보정해요",
-                Ui.Font.CAPTION, Ui.BRAND, Ui.Radius.INPUT, Ui.Pad.FOOD_NOTE_H, Ui.Pad.FOOD_NOTE_V), Ui.Space.BLOCK);
+        add(foodNote(b), Ui.Space.BLOCK);
+    }
+
+    /** 리포트 맨 아래 식비 예산 한 줄. */
+    private View foodNote(BudgetEngine.State b) {
+        return Ui.tintNote(this, "식비 예산 " + Money.won(b.foodSpent) + " / " + Money.won(b.foodBudget) + " 사용 · 다음 달부터 쿠팡 식료품 실측값으로 보정해요",
+                Ui.Font.CAPTION, Ui.BRAND, Ui.Radius.INPUT, Ui.Pad.FOOD_NOTE_H, Ui.Pad.FOOD_NOTE_V);
     }
 
     /** 강도별 멈춘 비율: 강도 이름 · 막대 · "멈춤/전체 · %". */
@@ -918,6 +935,10 @@ public class MainActivity extends Activity {
             addSampleOutcomes();
             toast("예시 기록 4건을 넣었어요");
         }));
+        tc.addView(testButton("리포트 예시 기록 12건 추가 (고른 이유·다음 날 만족/후회 포함, 리포트 후보 확인용)", () -> {
+            addSampleMonth();
+            toast("이번 주기에 예시 기록 12건을 넣었어요");
+        }));
         tc.addView(testButton("③ 지난 며칠 야식 3건 추가 (다음 배민 야식이 4번째)", () -> {
             long now = System.currentTimeMillis();
             int[] days = {5, 3, 1};
@@ -1028,6 +1049,48 @@ public class MainActivity extends Activity {
             r.intensity = (Intensity) s[4];
             r.chip = (String) s[5];
             boolean food = (Boolean) s[6];
+            if (r.outcome.spend) {
+                if (food) r.food = r.amount;
+                else r.discretionary = r.amount;
+            }
+            store.addRecord(r);
+        }
+    }
+
+    /** 리포트 후보 확인용: 이번 급여일 주기에 고루 퍼진 12건 (고른 이유 · 다음 날 회고 · 멈춘 질문 포함). */
+    private void addSampleMonth() {
+        long now = System.currentTimeMillis();
+        BudgetEngine.State b = BudgetEngine.compute(store.settings(), store.records(), now, zone);
+        long start = b.cycleStart.atStartOfDay(zone).toInstant().toEpochMilli();
+        Object[][] samples = {
+                // 앱, 제목, 금액, 결과, 강도, 고른 이유, 다음 날 회고, 멈춘 질문, 야식, 식비
+                {TargetApp.MUSINSA, "울 코트 (예시)", 129_000L, Outcome.PREVENTED, Intensity.STRONG, null, null, 3, false, false},
+                {TargetApp.BAEMIN, "치킨 세트 (예시)", 23_000L, Outcome.REASON_PAY, Intensity.LIGHT, "그냥 먹고 싶어요", "후회돼요", 0, true, false},
+                {TargetApp.BAEMIN, "떡볶이 (예시)", 16_000L, Outcome.REASON_PAY, Intensity.LIGHT, "끼니 대용이에요", "만족해요", 0, false, false},
+                {TargetApp.COUPANG, "무선 이어폰 (예시)", 89_000L, Outcome.PREVENTED, Intensity.MEDIUM, null, null, 1, false, false},
+                {TargetApp.COUPANG, "휴지·세제 (예시)", 26_000L, Outcome.REASON_PAY, Intensity.LIGHT, "다 떨어졌어요", "만족해요", 0, false, false},
+                {TargetApp.MUSINSA, "셔츠 (예시)", 39_000L, Outcome.DELIBERATE_PAY, Intensity.MEDIUM, null, "후회돼요", 0, false, false},
+                {TargetApp.BAEMIN, "피자 (예시)", 28_000L, Outcome.REASON_PAY, Intensity.LIGHT, "그냥 먹고 싶어요", "후회돼요", 0, true, false},
+                {TargetApp.MUSINSA, "머리끈 세트 (예시)", 4_500L, Outcome.REASON_PAY, Intensity.LIGHT, "선물이에요", "만족해요", 0, false, false},
+                {TargetApp.BAEMIN, "회·초밥 세트 (예시)", 45_000L, Outcome.PREVENTED, Intensity.STRONG, null, null, 2, true, false},
+                {TargetApp.COUPANG, "운동화 (예시)", 69_000L, Outcome.DELIBERATE_PAY, Intensity.STRONG, null, "만족해요", 0, false, false},
+                {TargetApp.BAEMIN, "버거 세트 (예시)", 12_000L, Outcome.REASON_PAY, Intensity.LIGHT, "약속이 있어요", null, 0, false, false},
+                {TargetApp.COUPANG, "식료품 (예시)", 18_000L, Outcome.PASS, null, null, null, 0, false, true},
+        };
+        for (int i = 0; i < samples.length; i++) {
+            Object[] s = samples[i];
+            Record r = new Record();
+            r.ts = start + (now - start) * (i + 1) / (samples.length + 1);
+            r.app = (TargetApp) s[0];
+            r.title = (String) s[1];
+            r.amount = (Long) s[2];
+            r.outcome = (Outcome) s[3];
+            r.intensity = (Intensity) s[4];
+            r.chip = (String) s[5];
+            r.review = (String) s[6];
+            r.stoppedAt = (Integer) s[7];
+            r.lateNight = (Boolean) s[8];
+            boolean food = (Boolean) s[9];
             if (r.outcome.spend) {
                 if (food) r.food = r.amount;
                 else r.discretionary = r.amount;

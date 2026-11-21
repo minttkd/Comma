@@ -79,6 +79,7 @@ final class OverlayController {
 
     void show(Session s) {
         session = s;
+        UiPrefs.load(ctx); // 접근성 서비스에서는 MainActivity를 거치지 않을 수 있어 여기서 읽는다
         if (root == null) {
             buildRoot();
             WindowManager.LayoutParams p = new WindowManager.LayoutParams(
@@ -257,6 +258,8 @@ final class OverlayController {
         if (sheet == null || session == null) return;
         Session s = session;
         sheet.removeAllViews();
+        // 채팅 ③ 쉼표 색: 시트 바탕을 연초록으로
+        sheet.setBackground(Ui.corners(ctx, style() == UiPrefs.ChatStyle.BRAND ? Ui.BRAND_LIGHT : Ui.WHITE, Ui.Radius.SHEET, Ui.Radius.SHEET, 0, 0));
         add(headerRow(s), 0);
         // 방금 멈춘 뒤 다시 결제를 누른 경우: 첫 화면에만 맥락 한 줄을 붙인다.
         if (s.retryAfterStop && s.answers.isEmpty()) {
@@ -266,12 +269,57 @@ final class OverlayController {
         else renderDialogue(s);
     }
 
+    // ------------------------------------------------------------------ 채팅 모양 (UiPrefs.chatStyle)
+
+    private static UiPrefs.ChatStyle style() {
+        return UiPrefs.chatStyle;
+    }
+
+    /** 쉼표 말풍선: ① 회색 + "쉼표" 이름표, ② 얼굴 + 연초록, ③ 얼굴 + 흰색(연초록 시트 위). */
+    private View aiBubble(String text, boolean faded) {
+        switch (style()) {
+            case SOFT: return Ui.bubbleAi(ctx, text, faded, Ui.BRAND_LIGHT);
+            case BRAND: return Ui.bubbleAi(ctx, text, faded, Ui.WHITE);
+            default: return Ui.bubbleAi(ctx, text, faded);
+        }
+    }
+
+    /** 내 답 말풍선: ①·③ 먹색, ② 초록. */
+    private View userBubble(String text) {
+        if (style() == UiPrefs.ChatStyle.SOFT) return Ui.bubbleUser(ctx, text, Ui.GREEN, Ui.WHITE);
+        return Ui.bubbleUser(ctx, text);
+    }
+
+    /** 입력칸 · 내 답 상자 바탕: 연초록 시트(③) 위에서는 흰색. */
+    private int fieldBg() {
+        return style() == UiPrefs.ChatStyle.BRAND ? Ui.WHITE : Ui.BG;
+    }
+
+    /** ②·③ 머리줄: 쉼표 얼굴 · "쉼표" · 앱과 금액 / 진행 점 · X. 트리거·강도 같은 시스템 용어는 보이지 않는다. */
+    private View softHeaderRow(Session s) {
+        LinearLayout row = Ui.h(ctx);
+        row.addView(Ui.avatar(ctx), Ui.square(ctx, Ui.Size.AVATAR));
+        LinearLayout name = Ui.v(ctx);
+        name.addView(Ui.text(ctx, "쉼표", Ui.Font.LABEL, Ui.GREEN, Ui.BOLD));
+        String where = s.attempt.app == null ? "" : (s.attempt.app == TargetApp.BAEMIN ? "배민" : s.attempt.app.label) + " · ";
+        name.addView(Ui.text(ctx, where + Money.won(s.attempt.amount) + " 결제 전에 잠깐", Ui.Font.CAPTION, Ui.MUTED, Ui.REGULAR));
+        Ui.inlineFill(row, name, Ui.Space.ITEM);
+        if (s.eval.intensity != Intensity.LIGHT) {
+            int total = s.total();
+            int current = s.inDecisionStep() ? total : Math.min(s.index + 1, total);
+            Ui.inline(row, Ui.steps(ctx, current, total, true), Ui.Space.TIGHT);
+        }
+        Ui.inline(row, Ui.closeButton(ctx, v -> cb.onClose(s)), Ui.Space.TIGHT);
+        return row;
+    }
+
     private static String intensityLabel(Intensity i) {
         return i.label + (i == Intensity.LIGHT ? " ●○○" : i == Intensity.MEDIUM ? " ●●○" : " ●●●");
     }
 
     /** Header: 트리거 태그 · (필요 판정) · 강도 태그 · 진행 표시 · X */
     private View headerRow(Session s) {
+        if (style() != UiPrefs.ChatStyle.NOW) return softHeaderRow(s);
         LinearLayout row = Ui.h(ctx);
         FlowLayout tags = Ui.tagFlow(ctx);
         for (Trigger t : s.eval.triggers) {
@@ -340,14 +388,14 @@ final class OverlayController {
         scroll.addView(conv);
         int n = Math.min(s.answers.size(), s.questions.size());
         for (int i = 0; i < n; i++) {
-            Ui.stack(conv, Ui.bubbleAi(ctx, s.questions.get(i).text, true), i > 0 ? Ui.Space.STACK : 0);
-            Ui.stack(conv, Ui.bubbleUser(ctx, s.answers.get(i)), Ui.Space.STACK);
+            Ui.stack(conv, aiBubble(s.questions.get(i).text, true), i > 0 ? Ui.Space.STACK : 0);
+            Ui.stack(conv, userBubble(s.answers.get(i)), Ui.Space.STACK);
         }
         Question q = s.current();
         if (q == null || s.loading) {
             Ui.stack(conv, Ui.text(ctx, "쉼표가 다음 질문을 고르는 중…", Ui.Font.BODY, Ui.SUBTLE, Ui.MEDIUM), n > 0 ? Ui.Space.STACK : 0);
         } else {
-            Ui.stack(conv, Ui.bubbleAi(ctx, q.text, false), n > 0 ? Ui.Space.STACK : 0);
+            Ui.stack(conv, aiBubble(q.text, false), n > 0 ? Ui.Space.STACK : 0);
         }
         add(scroll, Ui.Space.STACK);
         scroll.post(() -> scroll.fullScroll(View.FOCUS_DOWN));
@@ -370,7 +418,7 @@ final class OverlayController {
     /** Input (선택): 회색 바탕, 입력하면 오른쪽에 [보내기]가 나타난다. 키보드의 보내기로도 전송. */
     private View optionalInput(Session s) {
         LinearLayout box = Ui.h(ctx);
-        box.setBackground(Ui.round(ctx, Ui.BG, Ui.Radius.INPUT));
+        box.setBackground(Ui.round(ctx, fieldBg(), Ui.Radius.INPUT));
         EditText in = bareInput("직접 입력 (선택)");
         box.addView(in, Ui.weight1());
         TextView send = Ui.text(ctx, "보내기", Ui.Font.BODY, Ui.BRAND, Ui.BOLD);
@@ -459,7 +507,7 @@ final class OverlayController {
     private void renderDecision(Session s) {
         add(Ui.title(ctx, "어떻게 할까요?"), Ui.Space.STACK);
         add(Ui.factBox(ctx, QuestionTemplates.factLine(s.eval, s.attempt)), Ui.Space.STACK);
-        LinearLayout mine = Ui.tintBox(ctx, Ui.BG, Ui.Pad.ANSWER_BOX, Ui.Pad.ANSWER_BOX);
+        LinearLayout mine = Ui.tintBox(ctx, fieldBg(), Ui.Pad.ANSWER_BOX, Ui.Pad.ANSWER_BOX);
         mine.addView(Ui.caption(ctx, "내 답"));
         int n = Math.min(s.answers.size(), s.questions.size());
         for (int i = 0; i < n; i++) {

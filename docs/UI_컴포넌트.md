@@ -176,6 +176,9 @@
 | `tintNote(c, s, Font, fg, Radius, padH, padV)` | 연초록 안내 한 줄 | S01, 리포트, 개입 재시도 |
 | `factBox(c, s)` | 사실 한 줄 (왼쪽 초록 선) | 개입 오버레이 |
 | `bar(c, ratio, fill, track[, heightDp])` | 진행 막대 | 홈, 리포트 |
+| `splitBar(c, values[], colors[])` | 나눠진 막대 (값 비율대로 색 이어 붙임) | 리포트 ② 만족·후회 |
+| `legendRow(c, color, label, value)` | 색 점 · 이름 · 값 | 리포트 ② |
+| `sentenceCard(c, caption, sentence, sub)` | 머리말 · 한 문장 · 부가 설명 | 리포트 ③ 한 달 이야기 |
 | `divider(c)` | 1dp 선 | 기록 화면 |
 
 ### 대화 · 내비게이션 · 입력
@@ -186,6 +189,8 @@
 | `screenHeader(c, title, back)` | ← 뒤로 + 화면 제목 (기록 · 리포트 · 설정) |
 | `sectionHeader(c, title, link, click)` | 섹션 머리말 + 오른쪽 글자 링크 (홈 "최근 기록 · 더보기 ›") |
 | `settingsButton(c, click)` | 톱니바퀴 아이콘 (코드로 그림, `GearDrawable`) |
+| `avatar(c)` | 쉼표 얼굴 (초록 동그라미 "쉼", 개입 채팅 ②·③) |
+| `bubbleAi(c, question, faded, bg)` · `bubbleUser(c, answer, bg, fg)` | 얼굴 + 말풍선 · 색 지정 내 답 (개입 채팅 ②·③) |
 | `bottomNav(c, labels, selected, onSelect)` | BottomNav (지금 앱에서는 안 씀) |
 | `steps(c, current, total, doneFilled)` | 온보딩 단계 점 |
 | `checkRow(c, label, checked, click)` | 체크 상자 + 문구 |
@@ -213,6 +218,13 @@
 | 남은 여윳돈 · 식비 예산 막대 | **켜기** · 끄기 | `tileBar()` |
 | 카드 회색 테두리 | **켜기** · 끄기 | `Ui.outlineCard()` |
 | 기록 결과 색 표시 | **① 줄 바탕** · ② 점 · ③ 왼쪽 막대 · ④ 없음 | `recordRowView()` |
+| 개입 채팅 (고르는 중) | **① 지금** · ② 부드럽게 · ③ 쉼표 색 | `OverlayController` (`aiBubble`, `userBubble`, `softHeaderRow`) |
+| 리포트 내용 (고르는 중) | **① 지금** · ② 만족·후회 · ③ 한 달 이야기 · ④ 숫자 세 개 | `reportScreen()` → `ReportViews` |
+
+개입 채팅 · 리포트는 아직 팀이 고르는 중이라 ①이 지금 화면이다. 정해지면 그 값을 ①(기본)로 옮긴다.
+
+- **개입 채팅 후보**: ①은 트리거·강도 태그("재정위험 전환점", "보통 ●●○")와 회색 말풍선. ②는 태그 대신 쉼표 얼굴 · "배민 · 23,000원 결제 전에 잠깐", 진행은 점, 쉼표 말풍선 연초록 · 내 답 초록. ③은 ②의 머리줄에 시트 바탕을 연초록으로, 말풍선은 흰색. UI 갤러리의 "개입 화면 미리보기"에서 바로 눌러 볼 수 있다.
+- **리포트 후보**: 시스템 용어(가벼움·보통·강함, 결과 분류) 대신 사용자가 직접 한 판단을 보여 준다. 결제할 때 고른 이유(가벼움 이유 칩), 다음 날 돌아본 마음(S09 만족해요 / 후회돼요), 대화하다 멈춘 결제. 집계는 `ReportViews.Data`가 화면에서 직접 센다 (core `Stats`는 그대로). 설정 › 테스트 도구 › **리포트 예시 기록 12건 추가**로 데이터를 넣고 보면 된다.
 
 기록 색을 볼 때는 테스트 도구의 **결과별 예시 기록 4건 추가**로 멈춤·이유 선택·숙고 후·식비 기록을 넣고 보면 잘 보인다.
 
@@ -228,7 +240,7 @@
 | S04 홈 | `homeScreen()` | `homeHeader`(톱니바퀴), `todayBudgetCard`, 이번 달 쉼표(→ 리포트), 최근 기록(더보기 → 기록), `recentRecordsCard`, `demoCard` |
 | S09 회고 | `showReview()` | `reviewSheetContent` |
 | 기록 (홈 › 더보기) | `recordsScreen()` | `recordRow` |
-| S10 리포트 (홈 › 이번 달 쉼표) | `reportScreen()` | `intensityCard`, `outcomeCard` |
+| S10 리포트 (홈 › 이번 달 쉼표) | `reportScreen()` (후보 ②~④는 `ReportViews.values/story/simple`) | `intensityCard`, `outcomeCard` |
 | 설정 (홈 › 톱니바퀴) | `settingsScreen()` | `statusCard`, `numberField`, `testTools`, `logCard`, `screenTextCard` |
 
 하단 탭은 없다. 홈이 기본 화면이고 기록 · 리포트 · 설정은 홈에서 들어가는 하위 화면이다 (`open(PAGE_...)`, ← 뒤로나 기기 뒤로가기로 홈).

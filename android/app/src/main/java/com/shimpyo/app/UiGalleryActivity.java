@@ -1,6 +1,16 @@
 package com.shimpyo.app;
 
 import android.app.Activity;
+import android.widget.FrameLayout;
+
+import com.shimpyo.app.core.BudgetEngine;
+import com.shimpyo.app.core.Enums.Decision;
+import com.shimpyo.app.core.Enums.Intensity;
+import com.shimpyo.app.core.Enums.TargetApp;
+import com.shimpyo.app.core.Enums.Trigger;
+import com.shimpyo.app.core.QuestionTemplates;
+import com.shimpyo.app.core.Session;
+import com.shimpyo.app.core.TriggerEngine;
 import android.os.Bundle;
 import android.view.Gravity;
 import android.view.View;
@@ -16,6 +26,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 import java.util.Locale;
+import java.time.ZoneId;
 
 /**
  * UI 갤러리 (개발용): Ui.java의 토큰과 컴포넌트를 이름표와 함께 한 화면에 늘어놓는다.
@@ -51,6 +62,7 @@ public class UiGalleryActivity extends Activity {
         UiPrefs.load(this);
         content.addView(Ui.bodySmall(this, "Ui.java의 토큰과 부품 모음이에요. 회색 글자가 코드에서 쓰는 이름이에요. 값을 고치고 다시 실행하면 여기서 바로 확인할 수 있어요."));
         uiSettings();
+        chatPreview();
         tokens();
         components();
     }
@@ -83,6 +95,21 @@ public class UiGalleryActivity extends Activity {
         }
         Ui.stack(c, Ui.chipGrid(this, rec, 2), Ui.Space.ITEM);
 
+        Ui.stack(c, Ui.caption(this, "개입 채팅 (결제 화면 위 대화) · 아래 미리보기"), Ui.Space.SECTION);
+        List<TextView> chat = new ArrayList<>();
+        for (UiPrefs.ChatStyle t : UiPrefs.ChatStyle.values()) {
+            chat.add(Ui.chip(this, t.label, UiPrefs.chatStyle == t, v -> apply(() -> UiPrefs.chatStyle = t)));
+        }
+        Ui.stack(c, Ui.chipGrid(this, chat, 3), Ui.Space.ITEM);
+
+        Ui.stack(c, Ui.caption(this, "리포트 내용 · [리포트에서 보기]"), Ui.Space.SECTION);
+        List<TextView> rep = new ArrayList<>();
+        for (UiPrefs.ReportStyle t : UiPrefs.ReportStyle.values()) {
+            rep.add(Ui.chip(this, t.label, UiPrefs.reportStyle == t, v -> apply(() -> UiPrefs.reportStyle = t)));
+        }
+        Ui.stack(c, Ui.chipGrid(this, rep, 2), Ui.Space.ITEM);
+        Ui.stack(c, Ui.micro(this, "리포트는 설정 › 테스트 도구 › \"리포트 예시 기록 12건 추가\"를 넣고 보면 잘 보여요.", Ui.MUTED), Ui.Space.TIGHT);
+
         Ui.stack(c, Ui.buttonPair(this,
                 Ui.button(this, "기본값으로", false, v -> {
                     UiPrefs.reset(this);
@@ -92,7 +119,70 @@ public class UiGalleryActivity extends Activity {
                     setResult(RESULT_OK); // MainActivity가 설정 대신 홈을 연다
                     finish();
                 })), Ui.Space.SECTION);
+        Ui.stack(c, Ui.button(this, "리포트에서 보기", false, v -> {
+            setResult(RESULT_REPORT);
+            finish();
+        }), Ui.Space.ITEM);
         Ui.stack(content, c, Ui.Space.ITEM);
+    }
+
+    /** [리포트에서 보기] → MainActivity가 리포트를 연다. */
+    static final int RESULT_REPORT = RESULT_FIRST_USER;
+
+    // ================================================================== 개입 화면 미리보기
+
+    /** 지금 고른 개입 채팅 방식으로 보통(대화 중) · 가벼움(이유 칩) 화면을 그린다. 기록은 남지 않는다. */
+    private void chatPreview() {
+        section("개입 화면 미리보기 (" + UiPrefs.chatStyle.label + ")");
+        Ui.stack(content, Ui.meta(this, "실제 결제 화면 위에 뜨는 그대로예요. 칩을 누르면 다음 질문으로 넘어가요 (기록은 남지 않아요)."), Ui.Space.TIGHT);
+        sample("보통 · 배민 치킨 23,000원, 이번 주 세 번째 야식 (두 번째 질문)", previewOverlay(Intensity.MEDIUM));
+        sample("가벼움 · 배민 야식 (이유 칩)", previewOverlay(Intensity.LIGHT));
+    }
+
+    private View previewOverlay(Intensity in) {
+        long now = System.currentTimeMillis();
+        Store store = Store.get(this);
+        com.shimpyo.app.core.PaymentAttempt a = new com.shimpyo.app.core.PaymentAttempt();
+        a.app = TargetApp.BAEMIN;
+        a.amount = 23_000;
+        a.title = "후라이드 치킨 세트";
+        a.ts = now;
+        TriggerEngine.Evaluation e = new TriggerEngine.Evaluation();
+        e.budget = BudgetEngine.compute(store.settings(), store.records(), now, ZoneId.systemDefault());
+        e.intensity = in;
+        e.base = in;
+        e.discretionary = a.amount;
+        e.remainingAfter = e.budget.remainingNow - a.amount;
+        e.dailyAfter = e.budget.daysLeft > 0 ? Math.max(0, e.remainingAfter) / e.budget.daysLeft : 0;
+        // 야식 반복으로 걸린 경우: 예산 상태와 상관없이 같은 질문이 나와 비교하기 좋다
+        e.triggers.add(Trigger.LATE_NIGHT);
+        e.lateHour = true;
+        e.lateCountNow = in == Intensity.LIGHT ? 2 : 3;
+        Session s = new Session("gallery-" + in, now);
+        s.attempt = a;
+        s.eval = e;
+        s.state = Session.State.ACTIVE;
+        if (in != Intensity.LIGHT) {
+            s.questions.add(QuestionTemplates.build(e, a, 0, null));
+            s.answer("그냥 당겨요", Decision.NONE);
+            s.questions.add(QuestionTemplates.build(e, a, 1, null));
+        }
+        OverlayController[] ref = new OverlayController[1];
+        ref[0] = new OverlayController(this, new OverlayController.Callbacks() {
+            public void onStop(Session x) { toast("미리보기: 그만둘게요"); }
+            public void onReason(Session x, String chip) { toast("미리보기: 이유 '" + chip + "'"); }
+            public void onBuy(Session x) { toast("미리보기: 그래도 살게요"); }
+            public void onClose(Session x) { toast("미리보기: 닫기"); }
+            public void requestNext(Session x) {
+                x.questions.add(QuestionTemplates.build(x.eval, x.attempt, x.index, null));
+                x.loading = false;
+                ref[0].render();
+            }
+        });
+        FrameLayout root = ref[0].preview(s);
+        root.setBackground(Ui.round(this, Ui.DIM, Ui.Radius.SHEET)); // 결제 화면을 덮는 어두운 바탕
+        Ui.pad(root, this, 0, Ui.Pad.SHEET_TOP, 0, 0);
+        return root;
     }
 
     private interface BoolSetter {
