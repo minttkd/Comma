@@ -48,116 +48,47 @@ final class Ui {
     private Ui() {}
 
     // ================================================================== 색 (Figma Color 변수)
-    // brand/blue는 이름과 달리 짙은 먹색이다.
-    //
-    // 밝은 화면 · 어두운 화면 두 벌이 있다 (applyPalette 아래 표). 그래서 final이 아니다.
-    // 화면을 만들기 전에 applyTheme(context)를 부르면 UiPrefs.theme(기기 따라 · 밝게 · 어둡게)대로 한 벌을 고른다.
-    // 이름은 밝은 화면 기준이다: WHITE는 "카드 바탕(surface)", BRAND는 "가장 진한 강조 색"이라
-    // 어두운 화면에서는 WHITE가 짙은 회색, BRAND가 밝은 색이 된다.
+    // brand/blue는 이름과 달리 짙은 먹색이다. 서비스 색(쉼표 초록)은 GREEN · BRAND_LIGHT.
 
-    static int BRAND;          // brand/blue · brand/navy · Primary 버튼, 먹색 카드
-    static int BRAND_LIGHT;    // brand/blue-light
-    static int TEXT;           // text/primary
-    static int MUTED;          // text/muted
-    static int SUBTLE;         // text/subtle
-    static int LINE;           // line · chip/stroke
-    static int BG;             // bg
-    static int WHITE;          // surface (카드 · 시트 바탕)
-    static int RED;            // status/red
-    static int RED_BG;         // status/red-bg
-    static int AMBER;          // status/amber
-    static int AMBER_BG;       // status/amber-bg
-    static int GREEN;          // status/green
-    static int GREEN_BG;       // status/green-bg
-    static int DIM;            // dim · 개입 시트 뒤 어두운 막
-    static int ON_BRAND;       // 먹색(BRAND) 바탕 위 글자
-    static int ON_BRAND_SUB;   // 먹색 바탕 위 보조 글자
-    static int HERO_BG;        // 먹색 강조 카드 바탕 (heroCard · 홈 오늘 카드 ② 먹색). 밝은 화면은 BRAND와 같고, 어두운 화면은 짙은 초록
-    static int ON_HERO;        // 먹색 강조 카드 위 글자
-    static int ON_HERO_SUB;    // 먹색 강조 카드 위 보조 글자
-    static int ON_HERO_TRACK;  // 먹색 강조 카드 위 진행 막대 바탕
-    static int GUARD_FILL;     // 결제 버튼 가드 표시
+    static final int BRAND = Color.parseColor("#292D2B");      // brand/blue · brand/navy · Primary 버튼
+    static final int BRAND_LIGHT = Color.parseColor("#EAF1EC"); // brand/blue-light · 서비스 색 연한 바탕
+    static final int TEXT = Color.parseColor("#292D2B");       // text/primary
+    static final int MUTED = Color.parseColor("#737A75");      // text/muted
+    static final int SUBTLE = Color.parseColor("#879A8A");     // text/subtle
+    static final int LINE = Color.parseColor("#DFE3DF");       // line · chip/stroke
+    static final int BG = Color.parseColor("#F3F5F2");         // bg
+    static final int WHITE = Color.WHITE;                      // surface (카드 · 시트 바탕)
+    static final int RED = Color.parseColor("#A14D46");        // status/red
+    static final int RED_BG = Color.parseColor("#F7EAE8");     // status/red-bg
+    static final int AMBER = Color.parseColor("#8C6C23");      // status/amber
+    static final int AMBER_BG = Color.parseColor("#F7F0DE");   // status/amber-bg
+    static final int GREEN = Color.parseColor("#37624C");      // status/green · 서비스 색(쉼표 초록)
+    static final int GREEN_BG = Color.parseColor("#E8EFE9");   // status/green-bg
+    static final int DIM = Color.argb(140, 0x17, 0x20, 0x1A);  // dim #17201A · 55%
 
-    /** 지금 어두운 화면 색을 쓰는 중인지. */
-    static boolean dark;
+    static final int ON_BRAND = WHITE;                         // 먹색(BRAND) 바탕 위 글자
+    static final int ON_BRAND_SUB = LINE;                      // 먹색 바탕 위 보조 글자
+    // 강조 카드(heroCard · 리포트 "이번 달 내 기준")는 서비스 색(쉼표 초록) 바탕
+    static final int HERO_BG = GREEN;
+    static final int ON_HERO = WHITE;                          // 강조 카드 위 글자
+    static final int ON_HERO_SUB = Color.parseColor("#CFE0D5"); // 강조 카드 위 보조 글자 (초록 바탕 대비 5:1)
+    static final int ON_HERO_BOX = Color.argb(36, 255, 255, 255); // 강조 카드 안 상자 (흰색 14%)
+    static final int GUARD_FILL = Color.argb(40, 0x37, 0x62, 0x4C); // status/green 16% · 결제 버튼 가드 표시
 
-    static {
-        applyPalette(false);
-    }
-
-    /** UiPrefs.theme대로 색 한 벌을 고른다. 화면(Activity · 오버레이)을 만들기 전에 부른다. */
-    static void applyTheme(Context c) {
-        boolean d;
-        switch (UiPrefs.theme) {
-            case LIGHT: d = false; break;
-            case DARK: d = true; break;
-            default: d = systemDark(c);
-        }
-        applyPalette(d);
-    }
-
-    /** 기기 설정이 다크 모드인지. */
-    static boolean systemDark(Context c) {
-        int night = c.getResources().getConfiguration().uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK;
-        return night == android.content.res.Configuration.UI_MODE_NIGHT_YES;
-    }
-
-    /** 색 두 벌. 왼쪽 밝은 화면(Figma 값) · 오른쪽 어두운 화면. */
-    static void applyPalette(boolean d) {
-        dark = d;
-        BRAND = c(d, "#292D2B", "#DCE4DE");
-        BRAND_LIGHT = c(d, "#EAF1EC", "#22302A");
-        TEXT = c(d, "#292D2B", "#E6EBE7");
-        MUTED = c(d, "#737A75", "#A3ACA6");
-        SUBTLE = c(d, "#879A8A", "#7F9486");
-        LINE = c(d, "#DFE3DF", "#333A35");
-        BG = c(d, "#F3F5F2", "#121513");
-        WHITE = c(d, "#FFFFFF", "#1C211E");
-        RED = c(d, "#A14D46", "#E8968C");
-        RED_BG = c(d, "#F7EAE8", "#3A2522");
-        AMBER = c(d, "#8C6C23", "#DDB96B");
-        AMBER_BG = c(d, "#F7F0DE", "#352D1A");
-        GREEN = c(d, "#37624C", "#88C8A3");
-        GREEN_BG = c(d, "#E8EFE9", "#1E2D24");
-        DIM = d ? Color.argb(170, 0, 0, 0) : Color.argb(140, 0x17, 0x20, 0x1A); // 밝은 화면: #17201A 55%
-        ON_BRAND = c(d, "#FFFFFF", "#151916");
-        ON_BRAND_SUB = c(d, "#DFE3DF", "#55605A");
-        // 강조 카드는 어두운 화면에서 밝은 덩어리가 되면 눈이 부셔서 BRAND와 따로 둔다
-        HERO_BG = c(d, "#292D2B", "#24342B");
-        ON_HERO = c(d, "#FFFFFF", "#E6EBE7");
-        ON_HERO_SUB = c(d, "#DFE3DF", "#A6B6AB");
-        ON_HERO_TRACK = Color.argb(51, 255, 255, 255); // 흰색 20%
-        GUARD_FILL = d ? Color.argb(48, 0x88, 0xC8, 0xA3) : Color.argb(40, 0x37, 0x62, 0x4C); // status/green 16%
-        Tone.refresh();
-    }
-
-    private static int c(boolean dark, String light, String darkHex) {
-        return Color.parseColor(dark ? darkHex : light);
-    }
-
-    /** 상태 색 묶음 (바탕, 글자). 태그·알림에 쓴다. 색 한 벌이 바뀌면 refresh()로 다시 채운다. */
+    /** 상태 색 묶음 (바탕, 글자). 태그·알림에 쓴다. */
     enum Tone {
-        SUCCESS,   // Tag/Green · 멈춤, 여유              (GREEN_BG, GREEN)
-        WARNING,   // Tag/Amber · 주의, 숙고 후 결제        (AMBER_BG, AMBER)
-        DANGER,    // Tag/Red · 초과, 재무 위험             (RED_BG, RED)
-        BRAND,     // Tag/Blue · 강도, 회고                 (BRAND_LIGHT, BRAND)
-        ACCENT,    // 연초록 바탕 + 초록 글자 · 필수, 이유 선택 결제 (BRAND_LIGHT, GREEN)
-        NEUTRAL,   // 회색 · 선택, 기타                     (BG, MUTED)
-        INVERSE;   // 먹색 바탕 · 강한 개입                  (BRAND, ON_BRAND)
+        SUCCESS(GREEN_BG, GREEN),       // Tag/Green · 멈춤, 여유, 만족
+        WARNING(AMBER_BG, AMBER),       // Tag/Amber · 주의, 숙고 후 결제
+        DANGER(RED_BG, RED),            // Tag/Red · 초과, 재무 위험, 후회
+        BRAND(BRAND_LIGHT, Ui.BRAND),   // Tag/Blue · 강도, 회고
+        ACCENT(BRAND_LIGHT, GREEN),     // 연초록 바탕 + 초록 글자 · 필수, 이유 선택 결제
+        NEUTRAL(BG, MUTED),             // 회색 · 선택, 기타
+        PLAIN(WHITE, MUTED),            // 흰 바탕 + 회색 글자 · 색 바탕 위 태그
+        INVERSE(Ui.BRAND, WHITE);       // 먹색 바탕 · 강한 개입
 
-        int bg, fg;
+        final int bg, fg;
 
-        static void refresh() {
-            SUCCESS.set(GREEN_BG, GREEN);
-            WARNING.set(AMBER_BG, AMBER);
-            DANGER.set(RED_BG, RED);
-            BRAND.set(BRAND_LIGHT, Ui.BRAND);
-            ACCENT.set(BRAND_LIGHT, GREEN);
-            NEUTRAL.set(BG, MUTED);
-            INVERSE.set(Ui.BRAND, ON_BRAND);
-        }
-
-        private void set(int bg, int fg) {
+        Tone(int bg, int fg) {
             this.bg = bg;
             this.fg = fg;
         }
@@ -315,8 +246,6 @@ final class Ui {
         static final int LIST_DOT = 8;       // 기록 줄 왼쪽 결과 색 점
         static final int LIST_BAR = 4;       // 기록 줄 왼쪽 결과 색 막대 폭
         static final int AVATAR = 28;        // 개입 채팅 쉼표 얼굴 (채팅 ②·③)
-        static final int LEVEL_DOT = 7;      // 리포트 대화 깊이 ●●○
-        static final int TALK_DOT = 14;      // 리포트 대화 하나 = 점 하나
         static final int FIELD_WIDTH = 130;  // 설정 입력칸 폭
         static final int ROW_LABEL = 48;     // 리포트 강도 이름 칸
         static final float STROKE = 1f;
@@ -587,7 +516,7 @@ final class Ui {
     static LinearLayout outlineCard(Context c, int padH, int padV) {
         LinearLayout l = v(c);
         // UI 갤러리 › 앱 UI 설정 › "카드 테두리"를 끄면 테두리 없이 흰 바탕만
-        l.setBackground(UiPrefs.cardOutline ? roundStroke(c, WHITE, Radius.BOX, LINE) : round(c, WHITE, Radius.BOX));
+        l.setBackground(roundStroke(c, WHITE, Radius.BOX, LINE));
         pad(l, c, padH, padV);
         return l;
     }
@@ -775,6 +704,18 @@ final class Ui {
         t.setBackground(selected ? roundStroke(c, BRAND_LIGHT, Radius.CHIP, BRAND, Size.STROKE_STRONG) : roundStroke(c, WHITE, Radius.CHIP, LINE));
     }
 
+    /** 서비스 색 칩 (리포트 회고 답): 고르면 초록 바탕 + 흰 글자. */
+    static TextView accentChip(Context c, String label, boolean selected, View.OnClickListener click) {
+        TextView t = chip(c, label, selected, click);
+        setAccentChipSelected(c, t, selected);
+        return t;
+    }
+
+    static void setAccentChipSelected(Context c, TextView t, boolean selected) {
+        t.setBackground(selected ? round(c, GREEN, Radius.CHIP) : roundStroke(c, WHITE, Radius.CHIP, LINE));
+        t.setTextColor(selected ? WHITE : TEXT);
+    }
+
     /** Tag/Blue · Red · Amber · Green (radius 8, padding 4/10, 12 Medium). */
     static TextView tag(Context c, String label, Tone tone) {
         TextView t = text(c, label, Font.CAPTION, tone.fg, MEDIUM);
@@ -864,18 +805,7 @@ final class Ui {
         return row;
     }
 
-    /** 목록 한 줄 + 왼쪽 세로 색 막대 (줄 높이만큼, 폭 4). */
-    static LinearLayout listRowBar(Context c, int barColor, String title, String sub, String amount, View tag) {
-        LinearLayout row = listRow(c, title, sub, amount, tag);
-        View bar = new View(c);
-        bar.setBackground(round(c, barColor, Size.LIST_BAR / 2f));
-        LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(dp(c, Size.LIST_BAR), ViewGroup.LayoutParams.MATCH_PARENT);
-        lp.rightMargin = dp(c, Space.ROW);
-        row.addView(bar, 0, lp);
-        return row;
-    }
-
-    /** 줄 전체에 연한 색 바탕을 깐다 (radius 10). 기록 줄 "줄 바탕" 방식. */
+    /** 줄 전체에 연한 색 바탕을 깐다 (radius 10). 기록 줄 (결과 색). */
     static void tintRow(Context c, View row, int bg) {
         row.setBackground(round(c, bg, Radius.NOTE));
         pad(row, c, Pad.TINT_ROW_H, Pad.TINT_ROW_V);
@@ -943,15 +873,37 @@ final class Ui {
         return t;
     }
 
-    /** 강조 카드 + 한 문장 (리포트 가치 회고 "이번 달 내 기준"): 라벨 12 · 문장 17 Bold · 부가 12. */
-    static LinearLayout heroSentence(Context c, String label, String sentence, String sub) {
+    /**
+     * 강조 카드 + 한 문장 (리포트 "이번 달 내 기준"): 서비스 색(쉼표 초록) 바탕,
+     * 라벨 12 · 문장 22 Bold · 아래 줄들(heroRow, 반투명 흰 상자 안) · 부가 12.
+     */
+    static LinearLayout heroSentence(Context c, String label, String sentence, String sub, View... rows) {
         LinearLayout h = v(c);
         h.setBackground(round(c, HERO_BG, Radius.CARD));
         pad(h, c, Pad.HERO_LARGE);
         h.addView(text(c, label, Font.CAPTION, ON_HERO_SUB, MEDIUM));
-        stack(h, wordBreak(text(c, sentence, Font.HEADING, ON_HERO, BOLD)), Space.ITEM);
+        stack(h, wordBreak(text(c, sentence, Font.TITLE, ON_HERO, BOLD)), Space.ITEM);
+        if (rows.length > 0) {
+            LinearLayout box = v(c);
+            box.setBackground(round(c, ON_HERO_BOX, Radius.INPUT));
+            pad(box, c, Pad.BOX_H, Pad.BOX_V);
+            for (int i = 0; i < rows.length; i++) {
+                if (i == 0) box.addView(rows[i], fillW());
+                else stack(box, rows[i], Space.ITEM);
+            }
+            stack(h, box, Space.BLOCK);
+        }
         if (sub != null && !sub.isEmpty()) stack(h, wordBreak(text(c, sub, Font.CAPTION, ON_HERO_SUB, REGULAR)), Space.ITEM);
         return h;
+    }
+
+    /** 강조 카드 안 한 줄: 태그(만족 · 후회) · 이름 · 금액. */
+    static LinearLayout heroRow(Context c, String tag, Tone tone, String name, String value) {
+        LinearLayout r = h(c);
+        r.addView(smallTag(c, tag, tone));
+        inlineFill(r, text(c, name, Font.BODY, ON_HERO, MEDIUM), Space.ITEM);
+        inline(r, text(c, value, Font.BODY, ON_HERO, BOLD), Space.ITEM);
+        return r;
     }
 
     /** 내가 한 말 인용: 왼쪽 초록 선 + "말" + 부가 설명 (리포트 가치 회고). */
@@ -1056,30 +1008,6 @@ final class Ui {
         }
         if (total == 0) track.addView(new View(c), new LinearLayout.LayoutParams(0, dp(c, Size.BAR), 1f));
         return track;
-    }
-
-    /** 깊이 표시 ●●○: level개는 초록, 나머지는 회색 (리포트 대화 깊이). */
-    static LinearLayout levelDots(Context c, int level, int total) {
-        LinearLayout r = h(c);
-        for (int i = 1; i <= total; i++) {
-            View d = new View(c);
-            d.setBackground(circle(i <= level ? GREEN : LINE));
-            LinearLayout.LayoutParams p = square(c, Size.LEVEL_DOT);
-            if (i > 1) p.leftMargin = dp(c, Space.TEXT + Space.TEXT);
-            r.addView(d, p);
-        }
-        return r;
-    }
-
-    /** 점 여러 개를 줄바꿈하며 늘어놓는다. 점 하나 = 대화 하나 (리포트 대화 깊이). */
-    static FlowLayout dotFlow(Context c, int[] colors) {
-        FlowLayout f = new FlowLayout(c, dp(c, Space.TIGHT), dp(c, Space.TIGHT));
-        for (int color : colors) {
-            View d = new View(c);
-            d.setBackground(circle(color));
-            f.addView(d, new ViewGroup.LayoutParams(dp(c, Size.TALK_DOT), dp(c, Size.TALK_DOT)));
-        }
-        return f;
     }
 
     /** 범례 한 줄: 색 점 · 이름 · 값 (리포트 만족·후회). */

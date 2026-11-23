@@ -51,7 +51,6 @@ public class MainActivity extends Activity {
     // 하단 탭 순서
     // 화면: 홈이 기본이고, 나머지는 홈에서 들어가는 하위 화면 (← 뒤로 · 기기 뒤로가기로 홈)
     private static final int PAGE_HOME = 0, PAGE_RECORDS = 1, PAGE_REPORT = 2, PAGE_SETTINGS = 3;
-    private static final int REQ_GALLERY = 1; // UI 갤러리 [홈에서 보기] → 홈으로
 
     // 온보딩 단계 (0이면 온보딩이 끝난 상태)
     private static final int ONBOARD_DONE = 0, ONBOARD_PERMISSION = 1, ONBOARD_INCOME = 2, ONBOARD_BUDGET = 3;
@@ -75,33 +74,23 @@ public class MainActivity extends Activity {
     private boolean showAllDemos = false;
     private boolean reviewDismissed = false;
 
-    /**
-     * 상태바·내비게이션바·창 바탕을 앱 바탕색에 맞춘다 (Figma StatusBar: 밝은 바탕 + 어두운 글자).
-     * 어두운 화면(Ui.dark)이면 시스템 아이콘도 밝게. Ui.applyTheme() 다음에 부른다.
-     */
+    /** 상태바·내비게이션바·창 바탕을 앱 바탕색에 맞춘다 (Figma StatusBar: 밝은 바탕 + 어두운 글자). */
     static void styleWindow(Activity a) {
         Window w = a.getWindow();
         w.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Ui.BG)); // 화면이 그려지기 전 흰 번쩍임 방지
         w.setStatusBarColor(Ui.BG);
-        int flags = 0;
-        if (!Ui.dark) flags |= View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+        int flags = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
         if (Build.VERSION.SDK_INT >= 26) {
             w.setNavigationBarColor(Ui.WHITE);
-            if (!Ui.dark) flags |= View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+            flags |= View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
         }
         w.getDecorView().setSystemUiVisibility(flags);
     }
 
-    /** 이 화면을 만들 때 쓴 색 한 벌 (어두운 화면이었는지). 돌아왔을 때 바뀌었으면 다시 만든다. */
-    private boolean builtDark;
-
     @Override
     protected void onCreate(Bundle b) {
         super.onCreate(b);
-        UiPrefs.load(this);
-        Ui.applyTheme(this); // 다크 모드: 화면을 만들기 전에 색 한 벌을 고른다
-        builtDark = Ui.dark;
-        if (b != null) page = b.getInt("page", PAGE_HOME); // 화면 모드를 바꿔 다시 만들어도 보던 화면 그대로
+        if (b != null) page = b.getInt("page", PAGE_HOME); // 화면을 다시 만들어도(회전 등) 보던 화면 그대로
         styleWindow(this);
         setContentView(buildLayout());
         BackendSlots.load(this);
@@ -130,14 +119,6 @@ public class MainActivity extends Activity {
     }
 
     @Override
-    protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        super.onActivityResult(requestCode, resultCode, data);
-        // 이어서 onResume이 그 화면을 그린다
-        if (requestCode == REQ_GALLERY && resultCode == RESULT_OK) page = PAGE_HOME;
-        if (requestCode == REQ_GALLERY && resultCode == UiGalleryActivity.RESULT_REPORT) page = PAGE_REPORT;
-    }
-
-    @Override
     protected void onSaveInstanceState(Bundle out) {
         super.onSaveInstanceState(out);
         out.putInt("page", page);
@@ -146,12 +127,6 @@ public class MainActivity extends Activity {
     @Override
     protected void onResume() {
         super.onResume();
-        // 데모 결제 화면(항상 밝게)이나 UI 갤러리(화면 모드 변경)에서 돌아오면 색을 다시 고른다
-        Ui.applyTheme(this);
-        if (Ui.dark != builtDark) {
-            recreate();
-            return;
-        }
         refresh();
     }
 
@@ -276,10 +251,6 @@ public class MainActivity extends Activity {
         return v % 10_000 == 0 ? (v / 10_000) + "만" : Money.num(v);
     }
 
-    private static int pct(int a, int b) {
-        return b == 0 ? 0 : Math.round(a * 100f / b);
-    }
-
     // ------------------------------------------------------------------ 공통 부품 (이 화면들에서만)
 
     /** 식비 예산에서 나간 기록인지 (계좌 동기화 식비, 또는 여윳돈 없이 식비만 쓴 결제). */
@@ -308,37 +279,15 @@ public class MainActivity extends Activity {
         }
     }
 
-    /** 기록 줄 왼쪽 점 색. 태그 글자색을 따르되, 멈춤(초록)과 구분되게 이유 선택 결제는 먹색. */
-    private static int outcomeDotColor(Ui.Tone tone) {
-        if (tone == Ui.Tone.ACCENT) return Ui.BRAND;
-        if (tone == Ui.Tone.NEUTRAL) return Ui.LINE;
-        return tone.fg;
-    }
-
     private TextView outcomeTag(Record r) {
         return Ui.smallTag(this, outcomeLabel(r), outcomeTone(r));
     }
 
-    /**
-     * 기록 한 줄의 모양. 결과 색 표시는 UiPrefs.recordColor (UI 갤러리 › 앱 UI 설정, 기본 TINT).
-     * TINT 줄 전체 연한 바탕(기본) · 후보: DOT 왼쪽 점 · BAR 왼쪽 세로 막대 · NONE 태그만.
-     */
+    /** 기록 한 줄의 모양: 결과 색 연한 바탕 + 제목 · 금액 · 태그. */
     private LinearLayout recordRowView(Record r) {
-        Ui.Tone tone = outcomeTone(r);
-        String title = recordTitle(r), sub = recordSub(r), amount = Money.won(r.amount);
-        switch (UiPrefs.recordColor) {
-            case BAR:
-                return Ui.listRowBar(this, outcomeDotColor(tone), title, sub, amount, outcomeTag(r));
-            case TINT: {
-                LinearLayout row = Ui.listRow(this, title, sub, amount, outcomeTag(r));
-                Ui.tintRow(this, row, tone.bg);
-                return row;
-            }
-            case NONE:
-                return Ui.listRow(this, title, sub, amount, outcomeTag(r));
-            default:
-                return Ui.listRow(this, outcomeDotColor(tone), title, sub, amount, outcomeTag(r));
-        }
+        LinearLayout row = Ui.listRow(this, recordTitle(r), recordSub(r), Money.won(r.amount), outcomeTag(r));
+        Ui.tintRow(this, row, outcomeTone(r).bg);
+        return row;
     }
 
     /** 기록 한 줄 (홈 최근 기록 · 기록 탭): 결과 색 · 제목 · 금액 · 태그. deletable이면 길게 눌러 지운다. */
@@ -550,52 +499,22 @@ public class MainActivity extends Activity {
 
     /**
      * "오늘 쓸 수 있는 돈" 카드: 신호 태그 · 큰 금액 · 진행 막대 · 한도 설명.
-     *
-     * 색 방식은 UiPrefs.todayCard (UI 갤러리 › 앱 UI 설정에서 바꿈, 기본 SIGNAL).
-     * - SIGNAL (기본): 신호에 따라 연초록 / 연노랑 / 연빨강 바탕.
-     *   초과일 때 태그 바탕이 카드 바탕과 같은 색이라 태그 테두리가 잘 안 보인다.
-     * - 후보 HERO: 먹색 바탕 + 흰 글자 (S03 월 여윳돈 · S10 마음 돌림 비율과 같은 강조 카드)
-     * - 후보 OUTLINE: v0.5, 흰 바탕 + 테두리
+     * 바탕은 신호에 따라 연초록 / 연노랑 / 연빨강.
      */
     private View todayBudgetCard(BudgetEngine.State b) {
         boolean over = b.todaySpent > b.limit;
 
-        // ---- 색 정하기
-        LinearLayout c;
-        int label, amountColor, meta, barFill, barTrack; // 라벨 · 큰 금액 · 한도 설명 · 진행 막대 · 막대 바탕
-        if (UiPrefs.todayCard == UiPrefs.TodayCard.OUTLINE) {
-            c = Ui.outlineCard(this, Ui.Pad.TODAY_CARD, Ui.Pad.TODAY_CARD);
-            label = Ui.MUTED;
-            amountColor = Ui.TEXT;
-            meta = Ui.MUTED;
-            barFill = over ? Ui.RED : Ui.BRAND;
-            barTrack = Ui.BG;
-        } else if (UiPrefs.todayCard == UiPrefs.TodayCard.SIGNAL) {
-            c = Ui.tintBox(this, signalTone(b.signal()).bg, Ui.Pad.TODAY_CARD, Ui.Pad.TODAY_CARD);
-            label = Ui.MUTED;
-            amountColor = Ui.TEXT;
-            meta = Ui.MUTED;
-            barFill = over ? Ui.RED : Ui.BRAND;
-            barTrack = Ui.WHITE;
-        } else { // HERO
-            c = Ui.tintBox(this, Ui.HERO_BG, Ui.Pad.TODAY_CARD, Ui.Pad.TODAY_CARD);
-            label = Ui.ON_HERO_SUB;
-            amountColor = Ui.ON_HERO;
-            meta = Ui.ON_HERO_SUB;
-            barFill = over ? Ui.RED_BG : Ui.ON_HERO;
-            barTrack = Ui.ON_HERO_TRACK;
-        }
-
+        LinearLayout c = Ui.tintBox(this, signalTone(b.signal()).bg, Ui.Pad.TODAY_CARD, Ui.Pad.TODAY_CARD);
         LinearLayout head = Ui.h(this);
-        head.addView(Ui.text(this, "오늘 쓸 수 있는 돈", Ui.Font.SMALL, label, Ui.REGULAR), Ui.weight1());
+        head.addView(Ui.text(this, "오늘 쓸 수 있는 돈", Ui.Font.SMALL, Ui.MUTED, Ui.REGULAR), Ui.weight1());
         head.addView(signalTag(b.signal()));
         c.addView(head, Ui.fillW());
         String amount = b.available >= 0 ? Money.won(b.available) + " 남음" : Money.won(-b.available) + " 넘었어요";
-        Ui.stack(c, Ui.text(this, amount, Ui.Font.AMOUNT, amountColor, Ui.BOLD), Ui.Space.ITEM);
+        Ui.stack(c, Ui.text(this, amount, Ui.Font.AMOUNT, Ui.TEXT, Ui.BOLD), Ui.Space.ITEM);
         float ratio = b.limit == 0 ? 1f : Math.min(1f, (float) b.todaySpent / b.limit);
-        Ui.stack(c, Ui.bar(this, ratio, barFill, barTrack), Ui.Space.ITEM);
+        Ui.stack(c, Ui.bar(this, ratio, over ? Ui.RED : Ui.BRAND, Ui.WHITE), Ui.Space.ITEM);
         Ui.stack(c, Ui.text(this, "오늘 한도 " + Money.won(b.limit) + " 중 " + Money.won(b.todaySpent) + " 사용 · 주기 " + b.dayIndex + "일째",
-                Ui.Font.CAPTION, meta, Ui.REGULAR), Ui.Space.ITEM);
+                Ui.Font.CAPTION, Ui.MUTED, Ui.REGULAR), Ui.Space.ITEM);
         return c;
     }
 
@@ -604,9 +523,9 @@ public class MainActivity extends Activity {
         return total <= 0 ? 0f : Math.max(0f, Math.min(1f, (float) remaining / total));
     }
 
-    /** 요약 타일 막대 비율. UiPrefs.tileBars가 꺼져 있으면 -1 (막대 없음). */
+    /** 요약 타일 막대 비율 (남은 비율). */
     private static float tileBar(long remaining, long total) {
-        return UiPrefs.tileBars ? remainRatio(remaining, total) : -1f;
+        return remainRatio(remaining, total);
     }
 
     /** 요약 타일 막대 색: 남아 있으면 초록, 다 쓰면 빨강. */
@@ -767,37 +686,13 @@ public class MainActivity extends Activity {
         Settings s = store.settings();
         long now = System.currentTimeMillis();
         List<Record> recs = store.records();
-        Stats st = Stats.of(s, recs, now, zone);
         BudgetEngine.State b = BudgetEngine.compute(s, recs, now, zone);
 
         add(Ui.screenHeader(this, LocalDate.now(zone).getMonthValue() + "월 리포트", v -> open(PAGE_HOME)), 0);
         add(Ui.text(this, b.cycleStart + " ~ " + b.nextPayday.minusDays(1) + " (급여일 기준)", Ui.Font.CAPTION, Ui.SUBTLE, Ui.REGULAR), Ui.Space.LINE);
 
-        // 내용 후보: UiPrefs.reportStyle (UI 갤러리 › 앱 UI 설정 › 리포트 내용). ②~④는 ReportViews.
-        if (UiPrefs.reportStyle != UiPrefs.ReportStyle.NOW) {
-            ReportViews.Data d = ReportViews.Data.of(s, recs, now, zone);
-            if (UiPrefs.reportStyle == UiPrefs.ReportStyle.REFLECT) ReportViews.reflect(this, content, d, zone);
-            else if (UiPrefs.reportStyle == UiPrefs.ReportStyle.VALUES) ReportViews.values(this, content, d, zone);
-            else if (UiPrefs.reportStyle == UiPrefs.ReportStyle.DEPTH) ReportViews.depth(this, content, d);
-            else ReportViews.simple(this, content, d);
-            add(foodNote(b), Ui.Space.BLOCK);
-            return;
-        }
-
-        int rate = st.mindChangeRate();
-        add(Ui.heroCard(this, "마음 돌림 비율", rate < 0 ? "–" : rate + "%",
-                st.interventions == 0 ? "아직 쉼표가 말을 건 결제가 없어요"
-                        : "쉼표가 말을 건 " + st.interventions + "번 중 " + st.prevented + "번 그만뒀어요 · " + Money.won(st.preventedSum) + " 아낌",
-                true), Ui.Space.BLOCK);
-        add(intensityCard(st), Ui.Space.BLOCK);
-
-        int diff = st.lateCount - st.prevLateCount;
-        add(Ui.tilePair(this,
-                Ui.statTile(this, "야식", st.lateCount + "번",
-                        Money.won(st.lateSum) + " · 지난달 " + (diff > 0 ? "+" : diff < 0 ? "−" : "±") + Math.abs(diff) + "번", false),
-                Ui.statTile(this, "회고 후회", st.regret + "/" + st.reviewed, "후회 응답 " + pct(st.regret, st.reviewed) + "%", false),
-                Ui.Space.ROW), Ui.Space.BLOCK);
-        add(outcomeCard(st), Ui.Space.BLOCK);
+        // 사용자가 직접 한 판단(고른 이유 · 다음 날 만족/후회)으로 돌아보는 "가치 회고". 그리는 코드는 ReportViews.
+        ReportViews.reflect(this, content, ReportViews.Data.of(s, recs, now, zone), zone);
         add(foodNote(b), Ui.Space.BLOCK);
     }
 
@@ -807,60 +702,12 @@ public class MainActivity extends Activity {
                 Ui.Font.CAPTION, Ui.BRAND, Ui.Radius.INPUT, Ui.Pad.FOOD_NOTE_H, Ui.Pad.FOOD_NOTE_V);
     }
 
-    /** 강도별 멈춘 비율: 강도 이름 · 막대 · "멈춤/전체 · %". */
-    private View intensityCard(Stats st) {
-        LinearLayout c = Ui.card(this);
-        c.addView(Ui.caption(this, "강도별 멈춘 비율"));
-        for (Intensity i : Intensity.values()) {
-            int[] v = st.byIntensity.get(i);
-            LinearLayout r = Ui.h(this);
-            r.addView(Ui.text(this, i.label, Ui.Font.BODY, Ui.TEXT, Ui.MEDIUM),
-                    new LinearLayout.LayoutParams(Ui.dp(this, Ui.Size.ROW_LABEL), ViewGroup.LayoutParams.WRAP_CONTENT));
-            Ui.inlineFill(r, Ui.bar(this, v[0] == 0 ? 0f : (float) v[1] / v[0], Ui.SUBTLE, Ui.LINE), Ui.Space.ROW);
-            Ui.inline(r, Ui.caption(this, v[1] + "/" + v[0] + " · " + pct(v[1], v[0]) + "%"), Ui.Space.ROW);
-            Ui.stack(c, r, Ui.Space.ROW);
-        }
-        return c;
-    }
-
-    /** 결과 분류: 결과별 건수 · 금액. */
-    private View outcomeCard(Stats st) {
-        Outcome[] kinds = {Outcome.PREVENTED, Outcome.REASON_PAY, Outcome.DELIBERATE_PAY, Outcome.EXIT};
-        int total = 0;
-        for (Outcome o : kinds) total += st.byOutcome.get(o);
-        LinearLayout c = Ui.card(this);
-        c.addView(Ui.caption(this, "결과 분류 (" + total + "건)"));
-        for (Outcome o : kinds) {
-            int n = st.byOutcome.get(o);
-            long sum = st.byOutcomeSum.get(o);
-            Ui.stack(c, Ui.kv(this, o.label, n + "건" + (o == Outcome.EXIT || n == 0 ? "" : " · " + Money.won(sum)), false), Ui.Space.ITEM);
-        }
-        return c;
-    }
-
     // ================================================================== 설정 · 테스트 도구 (홈 › 톱니바퀴)
-
-    /** 화면 모드: 기기 따라 · 밝게 · 어둡게 (UiPrefs.theme). 고르면 바로 다시 그린다. */
-    private View themeCard() {
-        LinearLayout c = Ui.card(this);
-        c.addView(Ui.caption(this, "화면 모드 (자동: 휴대폰 다크 모드 설정을 따라요)"));
-        List<TextView> chips = new ArrayList<>();
-        for (UiPrefs.Theme t : UiPrefs.Theme.values()) {
-            chips.add(Ui.chip(this, t.label, UiPrefs.theme == t, v -> {
-                UiPrefs.theme = t;
-                UiPrefs.save(this);
-                recreate();
-            }));
-        }
-        Ui.stack(c, Ui.chipGrid(this, chips, 3), Ui.Space.ITEM);
-        return c;
-    }
 
     private void settingsScreen() {
         Settings s = store.settings();
         add(Ui.screenHeader(this, "설정", v -> open(PAGE_HOME)), 0);
         add(statusCard(), Ui.Space.BLOCK);
-        add(themeCard(), Ui.Space.BLOCK);
 
         // AI
         add(Ui.sectionTitle(this, "AI (Claude API)"), Ui.Space.SECTION);
@@ -1017,7 +864,7 @@ public class MainActivity extends Activity {
             store.saveSettings(st);
         }));
         tc.addView(testButton("데모 결제 화면 열기", () -> startActivity(new Intent(this, DemoCheckoutActivity.class))));
-        tc.addView(testButton("UI 갤러리 열기 (토큰·컴포넌트 모음)", () -> startActivityForResult(new Intent(this, UiGalleryActivity.class), REQ_GALLERY)));
+        tc.addView(testButton("UI 갤러리 열기 (토큰·컴포넌트 모음)", () -> startActivity(new Intent(this, UiGalleryActivity.class))));
         tc.addView(testButton("기록 전체 삭제", () -> {
             store.clearRecords();
             toast("기록을 모두 지웠어요");

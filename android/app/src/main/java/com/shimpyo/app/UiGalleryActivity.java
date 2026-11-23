@@ -42,8 +42,6 @@ public class UiGalleryActivity extends Activity {
     @Override
     protected void onCreate(Bundle b) {
         super.onCreate(b);
-        UiPrefs.load(this);
-        Ui.applyTheme(this);
         MainActivity.styleWindow(this);
         LinearLayout root = Ui.v(this);
         root.setBackgroundColor(Ui.BG);
@@ -61,88 +59,17 @@ public class UiGalleryActivity extends Activity {
         root.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
         setContentView(root);
 
-        UiPrefs.load(this);
         content.addView(Ui.bodySmall(this, "Ui.java의 토큰과 부품 모음이에요. 회색 글자가 코드에서 쓰는 이름이에요. 값을 고치고 다시 실행하면 여기서 바로 확인할 수 있어요."));
-        uiSettings();
         chatPreview();
         tokens();
         components();
     }
 
-    // ================================================================== 앱 UI 설정 (UiPrefs)
-
-    /** 번호 칩으로 UI 방식을 고른다. 고르면 바로 저장되고, 홈으로 돌아가면 반영된다. */
-    private void uiSettings() {
-        section("앱 UI 설정");
-        Ui.stack(content, Ui.meta(this, "①이 기본 디자인이고 나머지는 비교용 후보예요. 고르면 바로 저장돼요. 홈으로 돌아가면 반영돼요. 기록 색은 설정 › 테스트 도구의 \"결과별 예시 기록\"을 넣고 보면 잘 보여요."), Ui.Space.TIGHT);
-        LinearLayout c = Ui.card(this);
-
-        c.addView(Ui.caption(this, "화면 모드 (다크 모드)"));
-        List<TextView> themes = new ArrayList<>();
-        for (UiPrefs.Theme t : UiPrefs.Theme.values()) {
-            themes.add(Ui.chip(this, t.label, UiPrefs.theme == t, v -> apply(() -> UiPrefs.theme = t)));
-        }
-        Ui.stack(c, Ui.chipGrid(this, themes, 3), Ui.Space.ITEM);
-
-        Ui.stack(c, Ui.caption(this, "홈 · 오늘 쓸 수 있는 돈 카드"), Ui.Space.SECTION);
-        List<TextView> today = new ArrayList<>();
-        for (UiPrefs.TodayCard t : UiPrefs.TodayCard.values()) {
-            today.add(Ui.chip(this, t.label, UiPrefs.todayCard == t, v -> apply(() -> UiPrefs.todayCard = t)));
-        }
-        Ui.stack(c, Ui.chipGrid(this, today, 3), Ui.Space.ITEM);
-
-        Ui.stack(c, Ui.caption(this, "홈 · 남은 여윳돈 · 식비 예산 진행 막대"), Ui.Space.SECTION);
-        Ui.stack(c, onOff(UiPrefs.tileBars, on -> UiPrefs.tileBars = on), Ui.Space.ITEM);
-
-        Ui.stack(c, Ui.caption(this, "홈 · 기록 · 카드 회색 테두리"), Ui.Space.SECTION);
-        Ui.stack(c, onOff(UiPrefs.cardOutline, on -> UiPrefs.cardOutline = on), Ui.Space.ITEM);
-
-        Ui.stack(c, Ui.caption(this, "홈 최근 기록 · 기록 탭 · 결과 색 표시"), Ui.Space.SECTION);
-        List<TextView> rec = new ArrayList<>();
-        for (UiPrefs.RecordColor r : UiPrefs.RecordColor.values()) {
-            rec.add(Ui.chip(this, r.label, UiPrefs.recordColor == r, v -> apply(() -> UiPrefs.recordColor = r)));
-        }
-        Ui.stack(c, Ui.chipGrid(this, rec, 2), Ui.Space.ITEM);
-
-        Ui.stack(c, Ui.caption(this, "개입 채팅 (결제 화면 위 대화) · 아래 미리보기"), Ui.Space.SECTION);
-        List<TextView> chat = new ArrayList<>();
-        for (UiPrefs.ChatStyle t : UiPrefs.ChatStyle.values()) {
-            chat.add(Ui.chip(this, t.label, UiPrefs.chatStyle == t, v -> apply(() -> UiPrefs.chatStyle = t)));
-        }
-        Ui.stack(c, Ui.chipGrid(this, chat, 3), Ui.Space.ITEM);
-
-        Ui.stack(c, Ui.caption(this, "리포트 내용 · [리포트에서 보기]"), Ui.Space.SECTION);
-        List<TextView> rep = new ArrayList<>();
-        for (UiPrefs.ReportStyle t : UiPrefs.ReportStyle.values()) {
-            rep.add(Ui.chip(this, t.label, UiPrefs.reportStyle == t, v -> apply(() -> UiPrefs.reportStyle = t)));
-        }
-        Ui.stack(c, Ui.chipGrid(this, rep, 2), Ui.Space.ITEM);
-        Ui.stack(c, Ui.micro(this, "리포트는 설정 › 테스트 도구 › \"리포트 예시 기록 12건 추가\"를 넣고 보면 잘 보여요.", Ui.MUTED), Ui.Space.TIGHT);
-
-        Ui.stack(c, Ui.buttonPair(this,
-                Ui.button(this, "기본값으로", false, v -> {
-                    UiPrefs.reset(this);
-                    recreate();
-                }),
-                Ui.button(this, "홈에서 보기", true, v -> {
-                    setResult(RESULT_OK); // MainActivity가 설정 대신 홈을 연다
-                    finish();
-                })), Ui.Space.SECTION);
-        Ui.stack(c, Ui.button(this, "리포트에서 보기", false, v -> {
-            setResult(RESULT_REPORT);
-            finish();
-        }), Ui.Space.ITEM);
-        Ui.stack(content, c, Ui.Space.ITEM);
-    }
-
-    /** [리포트에서 보기] → MainActivity가 리포트를 연다. */
-    static final int RESULT_REPORT = RESULT_FIRST_USER;
-
     // ================================================================== 개입 화면 미리보기
 
-    /** 지금 고른 개입 채팅 방식으로 보통(대화 중) · 가벼움(이유 칩) 화면을 그린다. 기록은 남지 않는다. */
+    /** 개입 채팅으로 보통(대화 중) · 가벼움(이유 칩) 화면을 그린다. 기록은 남지 않는다. */
     private void chatPreview() {
-        section("개입 화면 미리보기 (" + UiPrefs.chatStyle.label + ")");
+        section("개입 화면 미리보기");
         Ui.stack(content, Ui.meta(this, "실제 결제 화면 위에 뜨는 그대로예요. 칩을 누르면 다음 질문으로 넘어가요 (기록은 남지 않아요)."), Ui.Space.TIGHT);
         sample("보통 · 배민 치킨 23,000원, 이번 주 세 번째 야식 (두 번째 질문)", previewOverlay(Intensity.MEDIUM));
         sample("가벼움 · 배민 야식 (이유 칩)", previewOverlay(Intensity.LIGHT));
@@ -193,25 +120,6 @@ public class UiGalleryActivity extends Activity {
         root.setBackground(Ui.round(this, Ui.DIM, Ui.Radius.SHEET)); // 결제 화면을 덮는 어두운 바탕
         Ui.pad(root, this, 0, Ui.Pad.SHEET_TOP, 0, 0);
         return root;
-    }
-
-    private interface BoolSetter {
-        void set(boolean on);
-    }
-
-    /** [켜기] [끄기] 칩 한 줄. */
-    private View onOff(boolean current, BoolSetter setter) {
-        List<TextView> chips = new ArrayList<>();
-        chips.add(Ui.chip(this, "켜기", current, v -> apply(() -> setter.set(true))));
-        chips.add(Ui.chip(this, "끄기", !current, v -> apply(() -> setter.set(false))));
-        return Ui.chipGrid(this, chips, 2);
-    }
-
-    /** 값을 바꾸고 저장한 뒤 갤러리를 다시 그린다 (아래 예시들도 새 설정으로). */
-    private void apply(Runnable change) {
-        change.run();
-        UiPrefs.save(this);
-        recreate();
     }
 
     // ================================================================== 공통

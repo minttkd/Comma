@@ -19,7 +19,6 @@ import android.widget.TextView;
 
 import com.shimpyo.app.core.Enums.Decision;
 import com.shimpyo.app.core.Enums.Intensity;
-import com.shimpyo.app.core.Enums.Judgment;
 import com.shimpyo.app.core.Enums.TargetApp;
 import com.shimpyo.app.core.Enums.Trigger;
 import com.shimpyo.app.core.Money;
@@ -79,8 +78,6 @@ final class OverlayController {
 
     void show(Session s) {
         session = s;
-        UiPrefs.load(ctx); // 접근성 서비스에서는 MainActivity를 거치지 않을 수 있어 여기서 읽는다
-        Ui.applyTheme(ctx); // 다크 모드
         if (root == null) {
             buildRoot();
             WindowManager.LayoutParams p = new WindowManager.LayoutParams(
@@ -210,8 +207,6 @@ final class OverlayController {
     /** S08 처리 완료 토스트 (Figma Toast: 먹색 바탕, radius 14, 15 Medium / 12 Regular). */
     void toast(String line1, String line2) {
         removeToast();
-        UiPrefs.load(ctx);
-        Ui.applyTheme(ctx);
         LinearLayout box = Ui.tintBox(ctx, Ui.BRAND, Ui.Pad.TOAST_H, Ui.Pad.TOAST_V);
         box.setElevation(Ui.dp(ctx, Ui.Size.ELEVATION));
         box.addView(Ui.text(ctx, line1, Ui.Font.BODY, Ui.ON_BRAND, Ui.MEDIUM));
@@ -261,8 +256,8 @@ final class OverlayController {
         if (sheet == null || session == null) return;
         Session s = session;
         sheet.removeAllViews();
-        // 채팅 ③ 쉼표 색: 시트 바탕을 연초록으로
-        sheet.setBackground(Ui.corners(ctx, style() == UiPrefs.ChatStyle.BRAND ? Ui.BRAND_LIGHT : Ui.WHITE, Ui.Radius.SHEET, Ui.Radius.SHEET, 0, 0));
+        // 서비스 색: 시트 바탕은 연초록, 말풍선 · 입력칸은 흰색
+        sheet.setBackground(Ui.corners(ctx, Ui.BRAND_LIGHT, Ui.Radius.SHEET, Ui.Radius.SHEET, 0, 0));
         add(headerRow(s), 0);
         // 방금 멈춘 뒤 다시 결제를 누른 경우: 첫 화면에만 맥락 한 줄을 붙인다.
         if (s.retryAfterStop && s.answers.isEmpty()) {
@@ -272,34 +267,25 @@ final class OverlayController {
         else renderDialogue(s);
     }
 
-    // ------------------------------------------------------------------ 채팅 모양 (UiPrefs.chatStyle)
+    // ------------------------------------------------------------------ 채팅 모양 (서비스 색: 연초록 시트 + 쉼표 얼굴)
 
-    private static UiPrefs.ChatStyle style() {
-        return UiPrefs.chatStyle;
-    }
-
-    /** 쉼표 말풍선: ① 회색 + "쉼표" 이름표, ② 얼굴 + 연초록, ③ 얼굴 + 흰색(연초록 시트 위). */
+    /** 쉼표 말풍선: 얼굴 + 흰색 (연초록 시트 위). */
     private View aiBubble(String text, boolean faded) {
-        switch (style()) {
-            case SOFT: return Ui.bubbleAi(ctx, text, faded, Ui.BRAND_LIGHT);
-            case BRAND: return Ui.bubbleAi(ctx, text, faded, Ui.WHITE);
-            default: return Ui.bubbleAi(ctx, text, faded);
-        }
+        return Ui.bubbleAi(ctx, text, faded, Ui.WHITE);
     }
 
-    /** 내 답 말풍선: ①·③ 먹색, ② 초록. */
+    /** 내 답 말풍선: 먹색. */
     private View userBubble(String text) {
-        if (style() == UiPrefs.ChatStyle.SOFT) return Ui.bubbleUser(ctx, text, Ui.GREEN, Ui.WHITE);
         return Ui.bubbleUser(ctx, text);
     }
 
-    /** 입력칸 · 내 답 상자 바탕: 연초록 시트(③) 위에서는 흰색. */
+    /** 입력칸 · 내 답 상자 바탕: 연초록 시트 위라 흰색. */
     private int fieldBg() {
-        return style() == UiPrefs.ChatStyle.BRAND ? Ui.WHITE : Ui.BG;
+        return Ui.WHITE;
     }
 
-    /** ②·③ 머리줄: 쉼표 얼굴 · "쉼표" · 앱과 금액 / 진행 점 · X. 트리거·강도 같은 시스템 용어는 보이지 않는다. */
-    private View softHeaderRow(Session s) {
+    /** 머리줄: 쉼표 얼굴 · "쉼표" · 앱과 금액 / 진행 점 · X. 트리거·강도 같은 시스템 용어는 보이지 않는다. */
+    private View headerRow(Session s) {
         LinearLayout row = Ui.h(ctx);
         row.addView(Ui.avatar(ctx), Ui.square(ctx, Ui.Size.AVATAR));
         LinearLayout name = Ui.v(ctx);
@@ -311,33 +297,6 @@ final class OverlayController {
             int total = s.total();
             int current = s.inDecisionStep() ? total : Math.min(s.index + 1, total);
             Ui.inline(row, Ui.steps(ctx, current, total, true), Ui.Space.TIGHT);
-        }
-        Ui.inline(row, Ui.closeButton(ctx, v -> cb.onClose(s)), Ui.Space.TIGHT);
-        return row;
-    }
-
-    private static String intensityLabel(Intensity i) {
-        return i.label + (i == Intensity.LIGHT ? " ●○○" : i == Intensity.MEDIUM ? " ●●○" : " ●●●");
-    }
-
-    /** Header: 트리거 태그 · (필요 판정) · 강도 태그 · 진행 표시 · X */
-    private View headerRow(Session s) {
-        if (style() != UiPrefs.ChatStyle.NOW) return softHeaderRow(s);
-        LinearLayout row = Ui.h(ctx);
-        FlowLayout tags = Ui.tagFlow(ctx);
-        for (Trigger t : s.eval.triggers) {
-            tags.addView(Ui.tag(ctx, t.label, t.financial ? Ui.Tone.DANGER : Ui.Tone.WARNING));
-        }
-        if (s.attempt.judgment == Judgment.NEED && s.attempt.app != TargetApp.BAEMIN) {
-            tags.addView(Ui.tag(ctx, "필요", Ui.Tone.SUCCESS));
-        }
-        Intensity in = s.eval.intensity;
-        tags.addView(Ui.tag(ctx, intensityLabel(in), in == Intensity.STRONG ? Ui.Tone.INVERSE : Ui.Tone.BRAND));
-        row.addView(tags, Ui.weight1());
-        if (in != Intensity.LIGHT) {
-            int total = s.total();
-            String step = s.inDecisionStep() ? "결정" : Math.min(s.index + 1, total) + " / " + total;
-            Ui.inline(row, Ui.text(ctx, step, Ui.Font.CAPTION, Ui.SUBTLE, Ui.MEDIUM), Ui.Space.TIGHT);
         }
         Ui.inline(row, Ui.closeButton(ctx, v -> cb.onClose(s)), Ui.Space.TIGHT);
         return row;
