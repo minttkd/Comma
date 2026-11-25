@@ -233,10 +233,6 @@ public class MainActivity extends Activity {
         return app == TargetApp.BAEMIN ? "배민" : app.label;
     }
 
-    private static String recordTitle(Record r) {
-        return r.app == null ? r.title : appShort(r.app) + " · " + r.title;
-    }
-
     /** 기록 한 줄 아래 설명: 시각 · 강도 · 야식 · 고른 이유. */
     private String recordSub(Record r) {
         String sub = time(r.ts);
@@ -285,7 +281,7 @@ public class MainActivity extends Activity {
 
     /** 기록 한 줄의 모양: 결과 색 연한 바탕 + 제목 · 금액 · 태그. */
     private LinearLayout recordRowView(Record r) {
-        LinearLayout row = Ui.listRow(this, recordTitle(r), recordSub(r), Money.won(r.amount), outcomeTag(r));
+        LinearLayout row = Ui.listRow(this, AppIcons.icon(this, r.app, Ui.Size.APP_ICON), r.title, recordSub(r), Money.won(r.amount), outcomeTag(r));
         Ui.tintRow(this, row, outcomeTone(r).bg);
         return row;
     }
@@ -477,7 +473,7 @@ public class MainActivity extends Activity {
                 Ui.statTile(this, "식비 예산", Money.won(b.foodRemaining), man(b.foodBudget) + " 원 중 남음", true,
                         tileBar(b.foodRemaining, b.foodBudget), remainColor(b.foodRemaining), remainTrack(b.foodRemaining)),
                 Ui.Space.BLOCK), Ui.Space.BLOCK);
-        add(Ui.highlightBox(this, "이번 달 쉼표", st.prevented == 0 ? "결제 직전에 멈춘 기록이 여기 쌓여요"
+        add(Ui.highlightBox(this, st.prevented == 0 ? Sumsumi.Mood.NORMAL : Sumsumi.Mood.PROUD, "이번 달 쉼표", st.prevented == 0 ? "결제 직전에 멈춘 기록이 여기 쌓여요"
                 : st.prevented + "번 멈춰서 " + Money.won(st.preventedSum) + " 아꼈어요", v -> open(PAGE_REPORT)), Ui.Space.BLOCK);
         add(Ui.sectionHeader(this, "최근 기록", "더보기 ›", v -> open(PAGE_RECORDS)), Ui.Space.BLOCK);
         add(recentRecordsCard(recs), Ui.Space.BLOCK);
@@ -555,7 +551,7 @@ public class MainActivity extends Activity {
         for (int i = 0; i < sorted.size() && i < HOME_RECENT_COUNT; i++) {
             Ui.stack(list, recordRow(sorted.get(i), false), i == 0 ? 0 : Ui.Space.BLOCK);
         }
-        if (sorted.isEmpty()) list.addView(Ui.bodySmall(this, "아직 기록이 없어요. 아래 데모 결제로 체험해 보세요."));
+        if (sorted.isEmpty()) list.addView(Ui.emptyState(this, "아직 기록이 없어요. 아래 데모 결제로 체험해 보세요."));
         return list;
     }
 
@@ -676,7 +672,7 @@ public class MainActivity extends Activity {
             }
             first = false;
         }
-        if (sorted.isEmpty()) list.addView(Ui.bodySmall(this, "아직 기록이 없어요."));
+        if (sorted.isEmpty()) list.addView(Ui.emptyState(this, "아직 기록이 없어요."));
         add(list, Ui.Space.BLOCK);
     }
 

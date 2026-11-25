@@ -205,20 +205,31 @@ final class OverlayController {
     }
 
     /** S08 처리 완료 토스트 (Figma Toast: 먹색 바탕, radius 14, 15 Medium / 12 Regular). */
-    void toast(String line1, String line2) {
-        removeToast();
+    /** 토스트 모양 (숨숨이 + 두 줄). 렌더 확인용으로도 쓴다. */
+    FrameLayout toastView(String line1, String line2) {
         LinearLayout box = Ui.tintBox(ctx, Ui.BRAND, Ui.Pad.TOAST_H, Ui.Pad.TOAST_V);
+        box.setOrientation(LinearLayout.HORIZONTAL);
+        box.setGravity(Gravity.CENTER_VERTICAL);
         box.setElevation(Ui.dp(ctx, Ui.Size.ELEVATION));
-        box.addView(Ui.text(ctx, line1, Ui.Font.BODY, Ui.ON_BRAND, Ui.MEDIUM));
+        box.addView(new Sumsumi(ctx, Sumsumi.Mood.PROUD, true), Ui.square(ctx, Ui.Size.TOAST_FACE));
+        LinearLayout texts = Ui.v(ctx);
+        texts.addView(Ui.text(ctx, line1, Ui.Font.BODY, Ui.ON_BRAND, Ui.MEDIUM));
         if (line2 != null && !line2.isEmpty()) {
-            Ui.stack(box, Ui.text(ctx, line2, Ui.Font.CAPTION, Ui.ON_BRAND_SUB, Ui.REGULAR), Ui.Space.LINE);
+            Ui.stack(texts, Ui.text(ctx, line2, Ui.Font.CAPTION, Ui.ON_BRAND_SUB, Ui.REGULAR), Ui.Space.LINE);
         }
+        Ui.inlineFill(box, texts, Ui.Space.ROW);
         FrameLayout wrap = new FrameLayout(ctx);
         FrameLayout.LayoutParams bp = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT);
         bp.leftMargin = Ui.dp(ctx, Ui.Pad.SCREEN_H);
         bp.rightMargin = Ui.dp(ctx, Ui.Pad.SCREEN_H);
         bp.bottomMargin = Ui.dp(ctx, Ui.Space.ROW);
         wrap.addView(box, bp);
+        return wrap;
+    }
+
+    void toast(String line1, String line2) {
+        removeToast();
+        FrameLayout wrap = toastView(line1, line2);
         WindowManager.LayoutParams p = new WindowManager.LayoutParams(
                 WindowManager.LayoutParams.MATCH_PARENT, WindowManager.LayoutParams.WRAP_CONTENT,
                 WindowManager.LayoutParams.TYPE_ACCESSIBILITY_OVERLAY,
@@ -287,7 +298,7 @@ final class OverlayController {
     /** 머리줄: 쉼표 얼굴 · "쉼표" · 앱과 금액 / 진행 점 · X. 트리거·강도 같은 시스템 용어는 보이지 않는다. */
     private View headerRow(Session s) {
         LinearLayout row = Ui.h(ctx);
-        row.addView(Ui.avatar(ctx), Ui.square(ctx, Ui.Size.AVATAR));
+        row.addView(new Sumsumi(ctx, Sumsumi.Mood.BREATHE, true), Ui.square(ctx, Ui.Size.HEADER_FACE));
         LinearLayout name = Ui.v(ctx);
         name.addView(Ui.text(ctx, "쉼표", Ui.Font.LABEL, Ui.GREEN, Ui.BOLD));
         String where = s.attempt.app == null ? "" : (s.attempt.app == TargetApp.BAEMIN ? "배민" : s.attempt.app.label) + " · ";

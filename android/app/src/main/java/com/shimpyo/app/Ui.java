@@ -245,7 +245,12 @@ final class Ui {
         static final int BAR_THIN = 6;       // 요약 타일 안 진행 막대 높이
         static final int LIST_DOT = 8;       // 기록 줄 왼쪽 결과 색 점
         static final int LIST_BAR = 4;       // 기록 줄 왼쪽 결과 색 막대 폭
-        static final int AVATAR = 28;        // 개입 채팅 쉼표 얼굴 (채팅 ②·③)
+        static final int AVATAR = 28;        // 개입 채팅 숨숨이 얼굴 (채팅 ②·③)
+        static final int HEADER_FACE = 36;   // 개입 시트 머리줄 숨숨이
+        static final int APP_ICON = 32;      // 기록 줄 왼쪽 앱 아이콘
+        static final int CARD_FACE = 40;     // 홈 "이번 달 쉼표" 상자 숨숨이
+        static final int TOAST_FACE = 40;    // 토스트 숨숨이
+        static final int EMPTY_FACE = 88;    // 빈 화면 숨숨이
         static final int FIELD_WIDTH = 130;  // 설정 입력칸 폭
         static final int ROW_LABEL = 48;     // 리포트 강도 이름 칸
         static final float STROKE = 1f;
@@ -805,6 +810,16 @@ final class Ui {
         return row;
     }
 
+    /** 목록 한 줄 + 왼쪽 아이콘 (기록: 결제한 앱 아이콘). 아이콘은 Size.APP_ICON 정사각형, 줄 가운데에 맞춘다. */
+    static LinearLayout listRow(Context c, View lead, String title, String sub, String amount, View tag) {
+        LinearLayout row = listRow(c, 0, title, sub, amount, tag);
+        row.setGravity(Gravity.CENTER_VERTICAL);
+        LinearLayout.LayoutParams lp = square(c, Size.APP_ICON);
+        lp.rightMargin = dp(c, Space.ITEM);
+        row.addView(lead, 0, lp);
+        return row;
+    }
+
     /** 줄 전체에 연한 색 바탕을 깐다 (radius 10). 기록 줄 (결과 색). */
     static void tintRow(Context c, View row, int bg) {
         row.setBackground(round(c, bg, Radius.NOTE));
@@ -955,6 +970,15 @@ final class Ui {
         return b;
     }
 
+    /** 성과 상자 + 왼쪽 숨숨이 (홈 이번 달 쉼표). */
+    static LinearLayout highlightBox(Context c, Sumsumi.Mood mood, String label, String value, View.OnClickListener click) {
+        LinearLayout b = highlightBox(c, label, value, click);
+        LinearLayout.LayoutParams lp = square(c, Size.CARD_FACE);
+        lp.rightMargin = dp(c, Space.ITEM);
+        b.addView(new Sumsumi(c, mood, true), 0, lp);
+        return b;
+    }
+
     /** 연초록 안내 한 줄 (radius·글자는 자리마다 Figma 값이 달라 인자로 받는다). */
     static TextView tintNote(Context c, String s, float sp, int fg, int radius, int padH, int padV) {
         TextView t = text(c, s, sp, fg, MEDIUM);
@@ -1042,12 +1066,20 @@ final class Ui {
     }
 
     /** 쉼표 얼굴: 초록 동그라미 안 "쉼" (개입 채팅 ②·③). square(c, Size.AVATAR)로 붙인다. */
-    static TextView avatar(Context c) {
-        TextView t = text(c, "쉼", Font.CAPTION, ON_BRAND, BOLD);
+    static View avatar(Context c) {
+        return new Sumsumi(c, Sumsumi.Mood.CURIOUS, true);
+    }
+
+    /** 빈 화면: 숨숨이 + 안내 한 줄 (가운데). */
+    static LinearLayout emptyState(Context c, String message) {
+        LinearLayout b = v(c);
+        b.setGravity(Gravity.CENTER_HORIZONTAL);
+        b.addView(new Sumsumi(c, Sumsumi.Mood.NORMAL, false), square(c, Size.EMPTY_FACE));
+        TextView t = text(c, message, Font.CAPTION, MUTED, REGULAR);
         t.setGravity(Gravity.CENTER);
-        t.setBackground(circle(GREEN));
-        t.setIncludeFontPadding(false);
-        return t;
+        stack(b, t, Space.ITEM);
+        pad(b, c, 0, Space.ITEM);
+        return b;
     }
 
     /** 쉼표 얼굴 + 말풍선 (개입 채팅 ②·③): 얼굴이 "쉼표" 이름표를 대신한다. bg는 말풍선 바탕. */

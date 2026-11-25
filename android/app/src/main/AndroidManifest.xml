@@ -3,6 +3,13 @@
 
     <uses-permission android:name="android.permission.INTERNET" />
 
+    <!-- 기록 줄에 휴대폰에 깔린 앱 아이콘을 보여 주려고 (Android 11+ 패키지 가시성) -->
+    <queries>
+        <package android:name="com.sampleapp" />
+        <package android:name="com.coupang.mobile" />
+        <package android:name="com.musinsa.store" />
+    </queries>
+
     <application
         android:allowBackup="false"
         android:icon="@mipmap/ic_launcher"
