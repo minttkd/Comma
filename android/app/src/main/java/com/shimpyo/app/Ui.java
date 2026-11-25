@@ -971,16 +971,20 @@ final class Ui {
         return b;
     }
 
-    /** 누르는 입구 카드 (홈 "N월 리포트"): 바로 아래 "이번 달 멈춘 결제"와 같은 연초록 상자, 왼쪽 숨숨이 · 제목, 오른쪽 →. */
+    /** 누르는 입구 카드 (홈 "N월 리포트"): 진초록 강조 상자(heroCard와 같은 바탕) + 흰 글자, 왼쪽 숨숨이 · 제목, 오른쪽 →. */
     static LinearLayout entryCard(Context c, View lead, String title, View.OnClickListener click) {
-        LinearLayout b = tintBox(c, BRAND_LIGHT, Pad.BOX_H, Pad.BOX_V);
+        LinearLayout b = tintBox(c, HERO_BG, Pad.BOX_H, Pad.BOX_V);
         b.setOrientation(LinearLayout.HORIZONTAL);
         b.setGravity(Gravity.CENTER_VERTICAL);
-        LinearLayout.LayoutParams lp = square(c, Size.CARD_FACE);
+        // 진초록 위에선 숨숨이 잎이 묻히니 흰 동그라미 위에 올린다
+        lead.setBackground(circle(WHITE));
+        int p = dp(c, Space.LINE);
+        lead.setPadding(p, p, p, p);
+        LinearLayout.LayoutParams lp = square(c, Size.CARD_FACE + 6);
         lp.rightMargin = dp(c, Space.ROW);
         b.addView(lead, lp);
-        b.addView(text(c, title, Font.BUTTON, GREEN, BOLD), new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-        inline(b, text(c, "→", Font.HEADING, GREEN, BOLD), Space.ITEM);
+        b.addView(text(c, title, Font.BUTTON, ON_HERO, BOLD), new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        inline(b, text(c, "→", Font.HEADING, ON_HERO, BOLD), Space.ITEM);
         b.setOnClickListener(click);
         return b;
     }
