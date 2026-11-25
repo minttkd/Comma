@@ -971,15 +971,15 @@ final class Ui {
         return b;
     }
 
-    /** 누르는 입구 카드 (홈 "N월 리포트"): 흰 테두리 카드, 왼쪽 라벨 · 한 줄, 오른쪽 →. */
-    static LinearLayout entryCard(Context c, String label, String value, View.OnClickListener click) {
+    /** 누르는 입구 카드 (홈 "N월 리포트"): 흰 테두리 카드, 왼쪽 숨숨이 · 제목, 오른쪽 →. */
+    static LinearLayout entryCard(Context c, View lead, String title, View.OnClickListener click) {
         LinearLayout b = outlineCard(c, Pad.BOX_H, Pad.BOX_V);
         b.setOrientation(LinearLayout.HORIZONTAL);
         b.setGravity(Gravity.CENTER_VERTICAL);
-        LinearLayout texts = v(c);
-        texts.addView(text(c, label, Font.CAPTION, MUTED, REGULAR));
-        stack(texts, text(c, value, Font.BUTTON, TEXT, BOLD), Space.LINE);
-        b.addView(texts, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        LinearLayout.LayoutParams lp = square(c, Size.CARD_FACE);
+        lp.rightMargin = dp(c, Space.ROW);
+        b.addView(lead, lp);
+        b.addView(text(c, title, Font.BUTTON, TEXT, BOLD), new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         inline(b, text(c, "→", Font.HEADING, TEXT, BOLD), Space.ITEM);
         b.setOnClickListener(click);
         return b;

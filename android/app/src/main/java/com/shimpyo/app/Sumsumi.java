@@ -34,6 +34,18 @@ final class Sumsumi extends View {
     /** 작은 얼굴용: 잎 끝부터 발까지 */
     private static final RectF COMPACT = new RectF(24, 34, 176, 214);
 
+    /** 손에 든 소품 (리포트 입구: 가장 많이 쓴 카테고리). */
+    enum Prop { NONE, DRUMSTICK, SUNGLASSES, BOX, CARROT, FORK }
+
+    /** 소품이 몸 오른쪽으로 삐져나오니 판을 넓힌다. */
+    private static final RectF PROP_COMPACT = new RectF(22, 30, 216, 220);
+    private static final int MEAT = Color.parseColor("#C98A4B");
+    private static final int CARDBOARD = Color.parseColor("#D9B48A");
+    private static final int TAPE = Color.parseColor("#EFD9BC");
+    private static final int CARROT_ORANGE = Color.parseColor("#F08A3C");
+    private static final int SPROUT = Color.parseColor("#5E9E6E");
+
+    private Prop prop = Prop.NONE;
     private Mood mood;
     private final boolean compact;
     private final Paint fill = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -51,6 +63,12 @@ final class Sumsumi extends View {
         setContentDescription("숨숨이");
     }
 
+    Sumsumi prop(Prop p) {
+        prop = p;
+        invalidate();
+        return this;
+    }
+
     void setMood(Mood m) {
         mood = m;
         invalidate();
@@ -58,7 +76,7 @@ final class Sumsumi extends View {
 
     @Override
     protected void onDraw(Canvas canvas) {
-        RectF box = compact ? COMPACT : FULL;
+        RectF box = compact ? (prop != Prop.NONE ? PROP_COMPACT : COMPACT) : FULL;
         float w = getWidth() - getPaddingLeft() - getPaddingRight();
         float h = getHeight() - getPaddingTop() - getPaddingBottom();
         if (w <= 0 || h <= 0) return;
@@ -113,6 +131,7 @@ final class Sumsumi extends View {
         ellipse(canvas, fill, 136, 158, 9, 5);
 
         face(canvas, feature);
+        drawProp(canvas, outline, feature);
         if (!compact && mood == Mood.PROUD) {
             fill.setColor(SPARK);
             star(canvas, 178, 80, 1f);
@@ -126,6 +145,21 @@ final class Sumsumi extends View {
         fill.setColor(INK);
         line.setColor(INK);
         line.setStrokeWidth(sw);
+        if (prop == Prop.SUNGLASSES) {
+            // 선글라스: 두 알 + 다리, 웃는 입
+            RectF l = new RectF(64, 130, 95, 150), r = new RectF(105, 130, 136, 150);
+            c.drawRoundRect(l, 8, 8, fill);
+            c.drawRoundRect(r, 8, 8, fill);
+            c.drawPath(path("M95 136 L105 136"), line);
+            line.setColor(Color.WHITE);
+            line.setStrokeWidth(sw * 0.7f);
+            c.drawPath(path("M70 136 L78 136"), line);
+            c.drawPath(path("M111 136 L119 136"), line);
+            line.setColor(INK);
+            line.setStrokeWidth(sw);
+            c.drawPath(path("M92 158 Q100 167 108 158"), line);
+            return;
+        }
         switch (mood) {
             case BREATHE:
                 c.drawPath(path("M73 140 Q80 146 87 140"), line);
@@ -164,6 +198,82 @@ final class Sumsumi extends View {
                 c.drawPath(path("M93 158 Q100 165 107 158"), line);
                 break;
         }
+    }
+
+    /** 몸 오른쪽 아래에 든 소품. 먹색 테두리로 몸과 같은 그림체. */
+    private void drawProp(Canvas c, float outline, float sw) {
+        if (prop == Prop.NONE || prop == Prop.SUNGLASSES) return;
+        // 작은 카드에서도 보이게 소품만 1.4배 (몸 오른쪽 아래를 기준으로)
+        c.save();
+        c.scale(1.4f, 1.4f, 165, 180);
+        sw /= 1.4f;
+        line.setColor(INK);
+        line.setStrokeWidth(sw);
+        switch (prop) {
+            case DRUMSTICK: {
+                // 뼈: 먹색 굵은 선 위에 흰 선, 끝에 동그라미 두 개
+                line.setStrokeWidth(sw + 9);
+                c.drawPath(path("M166 170 L186 146"), line);
+                fill.setColor(INK);
+                c.drawCircle(184, 140, 7 + sw / 2, fill);
+                c.drawCircle(192, 148, 7 + sw / 2, fill);
+                fill.setColor(Color.WHITE);
+                c.drawCircle(184, 140, 7, fill);
+                c.drawCircle(192, 148, 7, fill);
+                line.setColor(Color.WHITE);
+                line.setStrokeWidth(9);
+                c.drawPath(path("M166 170 L188 144"), line);
+                // 살코기
+                c.save();
+                c.rotate(-40, 158, 182);
+                fill.setColor(MEAT);
+                ellipse(c, fill, 158, 182, 20, 15);
+                line.setColor(INK);
+                line.setStrokeWidth(sw);
+                oval.set(138, 167, 178, 197);
+                c.drawOval(oval, line);
+                c.restore();
+                break;
+            }
+            case BOX: {
+                RectF b = new RectF(138, 158, 190, 206);
+                fill.setColor(CARDBOARD);
+                c.drawRoundRect(b, 4, 4, fill);
+                fill.setColor(TAPE);
+                c.drawRect(159, 158, 169, 206, fill);
+                line.setStrokeWidth(sw);
+                c.drawRoundRect(b, 4, 4, line);
+                c.drawPath(path("M138 172 L190 172"), line);
+                break;
+            }
+            case CARROT: {
+                line.setColor(SPROUT);
+                line.setStrokeWidth(sw + 1);
+                c.drawPath(path("M180 150 L186 128"), line);
+                c.drawPath(path("M184 154 L200 138"), line);
+                c.drawPath(path("M178 150 L170 132"), line);
+                Path carrot = path("M170 146 Q196 150 192 168 L150 208 Q142 206 144 198 Z");
+                fill.setColor(CARROT_ORANGE);
+                c.drawPath(carrot, fill);
+                line.setColor(INK);
+                line.setStrokeWidth(sw);
+                c.drawPath(carrot, line);
+                c.drawPath(path("M172 170 L178 175"), line);
+                c.drawPath(path("M162 184 L168 189"), line);
+                break;
+            }
+            case FORK: {
+                line.setStrokeWidth(sw + 1.5f);
+                c.drawPath(path("M180 148 L180 206"), line);
+                line.setStrokeWidth(sw);
+                c.drawPath(path("M170 124 L170 140 Q170 150 180 150 Q190 150 190 140 L190 124"), line);
+                c.drawPath(path("M180 124 L180 146"), line);
+                break;
+            }
+            default:
+                break;
+        }
+        c.restore();
     }
 
     private void star(Canvas c, float x, float y, float scale) {

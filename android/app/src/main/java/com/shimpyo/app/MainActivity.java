@@ -469,10 +469,11 @@ public class MainActivity extends Activity {
                 Ui.statTile(this, "식비 예산", Money.won(b.foodRemaining), man(b.foodBudget) + " 원 중 남음", true,
                         tileBar(b.foodRemaining, b.foodBudget), remainColor(b.foodRemaining), remainTrack(b.foodRemaining)),
                 Ui.Space.BLOCK), Ui.Space.BLOCK);
-        add(Ui.entryCard(this, LocalDate.now(zone).getMonthValue() + "월 리포트", reportTeaser(s, recs, now), v -> open(PAGE_REPORT)), Ui.Space.BLOCK);
+        add(Ui.entryCard(this, new Sumsumi(this, Sumsumi.Mood.OKAY, true).prop(topCategoryProp(s, recs, now)),
+                LocalDate.now(zone).getMonthValue() + "월 리포트", v -> open(PAGE_REPORT)), Ui.Space.BLOCK);
         add(Ui.highlightBox(this, st.prevented == 0 ? Sumsumi.Mood.NORMAL : Sumsumi.Mood.PROUD, "이번 달 멈춘 결제", st.prevented == 0 ? "결제 직전에 멈춘 기록이 여기 쌓여요"
                 : st.prevented + "번 멈춰서 " + Money.won(st.preventedSum) + " 아꼈어요", v -> open(PAGE_STOPPED)), Ui.Space.BLOCK);
-        add(Ui.sectionHeader(this, "최근 기록", "더보기 ›", v -> open(PAGE_RECORDS)), Ui.Space.BLOCK);
+        add(Ui.sectionHeader(this, "결제 내역", "더보기 ›", v -> open(PAGE_RECORDS)), Ui.Space.BLOCK);
         add(recentRecordsCard(recs), Ui.Space.BLOCK);
 
         maybeShowReview(recs, now);
@@ -543,14 +544,18 @@ public class MainActivity extends Activity {
     }
 
 
-    /** 홈 "N월 리포트" 입구의 한 줄: 가장 많이 쓴 카테고리. */
-    private String reportTeaser(Settings s, List<Record> recs, long now) {
-        ReportViews.Data d = ReportViews.Data.of(s, recs, now, zone);
-        List<ReportViews.Category> ranked = d.ranked();
-        if (ranked.isEmpty()) return "결제가 쌓이면 어디에 썼는지 보여 드려요";
-        ReportViews.Category top = ranked.get(0);
-        if (top == ReportViews.Category.OTHER) return "이번 달 " + Money.won(d.total) + " 썼어요";
-        return top.label + "에 가장 많이 썼어요";
+    /** 홈 "N월 리포트" 입구 숨숨이가 드는 소품: 이번 달 가장 많이 쓴 카테고리. */
+    private Sumsumi.Prop topCategoryProp(Settings s, List<Record> recs, long now) {
+        List<ReportViews.Category> ranked = ReportViews.Data.of(s, recs, now, zone).ranked();
+        if (ranked.isEmpty()) return Sumsumi.Prop.NONE;
+        switch (ranked.get(0)) {
+            case DELIVERY: return Sumsumi.Prop.DRUMSTICK;   // 배달 음식: 닭다리
+            case FASHION: return Sumsumi.Prop.SUNGLASSES;   // 옷 · 패션: 선글라스
+            case LIVING: return Sumsumi.Prop.BOX;           // 생활용품: 택배 상자
+            case GROCERY: return Sumsumi.Prop.CARROT;       // 식료품: 당근
+            case DINING: return Sumsumi.Prop.FORK;          // 외식: 포크
+            default: return Sumsumi.Prop.NONE;
+        }
     }
 
     /** 실제로 돈이 나간 기록만 (안 샀어요 · 그냥 나갔어요는 뺀다). 최근 순. */
@@ -643,8 +648,8 @@ public class MainActivity extends Activity {
     // ================================================================== 기록 (홈 › 최근 기록 더보기)
 
     private void recordsScreen() {
-        add(Ui.screenHeader(this, "기록", v -> open(PAGE_HOME)), 0);
-        add(Ui.bodySmall(this, "결제한 내역만 보여요. 길게 누르면 지울 수 있어요 (결제하지 않았는데 기록된 건 등)."), Ui.Space.TIGHT);
+        add(Ui.screenHeader(this, "결제 내역", v -> open(PAGE_HOME)), 0);
+        add(Ui.bodySmall(this, "길게 누르면 지울 수 있어요 (결제하지 않았는데 기록된 건 등)."), Ui.Space.TIGHT);
         List<Record> sorted = paidOnly(store.records());
         LinearLayout list = Ui.outlineCard(this, Ui.Pad.CARD, Ui.Pad.CARD);
         boolean first = true;
