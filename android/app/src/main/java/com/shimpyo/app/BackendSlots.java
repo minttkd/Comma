@@ -18,7 +18,7 @@ final class BackendSlots {
 
     /** 연결된 계좌 (S02 "연결된 계좌" 카드). */
     static final class Account {
-        String bank = "쉼표은행";
+        String bank = "데모은행";
         String kind = "입출금";
         String maskedNumber = "****1234";
         boolean demo = true;              // true면 이름 뒤에 "(데모)"를 붙인다

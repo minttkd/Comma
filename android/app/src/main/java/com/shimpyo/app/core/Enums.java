@@ -72,11 +72,11 @@ public final class Enums {
 
     /** 결과 기록 분류 (REQ-9). */
     public enum Outcome {
-        PREVENTED("방지 실적", false),
-        REASON_PAY("이유 선택 결제", true),
-        DELIBERATE_PAY("숙고 후 결제", true),
-        EXIT("자기결정 이탈", false),
-        PASS("비개입", true),
+        PREVENTED("안 샀어요", false),
+        REASON_PAY("이유 있어 샀어요", true),
+        DELIBERATE_PAY("고민하고 샀어요", true),
+        EXIT("그냥 나갔어요", false),
+        PASS("바로 결제", true),
         SYNC("계좌 내역", true);
 
         public final String label;

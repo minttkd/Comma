@@ -267,7 +267,7 @@ public class GuardService extends AccessibilityService implements OverlayControl
             store.log("개입 없음 → 결제 버튼 터치를 그대로 전달");
         } else {
             store.log("터치 전달 실패 → 결제 버튼을 한 번 더 누르도록 안내");
-            overlay.toast("결제 버튼을 한 번 더 눌러 주세요", "쉼표 확인은 끝났어요");
+            overlay.toast("결제 버튼을 한 번 더 눌러 주세요", "확인은 끝났어요");
         }
     }
 
@@ -544,10 +544,10 @@ public class GuardService extends AccessibilityService implements OverlayControl
         overlay.hideGuard();
         performGlobalAction(GLOBAL_ACTION_BACK);
         Stats st = Stats.of(store.settings(), store.records(), System.currentTimeMillis(), zone);
-        String l1 = Money.won(s.attempt.amount) + ", 쉼표 찍었어요";
+        String l1 = Money.won(s.attempt.amount) + " 결제를 멈췄어요";
         String l2 = "이번 달 " + st.prevented + "번 · " + Money.won(st.preventedSum) + " 아꼈어요";
         main.postDelayed(() -> overlay.toast(l1, l2), 400);
-        store.log("그만둘게요 → 방지 실적 (" + r.stoppedAt + "번째 질문에서)");
+        store.log("그만둘게요 → 안 샀어요 (" + r.stoppedAt + "번째 질문에서)");
     }
 
     @Override
@@ -561,7 +561,7 @@ public class GuardService extends AccessibilityService implements OverlayControl
         resetLateIfNeeded(s);
         overlay.hide();
         afterAllowed(s);
-        store.log("이유 칩 '" + chip + "' → 이유 선택 결제 (결제 진행 허용)");
+        store.log("이유 칩 '" + chip + "' → 이유 있어 샀어요 (결제 진행 허용)");
     }
 
     @Override
@@ -573,7 +573,7 @@ public class GuardService extends AccessibilityService implements OverlayControl
         resetLateIfNeeded(s);
         overlay.hide();
         afterAllowed(s);
-        store.log("그래도 살게요 → 숙고 후 결제 (결제 진행 허용)");
+        store.log("그래도 살게요 → 고민하고 샀어요 (결제 진행 허용)");
     }
 
     @Override
@@ -589,7 +589,7 @@ public class GuardService extends AccessibilityService implements OverlayControl
     /** 질문이 끝나 결제를 허용했다. 가드를 내리고 사용자가 직접 결제 버튼을 다시 누르게 한다. */
     private void afterAllowed(Session s) {
         overlay.hideGuard();
-        if (s.forwardTap) main.postDelayed(() -> overlay.toast("결제 버튼을 한 번 더 눌러 주세요", "쉼표 질문은 끝났어요"), 300);
+        if (s.forwardTap) main.postDelayed(() -> overlay.toast("결제 버튼을 한 번 더 눌러 주세요", "질문은 끝났어요"), 300);
     }
 
     @Override

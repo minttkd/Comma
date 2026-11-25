@@ -1054,7 +1054,7 @@ final class Ui {
         LinearLayout b = v(c);
         b.setBackground(corners(c, BG, Radius.BAR, Radius.CARD, Radius.CARD, Radius.CARD));
         pad(b, c, Pad.BUBBLE_H, Pad.BUBBLE_AI_V);
-        b.addView(text(c, "쉼표", Font.CAPTION, BRAND, MEDIUM));
+        b.addView(text(c, "숨숨이", Font.CAPTION, BRAND, MEDIUM));
         stack(b, text(c, question, Font.BODY, TEXT, MEDIUM), Space.LINE);
         if (faded) b.setAlpha(0.6f);
         LinearLayout row = h(c);

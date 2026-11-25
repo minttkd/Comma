@@ -362,9 +362,9 @@ public class UiGalleryActivity extends Activity {
         sample("Ui.kv(total = false / true)", kvs);
         LinearLayout list = Ui.outlineCard(this, Ui.Pad.CARD, Ui.Pad.CARD);
         list.addView(Ui.listRow(this, Ui.GREEN, "쿠팡 · 휴지·세제", "어제 21:05", "26,000원", Ui.smallTag(this, "멈춤", Ui.Tone.SUCCESS)));
-        Ui.stack(list, Ui.listRow(this, Ui.BRAND, "배민 · 치킨 세트", "오늘 19:20 · 보통 · \"배고파서\"", "23,000원", Ui.smallTag(this, "이유 선택 결제", Ui.Tone.ACCENT)), Ui.Space.BLOCK);
-        Ui.stack(list, Ui.listRow(this, Ui.AMBER, "무신사 · 울 코트", "어제 23:10 · 강함", "129,000원", Ui.smallTag(this, "숙고 후 결제", Ui.Tone.WARNING)), Ui.Space.BLOCK);
-        Ui.stack(list, Ui.listRow(this, Ui.LINE, "외식 · 학교 앞 식당", "오늘 12:30", "8,000원", Ui.smallTag(this, "여윳돈", Ui.Tone.NEUTRAL)), Ui.Space.BLOCK);
+        Ui.stack(list, Ui.listRow(this, Ui.BRAND, "배민 · 치킨 세트", "오늘 19:20 · 보통 · \"배고파서\"", "23,000원", Ui.smallTag(this, "이유 있어 샀어요", Ui.Tone.NEUTRAL)), Ui.Space.BLOCK);
+        Ui.stack(list, Ui.listRow(this, Ui.AMBER, "무신사 · 울 코트", "어제 23:10 · 강함", "129,000원", Ui.smallTag(this, "고민하고 샀어요", Ui.Tone.WARNING)), Ui.Space.BLOCK);
+        Ui.stack(list, Ui.listRow(this, Ui.LINE, "외식 · 학교 앞 식당", "오늘 12:30", "8,000원", Ui.smallTag(this, "여윳돈 지출", Ui.Tone.NEUTRAL)), Ui.Space.BLOCK);
         sample("Ui.listRow(dotColor, …)  — 점 없는 버전은 dotColor 없이", list);
         sample("Ui.statTile(outlined = true, ratio, barColor, barTrack) · Ui.tilePair", Ui.tilePair(this,
                 Ui.statTile(this, "남은 여윳돈", "280,000원", "급여일까지 8일", true, 0.7f, Ui.GREEN, Ui.BG),
@@ -376,10 +376,10 @@ public class UiGalleryActivity extends Activity {
                 Ui.statTile(this, "야식", "3번", "39,000원 · 지난달 −1번", false),
                 Ui.statTile(this, "회고 후회", "1/3", "후회 응답 33%", false), Ui.Space.ROW));
         sample("Ui.heroCard(large = false)", Ui.heroCard(this, "월 여윳돈", "400,000원", "수입 100만 − 고정 50만 − 식비 10만", false));
-        sample("Ui.heroCard(large = true)", Ui.heroCard(this, "마음 돌림 비율", "67%", "쉼표가 말을 건 3번 중 2번 그만뒀어요", true));
-        sample("Ui.alertBox", Ui.alertBox(this, "결제 감지가 꺼져 있어요", "설정 › 접근성에서 '쉼표'를 켜 주세요.", "접근성 설정 열기 ›", tap));
-        sample("Ui.highlightBox", Ui.highlightBox(this, "이번 달 쉼표", "2번 멈춰서 52,000원 아꼈어요"));
-        sample("Ui.highlightBox(..., click) · 누르면 이동 (홈 → 리포트)", Ui.highlightBox(this, "이번 달 쉼표", "2번 멈춰서 52,000원 아꼈어요", tap));
+        sample("Ui.heroCard(large = true)", Ui.heroCard(this, "마음 돌림 비율", "67%", "숨숨이가 말을 건 3번 중 2번 그만뒀어요", true));
+        sample("Ui.alertBox", Ui.alertBox(this, "결제 감지가 꺼져 있어요", "설정 › 접근성 › 설치된 앱에서 결제 감지를 켜 주세요.", "접근성 설정 열기 ›", tap));
+        sample("Ui.highlightBox", Ui.highlightBox(this, "이번 달 멈춘 결제", "2번 멈춰서 52,000원 아꼈어요"));
+        sample("Ui.highlightBox(..., click) · 누르면 이동 (홈 → 리포트)", Ui.highlightBox(this, "이번 달 멈춘 결제", "2번 멈춰서 52,000원 아꼈어요", tap));
         sample("Ui.tintNote(…)", Ui.tintNote(this, "비밀번호·카드번호·메시지는 읽지 않아요.", Ui.Font.CAPTION, Ui.GREEN, Ui.Radius.BOX, Ui.Pad.PRIVACY_NOTE, Ui.Pad.PRIVACY_NOTE));
         sampleOnCard("Ui.factBox", Ui.factBox(this, "23,000원을 결제하면 오늘 31,000원 · 오늘 한도 14,000원"));
         LinearLayout bars = Ui.card(this);

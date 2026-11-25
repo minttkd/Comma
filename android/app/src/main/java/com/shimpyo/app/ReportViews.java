@@ -85,7 +85,7 @@ final class ReportViews {
         NEED("필요해서", "떨어졌거나 끼니라서", ""),
         PEOPLE("사람 때문에", "약속 · 선물", "사람 때문에 쓰는 돈"),
         MOOD("기분으로", "그냥 · 습관처럼", "기분으로 쓰는 돈"),
-        TALKED("대화 끝에", "쉼표와 이야기하고도 [그래도 살게요]", "대화하고도 사는 것"),
+        TALKED("대화 끝에", "숨숨이와 이야기하고도 [그래도 살게요]", "대화하고도 사는 것"),
         OTHER("다른 이유로", "", "");
 
         final String name, desc;
@@ -254,7 +254,7 @@ final class ReportViews {
         String insight = valueInsight(groups);
         if (insight == null) {
             return Ui.heroSentence(c, "이번 달 내 기준", "다음 날 돌아본 답이 모이면\n내 기준이 보여요",
-                    "쉼표와 대화한 뒤 결제하면, 다음 날 만족했는지 물어봐요");
+                    "숨숨이와 대화한 뒤 결제하면, 다음 날 만족했는지 물어봐요");
         }
         List<View> rows = new ArrayList<>();
         int answered = 0;
@@ -361,7 +361,7 @@ final class ReportViews {
         reply.setVisibility(View.GONE);
         Ui.stack(box, choice(c, label -> {
             reply.setText(label.equals("지금이 좋아요") ? "좋아요. 지금처럼 쓰고, 다음 달에 다시 돌아봐요."
-                    : "좋아요. 다음 달엔 이런 결제 앞에서 쉼표가 한 번 더 물어볼게요.");
+                    : "좋아요. 다음 달엔 이런 결제 앞에서 숨숨이가 한 번 더 물어볼게요.");
             reply.setVisibility(View.VISIBLE);
         }, options.toArray(new String[0])), Ui.Space.BLOCK);
         Ui.stack(box, Ui.wordBreak(reply), Ui.Space.BLOCK);

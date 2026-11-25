@@ -80,7 +80,7 @@ public class DemoCheckoutActivity extends Activity {
         setContentView(buildView());
         GuardService g = GuardService.instance;
         if (g != null) g.demoCheckout(current.app);
-        else status = "접근성 서비스가 꺼져 있어 쉼표가 판단할 수 없어요.";
+        else status = "접근성 서비스가 꺼져 있어 판단할 수 없어요.";
         updateStatus();
     }
 
@@ -251,7 +251,7 @@ public class DemoCheckoutActivity extends Activity {
             updateStatus();
             return;
         }
-        status = "쉼표가 최종 금액으로 확인하고 있어요…";
+        status = "최종 금액으로 확인하고 있어요…";
         updateStatus();
         pollAfterTap(0);
     }
@@ -271,7 +271,7 @@ public class DemoCheckoutActivity extends Activity {
                 return;
             }
             if ("ALLOWED".equals(st)) status = "질문이 끝났어요. 결제하기를 한 번 더 눌러 주세요.";
-            else if ("ACTIVE".equals(st)) status = "쉼표 질문 중…";
+            else if ("ACTIVE".equals(st)) status = "숨숨이 질문 중…";
             else if ("PAUSED".equals(st)) status = "질문을 닫았어요. 결제하기를 누르면 하던 질문부터 다시 떠요.";
             else status = "";
             updateStatus();

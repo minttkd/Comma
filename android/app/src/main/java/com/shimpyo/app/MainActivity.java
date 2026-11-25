@@ -257,21 +257,19 @@ public class MainActivity extends Activity {
     /** 기록 결과 이름 (태그 글자). */
     private static String outcomeLabel(Record r) {
         if (r.outcome == Outcome.PREVENTED || r.outcome == Outcome.REASON_PAY || r.outcome == Outcome.DELIBERATE_PAY) return r.outcome.label;
-        if (isFoodOnly(r)) return "식비 예산";
-        return r.outcome == Outcome.SYNC ? "여윳돈" : r.outcome.label;
+        if (r.outcome == Outcome.EXIT) return r.outcome.label;
+        return isFoodOnly(r) ? "식비 지출" : "여윳돈 지출";
     }
 
     /** 기록 결과 색. 태그와 왼쪽 점이 같은 규칙을 쓴다. */
     private static Ui.Tone outcomeTone(Record r) {
         switch (r.outcome) {
             case PREVENTED:
-                return Ui.Tone.SUCCESS;      // 멈춤: 초록
-            case REASON_PAY:
-                return Ui.Tone.ACCENT;       // 이유 선택 결제: 연초록 태그, 먹색 점
+                return Ui.Tone.SUCCESS;      // 안 샀어요: 초록
             case DELIBERATE_PAY:
-                return Ui.Tone.WARNING;      // 숙고 후 결제: 노랑
+                return Ui.Tone.WARNING;      // 고민하고 샀어요 (대화 끝에 [그래도 살게요]): 노랑
             default:
-                return isFoodOnly(r) ? Ui.Tone.SUCCESS : Ui.Tone.NEUTRAL; // 식비 예산: 초록, 나머지: 회색
+                return Ui.Tone.NEUTRAL;      // 이유 있어 샀어요 · 식비 · 여윳돈 · 나감: 회색
         }
     }
 
@@ -319,7 +317,7 @@ public class MainActivity extends Activity {
     private void onboardingPermissionScreen() {
         boolean on = serviceEnabled();
         add(onboardingTopBar(ONBOARD_PERMISSION), 0);
-        add(Ui.title(this, "결제 직전에\n쉼표 하나 찍어드릴게요"), Ui.Space.ITEM);
+        add(Ui.title(this, "결제 직전에\n잠깐 멈춰 드릴게요"), Ui.Space.ITEM);
         add(Ui.bodySmall(this, "이번 달 돈 흐름에 무리가 될 때만 결제 화면 위에서 질문을 건네요. 결정은 언제나 내가 해요."), Ui.Space.STACK);
         add(permissionCard(on), Ui.Space.STACK);
         add(Ui.tintNote(this, "비밀번호·카드번호·메시지는 읽지 않아요. 상품명과 금액만 판단에 써요.",
@@ -433,7 +431,7 @@ public class MainActivity extends Activity {
                 "수입 " + man(s.income) + " − 고정 " + man(s.fixedTotal()) + " − 식비 " + man(s.foodBudget()) + " · 하루 기준 약 " + Money.won(daily),
                 false), Ui.Space.BLOCK);
 
-        footerButton(Ui.button(this, "쉼표 시작하기", true, v -> {
+        footerButton(Ui.button(this, "시작하기", true, v -> {
             Settings st = store.settings();
             st.onboarded = true;
             store.saveSettings(st);
@@ -463,7 +461,7 @@ public class MainActivity extends Activity {
         add(homeHeader(s.lastSyncTs, now), 0);
         if (!serviceEnabled()) {
             add(Ui.alertBox(this, "결제 감지가 꺼져 있어요",
-                    "설정 › 접근성에서 '쉼표'를 켜야 배민·쿠팡·무신사 결제 화면에서 질문이 떠요.",
+                    "설정 › 접근성 › 설치된 앱에서 결제 감지를 켜야 배민·쿠팡·무신사 결제 화면에서 질문이 떠요.",
                     "접근성 설정 열기 ›", v -> openA11ySettings()), Ui.Space.BLOCK);
         }
         add(todayBudgetCard(b), Ui.Space.BLOCK);
@@ -473,7 +471,7 @@ public class MainActivity extends Activity {
                 Ui.statTile(this, "식비 예산", Money.won(b.foodRemaining), man(b.foodBudget) + " 원 중 남음", true,
                         tileBar(b.foodRemaining, b.foodBudget), remainColor(b.foodRemaining), remainTrack(b.foodRemaining)),
                 Ui.Space.BLOCK), Ui.Space.BLOCK);
-        add(Ui.highlightBox(this, st.prevented == 0 ? Sumsumi.Mood.NORMAL : Sumsumi.Mood.PROUD, "이번 달 쉼표", st.prevented == 0 ? "결제 직전에 멈춘 기록이 여기 쌓여요"
+        add(Ui.highlightBox(this, st.prevented == 0 ? Sumsumi.Mood.NORMAL : Sumsumi.Mood.PROUD, "이번 달 멈춘 결제", st.prevented == 0 ? "결제 직전에 멈춘 기록이 여기 쌓여요"
                 : st.prevented + "번 멈춰서 " + Money.won(st.preventedSum) + " 아꼈어요", v -> open(PAGE_REPORT)), Ui.Space.BLOCK);
         add(Ui.sectionHeader(this, "최근 기록", "더보기 ›", v -> open(PAGE_RECORDS)), Ui.Space.BLOCK);
         add(recentRecordsCard(recs), Ui.Space.BLOCK);
@@ -482,10 +480,11 @@ public class MainActivity extends Activity {
         maybeShowReview(recs, now);
     }
 
-    /** 홈 윗줄: "쉼표" + 마지막 동기화 시각 + 톱니바퀴(설정). */
+    /** 홈 윗줄: 마지막 동기화 시각 + 톱니바퀴(설정), 오른쪽 정렬. */
     private View homeHeader(long lastSyncTs, long now) {
         LinearLayout top = Ui.h(this);
-        top.addView(Ui.title(this, "쉼표"), Ui.weight1());
+        top.setGravity(android.view.Gravity.CENTER_VERTICAL);
+        top.addView(new View(this), Ui.weight1());
         long mins = lastSyncTs == 0 ? -1 : (now - lastSyncTs) / 60_000;
         String sync = mins < 0 ? "동기화 전" : mins < 1 ? "마지막 동기화 방금 전" : "마지막 동기화 " + (mins < 60 ? mins + "분 전" : (mins / 60) + "시간 전");
         top.addView(Ui.meta(this, sync));
@@ -815,7 +814,7 @@ public class MainActivity extends Activity {
             addSync("외식 · 학교 앞 식당", 8_000, LocalDate.now(zone), 12, 30, false);
             toast("오늘 누적에 8,000원 더했어요");
         }));
-        tc.addView(testButton("결과별 예시 기록 4건 추가 (멈춤·이유 선택·숙고 후·식비, 기록 색 확인용)", () -> {
+        tc.addView(testButton("결과별 예시 기록 4건 추가 (안 샀어요·이유 있어·고민하고·식비, 기록 색 확인용)", () -> {
             addSampleOutcomes();
             toast("예시 기록 4건을 넣었어요");
         }));

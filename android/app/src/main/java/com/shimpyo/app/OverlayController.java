@@ -21,10 +21,12 @@ import com.shimpyo.app.core.Enums.Decision;
 import com.shimpyo.app.core.Enums.Intensity;
 import com.shimpyo.app.core.Enums.TargetApp;
 import com.shimpyo.app.core.Enums.Trigger;
+import com.shimpyo.app.core.BudgetEngine;
 import com.shimpyo.app.core.Money;
 import com.shimpyo.app.core.Question;
 import com.shimpyo.app.core.QuestionTemplates;
 import com.shimpyo.app.core.Session;
+import com.shimpyo.app.core.TriggerEngine;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -295,15 +297,23 @@ final class OverlayController {
         return Ui.WHITE;
     }
 
-    /** 머리줄: 쉼표 얼굴 · "쉼표" · 앱과 금액 / 진행 점 · X. 트리거·강도 같은 시스템 용어는 보이지 않는다. */
+    /**
+     * 머리줄: 숨숨이 · 이 결제로 오늘 돈이 어떻게 되는지 두 줄 / 진행 점 · X.
+     * 숫자는 계산값만 쓴다 (AI 아님). 트리거·강도 같은 시스템 용어는 보이지 않는다.
+     */
     private View headerRow(Session s) {
         LinearLayout row = Ui.h(ctx);
+        row.setGravity(Gravity.CENTER_VERTICAL);
         row.addView(new Sumsumi(ctx, Sumsumi.Mood.BREATHE, true), Ui.square(ctx, Ui.Size.HEADER_FACE));
-        LinearLayout name = Ui.v(ctx);
-        name.addView(Ui.text(ctx, "쉼표", Ui.Font.LABEL, Ui.GREEN, Ui.BOLD));
-        String where = s.attempt.app == null ? "" : (s.attempt.app == TargetApp.BAEMIN ? "배민" : s.attempt.app.label) + " · ";
-        name.addView(Ui.text(ctx, where + Money.won(s.attempt.amount) + " 결제 전에 잠깐", Ui.Font.CAPTION, Ui.MUTED, Ui.REGULAR));
-        Ui.inlineFill(row, name, Ui.Space.ITEM);
+        CharSequence[] f = facts(s);
+        LinearLayout texts = Ui.v(ctx);
+        texts.addView(Ui.text(ctx, f[0].toString(), Ui.Font.LABEL, Ui.TEXT, Ui.BOLD));
+        if (f[1] != null) {
+            TextView sub = Ui.text(ctx, "", Ui.Font.CAPTION, Ui.MUTED, Ui.REGULAR);
+            sub.setText(f[1]);
+            Ui.stack(texts, sub, Ui.Space.TEXT);
+        }
+        Ui.inlineFill(row, texts, Ui.Space.ITEM);
         if (s.eval.intensity != Intensity.LIGHT) {
             int total = s.total();
             int current = s.inDecisionStep() ? total : Math.min(s.index + 1, total);
@@ -313,14 +323,41 @@ final class OverlayController {
         return row;
     }
 
-    /** 제목 아래 사실 한 줄: 계산값만 쓴다 (AI 아님). */
-    private String factBefore(Session s, boolean withAmount) {
-        if (s.eval.has(Trigger.FIN_RISK) && s.eval.budget != null) {
-            long after = s.eval.budget.todaySpent + s.eval.discretionary;
-            String head = withAmount ? Money.won(s.attempt.amount) + "을 결제하면" : "결제하면";
-            return head + " 오늘 " + Money.won(after) + " · 오늘 한도 " + Money.won(s.eval.budget.limit);
+    /** 머리줄 두 줄: [0] 결제하면 어떻게 되는지, [1] 기준(한도 · 남는 돈). 넘는 금액은 빨간 글자. */
+    private CharSequence[] facts(Session s) {
+        TriggerEngine.Evaluation e = s.eval;
+        BudgetEngine.State b = e.budget;
+        String late = e.has(Trigger.LATE_NIGHT) && e.lateCountNow > 0 ? " · 이번 주 야식 " + e.lateCountNow + "번째" : "";
+        if (b == null) return new CharSequence[]{QuestionTemplates.factLine(e, s.attempt), null};
+        if (e.discretionary == 0 && e.food > 0) {
+            long left = b.foodRemaining - e.food;
+            return new CharSequence[]{"식비 예산에서 나가요",
+                    left >= 0 ? "식비 " + Money.won(left) + " 남아요" + late
+                            : over("식비를 ", Money.won(-left) + " 넘어요", late)};
         }
-        return QuestionTemplates.factLine(s.eval, s.attempt);
+        if (e.intensity == Intensity.STRONG && !e.has(Trigger.FIN_RISK)) {
+            if (e.remainingAfter > 0) {
+                return new CharSequence[]{"급여일까지 하루 " + Money.won(e.dailyAfter) + "로 지내요",
+                        "이번 달 여윳돈 " + Money.won(e.remainingAfter) + " 남아요" + late};
+            }
+            return new CharSequence[]{"이번 달 여윳돈이 바닥나요",
+                    over("이번 달 여윳돈보다 ", Money.won(-e.remainingAfter) + " 많아요", late)};
+        }
+        long after = b.todaySpent + e.discretionary;
+        String line1 = "오늘 " + Money.won(after) + " 쓰게 돼요";
+        String limit = "한도 " + Money.won(b.limit) + " · ";
+        if (after > b.limit) return new CharSequence[]{line1, over(limit, Money.won(after - b.limit) + " 넘어요", late)};
+        return new CharSequence[]{line1, limit + Money.won(b.limit - after) + " 남아요" + late};
+    }
+
+    private static CharSequence over(String head, String red, String tail) {
+        android.text.SpannableStringBuilder sb = new android.text.SpannableStringBuilder(head);
+        int st = sb.length();
+        sb.append(red);
+        sb.setSpan(new android.text.style.ForegroundColorSpan(Ui.RED), st, sb.length(), android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        sb.setSpan(new android.text.style.StyleSpan(android.graphics.Typeface.BOLD), st, sb.length(), android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        sb.append(tail);
+        return sb;
     }
 
     /** B2 가벼움: 고정 질문 1개 + 이유 칩. */
@@ -329,7 +366,6 @@ final class OverlayController {
         String head = QuestionTemplates.lightHeadline(s.eval, s.attempt).replace("결제하면 ", "").trim();
         if (head.endsWith(".")) head = head.substring(0, head.length() - 1);
         add(Ui.heading(ctx, head), Ui.Space.STACK);
-        add(Ui.factBox(ctx, factBefore(s, false)), Ui.Space.STACK);
         add(Ui.body(ctx, baemin ? "지금 시키려는 이유가 뭐예요?" : "지금 사려는 이유가 뭐예요?"), Ui.Space.STACK);
         List<TextView> chips = new ArrayList<>();
         for (String c : QuestionTemplates.lightChips(s.eval, s.attempt)) {
@@ -350,8 +386,6 @@ final class OverlayController {
             renderDecision(s);
             return;
         }
-        add(Ui.heading(ctx, "잠깐, 쉼표 하나 찍을까요?"), Ui.Space.STACK);
-        if (s.answers.isEmpty()) add(Ui.factBox(ctx, factBefore(s, true)), Ui.Space.STACK);
 
         // 대화 영역: 내용만큼 늘어나고, 길어지면 화면의 45%까지만 차지하고 스크롤
         int maxH = (int) (ctx.getResources().getDisplayMetrics().heightPixels * 0.45);
@@ -366,7 +400,7 @@ final class OverlayController {
         }
         Question q = s.current();
         if (q == null || s.loading) {
-            Ui.stack(conv, Ui.text(ctx, "쉼표가 다음 질문을 고르는 중…", Ui.Font.BODY, Ui.SUBTLE, Ui.MEDIUM), n > 0 ? Ui.Space.STACK : 0);
+            Ui.stack(conv, Ui.text(ctx, "숨숨이가 다음 질문을 고르는 중…", Ui.Font.BODY, Ui.SUBTLE, Ui.MEDIUM), n > 0 ? Ui.Space.STACK : 0);
         } else {
             Ui.stack(conv, aiBubble(q.text, false), n > 0 ? Ui.Space.STACK : 0);
         }
@@ -479,7 +513,6 @@ final class OverlayController {
     /** A4·C3 결정 화면: 마지막 답에 결정이 없을 때만. */
     private void renderDecision(Session s) {
         add(Ui.title(ctx, "어떻게 할까요?"), Ui.Space.STACK);
-        add(Ui.factBox(ctx, QuestionTemplates.factLine(s.eval, s.attempt)), Ui.Space.STACK);
         LinearLayout mine = Ui.tintBox(ctx, fieldBg(), Ui.Pad.ANSWER_BOX, Ui.Pad.ANSWER_BOX);
         mine.addView(Ui.caption(ctx, "내 답"));
         int n = Math.min(s.answers.size(), s.questions.size());
