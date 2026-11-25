@@ -49,7 +49,7 @@ public class MainActivity extends Activity {
 
     // 하단 탭 순서
     // 화면: 홈이 기본이고, 나머지는 홈에서 들어가는 하위 화면 (← 뒤로 · 기기 뒤로가기로 홈)
-    private static final int PAGE_HOME = 0, PAGE_RECORDS = 1, PAGE_REPORT = 2, PAGE_SETTINGS = 3;
+    private static final int PAGE_HOME = 0, PAGE_RECORDS = 1, PAGE_REPORT = 2, PAGE_SETTINGS = 3, PAGE_STOPPED = 4;
 
     // 온보딩 단계 (0이면 온보딩이 끝난 상태)
     private static final int ONBOARD_DONE = 0, ONBOARD_PERMISSION = 1, ONBOARD_INCOME = 2, ONBOARD_BUDGET = 3;
@@ -169,6 +169,7 @@ public class MainActivity extends Activity {
         if (page == PAGE_HOME) homeScreen();
         else if (page == PAGE_RECORDS) recordsScreen();
         else if (page == PAGE_REPORT) reportScreen();
+        else if (page == PAGE_STOPPED) stoppedScreen();
         else settingsScreen();
     }
 
@@ -468,8 +469,9 @@ public class MainActivity extends Activity {
                 Ui.statTile(this, "식비 예산", Money.won(b.foodRemaining), man(b.foodBudget) + " 원 중 남음", true,
                         tileBar(b.foodRemaining, b.foodBudget), remainColor(b.foodRemaining), remainTrack(b.foodRemaining)),
                 Ui.Space.BLOCK), Ui.Space.BLOCK);
+        add(Ui.entryCard(this, LocalDate.now(zone).getMonthValue() + "월 리포트", reportTeaser(s, recs, now), v -> open(PAGE_REPORT)), Ui.Space.BLOCK);
         add(Ui.highlightBox(this, st.prevented == 0 ? Sumsumi.Mood.NORMAL : Sumsumi.Mood.PROUD, "이번 달 멈춘 결제", st.prevented == 0 ? "결제 직전에 멈춘 기록이 여기 쌓여요"
-                : st.prevented + "번 멈춰서 " + Money.won(st.preventedSum) + " 아꼈어요", v -> open(PAGE_REPORT)), Ui.Space.BLOCK);
+                : st.prevented + "번 멈춰서 " + Money.won(st.preventedSum) + " 아꼈어요", v -> open(PAGE_STOPPED)), Ui.Space.BLOCK);
         add(Ui.sectionHeader(this, "최근 기록", "더보기 ›", v -> open(PAGE_RECORDS)), Ui.Space.BLOCK);
         add(recentRecordsCard(recs), Ui.Space.BLOCK);
 
@@ -541,9 +543,27 @@ public class MainActivity extends Activity {
     }
 
 
+    /** 홈 "N월 리포트" 입구의 한 줄: 가장 많이 쓴 카테고리. */
+    private String reportTeaser(Settings s, List<Record> recs, long now) {
+        ReportViews.Data d = ReportViews.Data.of(s, recs, now, zone);
+        List<ReportViews.Category> ranked = d.ranked();
+        if (ranked.isEmpty()) return "결제가 쌓이면 어디에 썼는지 보여 드려요";
+        ReportViews.Category top = ranked.get(0);
+        if (top == ReportViews.Category.OTHER) return "이번 달 " + Money.won(d.total) + " 썼어요";
+        return top.label + "에 가장 많이 썼어요";
+    }
+
+    /** 실제로 돈이 나간 기록만 (안 샀어요 · 그냥 나갔어요는 뺀다). 최근 순. */
+    private static List<Record> paidOnly(List<Record> recs) {
+        List<Record> l = new ArrayList<>();
+        for (Record r : recs) if (r.outcome.spend) l.add(r);
+        Collections.sort(l, (x, y) -> Long.compare(y.ts, x.ts));
+        return l;
+    }
+
     private View recentRecordsCard(List<Record> recs) {
         LinearLayout list = Ui.outlineCard(this, Ui.Pad.CARD, Ui.Pad.CARD);
-        List<Record> sorted = new ArrayList<>(recs);
+        List<Record> sorted = paidOnly(recs);
         Collections.sort(sorted, (x, y) -> Long.compare(y.ts, x.ts));
         for (int i = 0; i < sorted.size() && i < HOME_RECENT_COUNT; i++) {
             Ui.stack(list, recordRow(sorted.get(i), false), i == 0 ? 0 : Ui.Space.BLOCK);
@@ -624,9 +644,8 @@ public class MainActivity extends Activity {
 
     private void recordsScreen() {
         add(Ui.screenHeader(this, "기록", v -> open(PAGE_HOME)), 0);
-        add(Ui.bodySmall(this, "길게 누르면 지울 수 있어요 (결제하지 않았는데 기록된 건 등)."), Ui.Space.TIGHT);
-        List<Record> sorted = store.records();
-        Collections.sort(sorted, (x, y) -> Long.compare(y.ts, x.ts));
+        add(Ui.bodySmall(this, "결제한 내역만 보여요. 길게 누르면 지울 수 있어요 (결제하지 않았는데 기록된 건 등)."), Ui.Space.TIGHT);
+        List<Record> sorted = paidOnly(store.records());
         LinearLayout list = Ui.outlineCard(this, Ui.Pad.CARD, Ui.Pad.CARD);
         boolean first = true;
         for (Record r : sorted) {
@@ -647,7 +666,36 @@ public class MainActivity extends Activity {
         add(list, Ui.Space.BLOCK);
     }
 
-    // ================================================================== 리포트 (S10, 홈 › 이번 달 쉼표)
+    // ================================================================== 멈춘 결제 (홈 › 이번 달 멈춘 결제)
+
+    /** 이번 급여일 주기에 멈춘 결제 목록만. 금액 큰 순. */
+    private void stoppedScreen() {
+        Settings s = store.settings();
+        long now = System.currentTimeMillis();
+        LocalDate[] cycle = BudgetEngine.cycle(s, LocalDate.now(zone));
+        List<Record> stopped = new ArrayList<>();
+        long sum = 0;
+        for (Record r : store.records()) {
+            LocalDate d = java.time.Instant.ofEpochMilli(r.ts).atZone(zone).toLocalDate();
+            if (d.isBefore(cycle[0]) || !d.isBefore(cycle[1])) continue;
+            if (r.outcome != Outcome.PREVENTED) continue;
+            stopped.add(r);
+            sum += r.amount;
+        }
+        Collections.sort(stopped, (x, y) -> Long.compare(y.amount, x.amount));
+
+        add(Ui.screenHeader(this, "멈춘 결제", v -> open(PAGE_HOME)), 0);
+        add(Ui.text(this, stopped.isEmpty() ? "이번 달엔 아직 멈춘 결제가 없어요"
+                : "이번 달 " + stopped.size() + "번 멈춰서 " + Money.won(sum) + " 아꼈어요", Ui.Font.SMALL, Ui.GREEN, Ui.MEDIUM), Ui.Space.TIGHT);
+        LinearLayout list = Ui.outlineCard(this, Ui.Pad.CARD, Ui.Pad.CARD);
+        for (int i = 0; i < stopped.size(); i++) {
+            Ui.stack(list, recordRow(stopped.get(i), true), i == 0 ? 0 : Ui.Space.BLOCK);
+        }
+        if (stopped.isEmpty()) list.addView(Ui.emptyState(this, "결제 직전에 멈추면 여기 쌓여요."));
+        add(list, Ui.Space.BLOCK);
+    }
+
+    // ================================================================== 리포트 (S10, 홈 › N월 리포트)
 
     private void reportScreen() {
         Settings s = store.settings();
