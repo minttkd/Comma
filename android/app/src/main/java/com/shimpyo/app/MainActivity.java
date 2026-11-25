@@ -475,7 +475,7 @@ public class MainActivity extends Activity {
         add(Ui.entryCard(this, new Sumsumi(this, Sumsumi.Mood.OKAY, true).prop(topCategoryProp(s, recs, reportDefault)),
                 reportDefault < 0 ? "지난달 소비 돌아보기" : "이번 달 소비 돌아보기",
                 v -> { reportOffset = reportDefault; open(PAGE_REPORT); }), Ui.Space.BLOCK);
-        add(Ui.highlightBox(this, st.prevented == 0 ? Sumsumi.Mood.NORMAL : Sumsumi.Mood.PROUD, "이번 달 멈춘 결제", st.prevented == 0 ? "결제 직전에 멈춘 기록이 여기 쌓여요"
+        add(Ui.highlightBox(this, st.prevented == 0 ? Sumsumi.Mood.NORMAL : Sumsumi.Mood.PROUD, "이번 달 멈춘 결제", st.prevented == 0 ? "멈춘 결제가 여기 쌓여요"
                 : st.prevented + "번 멈춰서 " + Money.won(st.preventedSum) + " 아꼈어요", v -> open(PAGE_STOPPED)), Ui.Space.BLOCK);
         add(Ui.sectionHeader(this, "결제 내역", "더보기 ›", v -> open(PAGE_RECORDS)), Ui.Space.BLOCK);
         add(recentRecordsCard(recs), Ui.Space.BLOCK);

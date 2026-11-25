@@ -64,6 +64,8 @@ final class Ui {
     static final int AMBER_BG = Color.parseColor("#F7F0DE");   // status/amber-bg
     static final int GREEN = Color.parseColor("#37624C");      // status/green · 서비스 색(쉼표 초록)
     static final int GREEN_BG = Color.parseColor("#E8EFE9");   // status/green-bg
+    static final int REPORT_BG = Color.parseColor("#E9F1FA");  // 홈 "소비 돌아보기" 입구 · 연하늘 (멈춘 결제 연초록과 구분)
+    static final int REPORT_FG = Color.parseColor("#2D5E91");  // 그 위 글자 (바탕 대비 6:1)
     static final int DIM = Color.argb(140, 0x17, 0x20, 0x1A);  // dim #17201A · 55%
 
     static final int ON_BRAND = WHITE;                         // 먹색(BRAND) 바탕 위 글자
@@ -971,16 +973,16 @@ final class Ui {
         return b;
     }
 
-    /** 누르는 입구 카드 (홈 "N월 리포트"): 바로 아래 "이번 달 멈춘 결제"와 같은 연초록 상자, 왼쪽 숨숨이 · 제목, 오른쪽 →. */
+    /** 누르는 입구 카드 (홈 "소비 돌아보기"): 연하늘 상자(아래 연초록 "이번 달 멈춘 결제"와 구분), 왼쪽 숨숨이 · 제목, 오른쪽 →. */
     static LinearLayout entryCard(Context c, View lead, String title, View.OnClickListener click) {
-        LinearLayout b = tintBox(c, BRAND_LIGHT, Pad.BOX_H, Pad.BOX_V);
+        LinearLayout b = tintBox(c, REPORT_BG, Pad.BOX_H, Pad.BOX_V);
         b.setOrientation(LinearLayout.HORIZONTAL);
         b.setGravity(Gravity.CENTER_VERTICAL);
         LinearLayout.LayoutParams lp = square(c, Size.CARD_FACE);
         lp.rightMargin = dp(c, Space.ROW);
         b.addView(lead, lp);
-        b.addView(text(c, title, Font.BUTTON, GREEN, BOLD), new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-        inline(b, text(c, "→", Font.HEADING, GREEN, BOLD), Space.ITEM);
+        b.addView(text(c, title, Font.BUTTON, REPORT_FG, BOLD), new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        inline(b, text(c, "→", Font.HEADING, REPORT_FG, BOLD), Space.ITEM);
         b.setOnClickListener(click);
         return b;
     }
