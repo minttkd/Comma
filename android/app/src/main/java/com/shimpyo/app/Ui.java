@@ -64,6 +64,11 @@ final class Ui {
     static final int AMBER_BG = Color.parseColor("#F7F0DE");   // status/amber-bg
     static final int GREEN = Color.parseColor("#37624C");      // status/green · 서비스 색(쉼표 초록)
     static final int GREEN_BG = Color.parseColor("#E8EFE9");   // status/green-bg
+    // 홈 "오늘 쓸 수 있는 돈" 상태 바탕: 태그 · 기록 줄의 연한 상태색보다 한 단계 진하게 (상태가 멀리서도 보이게)
+    static final int TODAY_OK_BG = Color.parseColor("#D3E5D8");   // 여유
+    static final int TODAY_WARN_BG = Color.parseColor("#F5E2B0"); // 주의
+    static final int TODAY_OVER_BG = Color.parseColor("#F2CFC9"); // 초과
+    static final int TODAY_SUB = Color.parseColor("#4F5651");     // 그 위 작은 글자 (세 바탕 모두 대비 5:1 이상)
     static final int REPORT_BG = Color.parseColor("#E9F1FA");  // 홈 "소비 돌아보기" 입구 · 연하늘 (멈춘 결제 연초록과 구분)
     static final int REPORT_FG = Color.parseColor("#2D5E91");  // 그 위 글자 (바탕 대비 6:1)
     static final int DIM = Color.argb(140, 0x17, 0x20, 0x1A);  // dim #17201A · 55%
