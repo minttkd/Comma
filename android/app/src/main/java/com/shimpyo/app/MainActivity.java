@@ -466,12 +466,10 @@ public class MainActivity extends Activity {
         }
         add(todayBudgetCard(b), Ui.Space.BLOCK);
         add(Ui.tilePair(this,
-                Ui.statTile(this, "남은 여윳돈", Money.won(b.remainingNow), "급여일까지 " + b.daysLeft + "일", true,
-                        tileBar(b.remainingNow, b.monthly), remainColor(b.remainingNow), remainTrack(b.remainingNow)),
-                Ui.statTile(this, "식비 예산", Money.won(b.foodRemaining), man(b.foodBudget) + " 원 중 남음", true,
-                        tileBar(b.foodRemaining, b.foodBudget), remainColor(b.foodRemaining), remainTrack(b.foodRemaining)),
+                Ui.budgetTile(this, "이번 달 남은 여윳돈", b.remainingNow, Math.max(0, b.monthly - b.remainingNow), b.monthly),
+                Ui.budgetTile(this, "이번 달 남은 식비", b.foodRemaining, b.foodSpent, b.foodBudget),
                 Ui.Space.BLOCK), Ui.Space.BLOCK);
-        add(Ui.highlightBox(this, st.prevented == 0 ? Sumsumi.Mood.NORMAL : Sumsumi.Mood.PROUD, "이번 달 멈춘 결제", st.prevented == 0 ? "결제 직전에 멈춘 기록이 여기 쌓여요"
+        add(Ui.highlightBox(this, st.prevented == 0 ? Sumsumi.Mood.NORMAL : Sumsumi.Mood.PROUD, "이번 달 멈춘 결제", st.prevented == 0 ? "멈춘 결제가 여기 쌓여요"
                 : st.prevented + "번 멈춰서 " + Money.won(st.preventedSum) + " 아꼈어요", v -> open(PAGE_REPORT)), Ui.Space.BLOCK);
         add(Ui.sectionHeader(this, "최근 기록", "더보기 ›", v -> open(PAGE_RECORDS)), Ui.Space.BLOCK);
         add(recentRecordsCard(recs), Ui.Space.BLOCK);
@@ -504,33 +502,14 @@ public class MainActivity extends Activity {
         head.addView(Ui.text(this, "오늘 쓸 수 있는 돈", Ui.Font.SMALL, Ui.MUTED, Ui.REGULAR), Ui.weight1());
         head.addView(signalTag(b.signal()));
         c.addView(head, Ui.fillW());
-        String amount = b.available >= 0 ? Money.won(b.available) + " 남음" : Money.won(-b.available) + " 넘었어요";
-        Ui.stack(c, Ui.text(this, amount, Ui.Font.AMOUNT, Ui.TEXT, Ui.BOLD), Ui.Space.ITEM);
-        float ratio = b.limit == 0 ? 1f : Math.min(1f, (float) b.todaySpent / b.limit);
-        Ui.stack(c, Ui.bar(this, ratio, over ? Ui.RED : Ui.BRAND, Ui.WHITE), Ui.Space.ITEM);
-        Ui.stack(c, Ui.text(this, "오늘 한도 " + Money.won(b.limit) + " 중 " + Money.won(b.todaySpent) + " 사용 · 주기 " + b.dayIndex + "일째",
-                Ui.Font.CAPTION, Ui.MUTED, Ui.REGULAR), Ui.Space.ITEM);
+        String amount = over ? Money.won(-b.available) + " 넘었어요" : Money.won(b.available);
+        Ui.stack(c, Ui.text(this, amount, Ui.Font.AMOUNT, over ? Ui.RED : Ui.TEXT, Ui.BOLD), Ui.Space.ITEM);
+        // 막대 = 오늘 쓴 돈. 한도를 넘으면 넘은 부분이 빨갛게 이어진다.
+        Ui.stack(c, Ui.usageBar(this, b.todaySpent, b.limit, Ui.BRAND, Ui.WHITE, Ui.Size.BAR), Ui.Space.ITEM);
+        Ui.stack(c, Ui.usageLegend(this, "오늘 쓴 돈", Money.won(b.todaySpent), "오늘 한도", Money.won(b.limit), over, Ui.Font.SMALL), Ui.Space.ITEM);
+        Ui.stack(c, Ui.text(this, "급여일까지 " + b.daysLeft + "일 남은 걸 보고 정한 한도예요",
+                Ui.Font.CAPTION, Ui.MUTED, Ui.REGULAR), Ui.Space.TIGHT);
         return c;
-    }
-
-    /** 남은 비율 (0~1). 전체가 0이면 0. */
-    private static float remainRatio(long remaining, long total) {
-        return total <= 0 ? 0f : Math.max(0f, Math.min(1f, (float) remaining / total));
-    }
-
-    /** 요약 타일 막대 비율 (남은 비율). */
-    private static float tileBar(long remaining, long total) {
-        return remainRatio(remaining, total);
-    }
-
-    /** 요약 타일 막대 색: 남아 있으면 초록, 다 쓰면 빨강. */
-    private static int remainColor(long remaining) {
-        return remaining > 0 ? Ui.GREEN : Ui.RED;
-    }
-
-    /** 요약 타일 막대 바탕: 평소 회색, 다 쓰면 연빨강 (빈 막대여도 다 쓴 게 보이게). */
-    private static int remainTrack(long remaining) {
-        return remaining > 0 ? Ui.BG : Ui.RED_BG;
     }
 
     /** 0 여유 · 1 주의 · 2 초과 */

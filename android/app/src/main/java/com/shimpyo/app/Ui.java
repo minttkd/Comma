@@ -25,6 +25,8 @@ import android.widget.LinearLayout;
 import android.widget.ScrollView;
 import android.widget.TextView;
 
+import com.shimpyo.app.core.Money;
+
 import java.util.List;
 import java.util.function.IntConsumer;
 
@@ -1015,6 +1017,91 @@ final class Ui {
         track.addView(new View(c), new LinearLayout.LayoutParams(0, dp(c, heightDp), Math.max(0.0001f, 1f - r)));
         if (r <= 0f) fill.setVisibility(View.INVISIBLE);
         return track;
+    }
+
+    /**
+     * 쓴 돈 막대: 왼쪽부터 쓴 만큼 채운다. 한도를 넘으면 한도까지는 fill, 넘은 부분은 빨강으로 이어 붙인다
+     * (막대 전체 = 쓴 돈, 사이 흰 틈 = 한도 위치).
+     */
+    static LinearLayout usageBar(Context c, long used, long total, int fill, int track, int heightDp) {
+        LinearLayout t = h(c);
+        t.setBackground(round(c, track, Radius.BAR));
+        t.setClipToOutline(true);
+        used = Math.max(0, used);
+        int hpx = dp(c, heightDp);
+        if (total <= 0 && used == 0) {
+            t.addView(new View(c), new LinearLayout.LayoutParams(0, hpx, 1f));
+            return t;
+        }
+        if (used <= total) {
+            View f = new View(c);
+            f.setBackground(round(c, fill, Radius.BAR));
+            if (used > 0) t.addView(f, new LinearLayout.LayoutParams(0, hpx, used));
+            if (total - used > 0) t.addView(new View(c), new LinearLayout.LayoutParams(0, hpx, total - used));
+            return t;
+        }
+        if (total > 0) {
+            View f = new View(c);
+            f.setBackgroundColor(fill);
+            t.addView(f, new LinearLayout.LayoutParams(0, hpx, total));
+            View gap = new View(c);
+            gap.setBackgroundColor(WHITE);
+            t.addView(gap, new LinearLayout.LayoutParams(dp(c, 2), hpx));
+        }
+        View o = new View(c);
+        o.setBackgroundColor(RED);
+        t.addView(o, new LinearLayout.LayoutParams(0, hpx, used - total));
+        return t;
+    }
+
+    /** 막대 아래 한 줄: 왼쪽 "쓴 돈 N" · 오른쪽 "한도 N". 숫자만 굵게, over면 왼쪽 숫자 빨강. */
+    static LinearLayout usageLegend(Context c, String leftLabel, String leftValue, String rightLabel, String rightValue, boolean over, float sp) {
+        LinearLayout r = h(c);
+        TextView l = text(c, "", sp, MUTED, REGULAR);
+        l.setText(labeled(leftLabel, leftValue, over ? RED : TEXT));
+        r.addView(l, weight1());
+        TextView rt = text(c, "", sp, MUTED, REGULAR);
+        rt.setText(labeled(rightLabel, rightValue, TEXT));
+        rt.setGravity(Gravity.END);
+        r.addView(rt, wrap());
+        return r;
+    }
+
+    private static CharSequence labeled(String label, String value, int valueColor) {
+        android.text.SpannableStringBuilder sb = new android.text.SpannableStringBuilder(label + " ");
+        int st = sb.length();
+        sb.append(value);
+        sb.setSpan(new android.text.style.ForegroundColorSpan(valueColor), st, sb.length(), android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        sb.setSpan(new android.text.style.StyleSpan(Typeface.BOLD), st, sb.length(), android.text.Spanned.SPAN_EXCLUSIVE_EXCLUSIVE);
+        return sb;
+    }
+
+    /** 홈 예산 타일: 라벨 · 남은 돈(큰 값) · 쓴 돈 막대 · "쓴 돈 N / 전체 N". */
+    static LinearLayout budgetTile(Context c, String label, long remaining, long used, long total) {
+        LinearLayout t = outlineCard(c, Pad.TILE_H, Pad.TILE_V);
+        t.addView(meta(c, label));
+        boolean over = remaining < 0;
+        stack(t, text(c, over ? Money.won(-remaining) + " 초과" : Money.won(remaining), Font.STAT, over ? RED : TEXT, BOLD), Space.TEXT);
+        stack(t, usageBar(c, used, total, GREEN, BG, Size.BAR_THIN), Space.TIGHT);
+        // "쓴 돈 19만 / 40만 원": 쓴 돈만 굵게 (넘으면 빨강)
+        String u = shortWon(used), all = shortWon(total);
+        if (u.endsWith(" 원") && all.endsWith(" 원")) u = u.substring(0, u.length() - 2);
+        TextView line = text(c, "", Font.CAPTION, MUTED, REGULAR);
+        android.text.SpannableStringBuilder sb = new android.text.SpannableStringBuilder(labeled("쓴 돈", u, over ? RED : TEXT));
+        sb.append(" / ").append(all);
+        line.setText(sb);
+        stack(t, line, Space.TIGHT);
+        return t;
+    }
+
+    /** 300000 → "30만 원", 95000 → "9.5만 원", 8000 → "8,000원" (좁은 타일용). */
+    static String shortWon(long v) {
+        long a = Math.abs(v);
+        if (a < 10_000) return Money.won(v);
+        if (a % 10_000 == 0) return (v / 10_000) + "만 원";
+        double m = Math.round(v / 1_000.0) / 10.0;
+        String s = m == Math.floor(m) ? String.valueOf((long) m) : String.valueOf(m);
+        return s + "만 원";
     }
 
     /** 나눠진 막대: values 비율대로 colors를 이어 붙인다 (리포트 만족·후회). 합이 0이면 빈 막대. */
