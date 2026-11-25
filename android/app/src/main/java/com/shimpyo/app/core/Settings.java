@@ -35,6 +35,20 @@ public class Settings {
     public long lateResetTs = 0;
 
     // ---- AI
+    /** 리포트 "앞으로 줄이고 싶은 결제"에서 고른 것들 (카테고리 이름 · 야식), '|'로 이어 저장. */
+    public String reduceTargets = "";
+
+    public java.util.List<String> reduceTargetList() {
+        java.util.List<String> l = new java.util.ArrayList<>();
+        if (reduceTargets == null) return l;
+        for (String t : reduceTargets.split("\\|")) if (!t.trim().isEmpty()) l.add(t.trim());
+        return l;
+    }
+
+    public void setReduceTargets(java.util.List<String> l) {
+        reduceTargets = String.join("|", l);
+    }
+
     public String apiKey = "";
     public String model = "claude-haiku-5-5";
     public int aiTimeoutMs = 2000;

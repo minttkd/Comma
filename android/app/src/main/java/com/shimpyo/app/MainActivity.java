@@ -6,7 +6,6 @@ import android.content.Intent;
 import android.os.Build;
 import android.os.Bundle;
 import android.provider.Settings.Secure;
-import android.text.InputType;
 import android.view.Gravity;
 import android.view.View;
 import android.view.ViewGroup;
@@ -56,7 +55,6 @@ public class MainActivity extends Activity {
     private static final int ONBOARD_DONE = 0, ONBOARD_PERMISSION = 1, ONBOARD_INCOME = 2, ONBOARD_BUDGET = 3;
 
     private static final int HOME_RECENT_COUNT = 5;   // 홈 최근 기록 개수
-    private static final int DEMO_PREVIEW_COUNT = 3;  // 홈 데모 카드에 처음 보이는 개수
     private static final int LOG_COUNT = 40;          // 설정 감지 로그 개수
     private static final int SCREEN_TEXT_MAX = 2500;  // 설정 화면 텍스트 최대 글자
 
@@ -71,7 +69,6 @@ public class MainActivity extends Activity {
     private int onboardStep = ONBOARD_DONE;
     private boolean bankConsent = true;
     private boolean cycleConsent = true;
-    private boolean showAllDemos = false;
     private boolean reviewDismissed = false;
 
     /** 상태바·내비게이션바·창 바탕을 앱 바탕색에 맞춘다 (Figma StatusBar: 밝은 바탕 + 어두운 글자). */
@@ -466,14 +463,15 @@ public class MainActivity extends Activity {
         }
         add(todayBudgetCard(b), Ui.Space.BLOCK);
         add(Ui.tilePair(this,
-                Ui.budgetTile(this, "이번 달 남은 여윳돈", b.remainingNow, Math.max(0, b.monthly - b.remainingNow), b.monthly),
-                Ui.budgetTile(this, "이번 달 남은 식비", b.foodRemaining, b.foodSpent, b.foodBudget),
+                Ui.statTile(this, "남은 여윳돈", Money.won(b.remainingNow), "급여일까지 " + b.daysLeft + "일", true,
+                        tileBar(b.remainingNow, b.monthly), remainColor(b.remainingNow), remainTrack(b.remainingNow)),
+                Ui.statTile(this, "식비 예산", Money.won(b.foodRemaining), man(b.foodBudget) + " 원 중 남음", true,
+                        tileBar(b.foodRemaining, b.foodBudget), remainColor(b.foodRemaining), remainTrack(b.foodRemaining)),
                 Ui.Space.BLOCK), Ui.Space.BLOCK);
-        add(Ui.highlightBox(this, st.prevented == 0 ? Sumsumi.Mood.NORMAL : Sumsumi.Mood.PROUD, "이번 달 멈춘 결제", st.prevented == 0 ? "멈춘 결제가 여기 쌓여요"
+        add(Ui.highlightBox(this, st.prevented == 0 ? Sumsumi.Mood.NORMAL : Sumsumi.Mood.PROUD, "이번 달 멈춘 결제", st.prevented == 0 ? "결제 직전에 멈춘 기록이 여기 쌓여요"
                 : st.prevented + "번 멈춰서 " + Money.won(st.preventedSum) + " 아꼈어요", v -> open(PAGE_REPORT)), Ui.Space.BLOCK);
         add(Ui.sectionHeader(this, "최근 기록", "더보기 ›", v -> open(PAGE_RECORDS)), Ui.Space.BLOCK);
         add(recentRecordsCard(recs), Ui.Space.BLOCK);
-        add(demoCard(), Ui.Space.BLOCK);
 
         maybeShowReview(recs, now);
     }
@@ -502,14 +500,33 @@ public class MainActivity extends Activity {
         head.addView(Ui.text(this, "오늘 쓸 수 있는 돈", Ui.Font.SMALL, Ui.MUTED, Ui.REGULAR), Ui.weight1());
         head.addView(signalTag(b.signal()));
         c.addView(head, Ui.fillW());
-        String amount = over ? Money.won(-b.available) + " 넘었어요" : Money.won(b.available);
-        Ui.stack(c, Ui.text(this, amount, Ui.Font.AMOUNT, over ? Ui.RED : Ui.TEXT, Ui.BOLD), Ui.Space.ITEM);
-        // 막대 = 오늘 쓴 돈. 한도를 넘으면 넘은 부분이 빨갛게 이어진다.
-        Ui.stack(c, Ui.usageBar(this, b.todaySpent, b.limit, Ui.BRAND, Ui.WHITE, Ui.Size.BAR), Ui.Space.ITEM);
-        Ui.stack(c, Ui.usageLegend(this, "오늘 쓴 돈", Money.won(b.todaySpent), "오늘 한도", Money.won(b.limit), over, Ui.Font.SMALL), Ui.Space.ITEM);
-        Ui.stack(c, Ui.text(this, "급여일까지 " + b.daysLeft + "일 남은 걸 보고 정한 한도예요",
-                Ui.Font.CAPTION, Ui.MUTED, Ui.REGULAR), Ui.Space.TIGHT);
+        String amount = b.available >= 0 ? Money.won(b.available) + " 남음" : Money.won(-b.available) + " 초과";
+        Ui.stack(c, Ui.text(this, amount, Ui.Font.AMOUNT, Ui.TEXT, Ui.BOLD), Ui.Space.ITEM);
+        float ratio = b.limit == 0 ? 1f : Math.min(1f, (float) b.todaySpent / b.limit);
+        Ui.stack(c, Ui.bar(this, ratio, over ? Ui.RED : Ui.BRAND, Ui.WHITE), Ui.Space.ITEM);
+        Ui.stack(c, Ui.text(this, "오늘 한도 " + Money.won(b.limit) + " 중 " + Money.won(b.todaySpent) + " 사용",
+                Ui.Font.CAPTION, Ui.MUTED, Ui.REGULAR), Ui.Space.ITEM);
         return c;
+    }
+
+    /** 남은 비율 (0~1). 전체가 0이면 0. */
+    private static float remainRatio(long remaining, long total) {
+        return total <= 0 ? 0f : Math.max(0f, Math.min(1f, (float) remaining / total));
+    }
+
+    /** 요약 타일 막대 비율 (남은 비율). */
+    private static float tileBar(long remaining, long total) {
+        return remainRatio(remaining, total);
+    }
+
+    /** 요약 타일 막대 색: 남아 있으면 초록, 다 쓰면 빨강. */
+    private static int remainColor(long remaining) {
+        return remaining > 0 ? Ui.GREEN : Ui.RED;
+    }
+
+    /** 요약 타일 막대 바탕: 평소 회색, 다 쓰면 연빨강 (빈 막대여도 다 쓴 게 보이게). */
+    private static int remainTrack(long remaining) {
+        return remaining > 0 ? Ui.BG : Ui.RED_BG;
     }
 
     /** 0 여유 · 1 주의 · 2 초과 */
@@ -529,34 +546,8 @@ public class MainActivity extends Activity {
         for (int i = 0; i < sorted.size() && i < HOME_RECENT_COUNT; i++) {
             Ui.stack(list, recordRow(sorted.get(i), false), i == 0 ? 0 : Ui.Space.BLOCK);
         }
-        if (sorted.isEmpty()) list.addView(Ui.emptyState(this, "아직 기록이 없어요. 아래 데모 결제로 체험해 보세요."));
+        if (sorted.isEmpty()) list.addView(Ui.emptyState(this, "아직 기록이 없어요. 배민·쿠팡·무신사에서 결제하면 여기 쌓여요."));
         return list;
-    }
-
-    /** D1 "데모 결제로 체험하기" 카드. 처음엔 3개, 더 보기로 전부. */
-    private View demoCard() {
-        LinearLayout c = Ui.card(this);
-        c.addView(Ui.caption(this, "데모 결제로 체험하기"));
-        int all = DemoCheckoutActivity.PRESETS.length;
-        int count = showAllDemos ? all : DEMO_PREVIEW_COUNT;
-        for (int i = 0; i < count; i++) {
-            final int idx = i;
-            DemoCheckoutActivity.Preset p = DemoCheckoutActivity.PRESETS[i];
-            LinearLayout r = Ui.h(this);
-            Ui.pad(r, this, 0, Ui.Pad.LIST_ROW_V);
-            r.addView(Ui.text(this, p.label, Ui.Font.BODY, Ui.TEXT, Ui.MEDIUM), Ui.weight1());
-            r.addView(Ui.text(this, Money.won(p.amount) + " › " + p.expect, Ui.Font.CAPTION, Ui.BRAND, Ui.MEDIUM));
-            r.setOnClickListener(v -> startActivity(new Intent(this, DemoCheckoutActivity.class).putExtra(DemoCheckoutActivity.EXTRA_PRESET, idx)));
-            Ui.stack(c, r, i == 0 ? Ui.Space.TEXT : 0);
-        }
-        TextView more = Ui.linkButton(this, showAllDemos ? "접기" : "다른 시나리오 " + (all - DEMO_PREVIEW_COUNT) + "개 더 보기", v -> {
-            showAllDemos = !showAllDemos;
-            refresh();
-        });
-        more.setGravity(Gravity.START);
-        Ui.pad(more, this, 0, Ui.Space.TIGHT, 0, 0);
-        c.addView(more, Ui.fillW());
-        return c;
     }
 
     /** S09: 이전 날 이유 선택 결제·숙고 후 결제 중 아직 답하지 않은 건을 홈 위 시트로 묻는다. 숙고 후 결제를 먼저. */
@@ -665,15 +656,8 @@ public class MainActivity extends Activity {
         add(Ui.screenHeader(this, LocalDate.now(zone).getMonthValue() + "월 리포트", v -> open(PAGE_HOME)), 0);
         add(Ui.text(this, b.cycleStart + " ~ " + b.nextPayday.minusDays(1) + " (급여일 기준)", Ui.Font.CAPTION, Ui.SUBTLE, Ui.REGULAR), Ui.Space.LINE);
 
-        // 사용자가 직접 한 판단(고른 이유 · 다음 날 만족/후회)으로 돌아보는 "가치 회고". 그리는 코드는 ReportViews.
-        ReportViews.reflect(this, content, ReportViews.Data.of(s, recs, now, zone), zone);
-        add(foodNote(b), Ui.Space.BLOCK);
-    }
-
-    /** 리포트 맨 아래 식비 예산 한 줄. */
-    private View foodNote(BudgetEngine.State b) {
-        return Ui.tintNote(this, "식비 예산 " + Money.won(b.foodSpent) + " / " + Money.won(b.foodBudget) + " 사용 · 다음 달부터 쿠팡 식료품 실측값으로 보정해요",
-                Ui.Font.CAPTION, Ui.BRAND, Ui.Radius.INPUT, Ui.Pad.FOOD_NOTE_H, Ui.Pad.FOOD_NOTE_V);
+        // 카테고리별 지출 원형표 · 후회한 결제 · 앞으로 줄이고 싶은 결제. 그리는 코드는 ReportViews.
+        ReportViews.build(this, content, store, ReportViews.Data.of(s, recs, now, zone), zone);
     }
 
     // ================================================================== 설정 · 테스트 도구 (홈 › 톱니바퀴)
@@ -682,21 +666,6 @@ public class MainActivity extends Activity {
         Settings s = store.settings();
         add(Ui.screenHeader(this, "설정", v -> open(PAGE_HOME)), 0);
         add(statusCard(), Ui.Space.BLOCK);
-
-        // AI
-        add(Ui.sectionTitle(this, "AI (Claude API)"), Ui.Space.SECTION);
-        LinearLayout ac = Ui.card(this);
-        EditText key = Ui.input(this, "sk-ant-... (비우면 기본 질문·키워드 판정)", s.apiKey, false);
-        key.setInputType(InputType.TYPE_CLASS_TEXT | InputType.TYPE_TEXT_VARIATION_PASSWORD);
-        EditText model = Ui.input(this, "모델", s.model, false);
-        EditText timeout = Ui.input(this, "대기 시간(ms)", String.valueOf(s.aiTimeoutMs), true);
-        ac.addView(Ui.meta(this, "API 키"));
-        ac.addView(key);
-        Ui.stack(ac, Ui.labeledField(this, "모델", model), Ui.Space.ITEM);
-        Ui.stack(ac, Ui.labeledField(this, "응답 대기 시간(ms)", timeout), Ui.Space.ITEM);
-        ac.addView(Ui.micro(this, "키가 있으면 쿠팡·무신사 품목 판정과 질문을 AI가 만들어요. 대기 시간 안에 응답이 없으면 키워드 판정·기본 질문으로 바로 대체해요 (PRD 기본 2,000ms).", Ui.MUTED));
-        if (!ClaudeClient.lastError.isEmpty()) ac.addView(Ui.micro(this, "마지막 AI 오류: " + ClaudeClient.lastError, Ui.RED));
-        add(ac, Ui.Space.ITEM);
 
         // 예산
         add(Ui.sectionTitle(this, "예산"), Ui.Space.SECTION);
@@ -733,9 +702,6 @@ public class MainActivity extends Activity {
 
         add(Ui.button(this, "설정 저장", true, v -> {
             Settings st = store.settings();
-            st.apiKey = key.getText().toString().trim();
-            st.model = model.getText().toString().trim().isEmpty() ? new Settings().model : model.getText().toString().trim();
-            st.aiTimeoutMs = (int) Ui.num(timeout, st.aiTimeoutMs);
             st.income = Ui.num(income, st.income);
             st.payday = (int) Math.max(1, Math.min(28, Ui.num(payday, st.payday)));
             st.rent = Ui.num(rent, st.rent);
