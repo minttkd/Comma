@@ -16,7 +16,7 @@ import android.view.View;
  */
 final class Sumsumi extends View {
 
-    enum Mood { NORMAL, BREATHE, CURIOUS, PROUD, OKAY }
+    enum Mood { NORMAL, BREATHE, CURIOUS, PROUD, OKAY, WORRIED }
 
     private static final int INK = Color.parseColor("#292D2B");
     private static final int LEAF = Color.parseColor("#37624C");
@@ -142,6 +142,15 @@ final class Sumsumi extends View {
                 c.drawPath(path("M73 143 Q80 133 87 143"), line);
                 c.drawPath(path("M113 143 Q120 133 127 143"), line);
                 c.drawPath(path("M91 157 Q100 173 109 157 Z"), fill);
+                break;
+            case WORRIED:
+                ellipse(c, fill, 80, 142, 4f, 5.5f);
+                ellipse(c, fill, 120, 142, 4f, 5.5f);
+                line.setStrokeWidth(Math.max(3f, sw * 0.86f));
+                c.drawPath(path("M87 128 L74 132"), line);
+                c.drawPath(path("M113 128 L126 132"), line);
+                line.setStrokeWidth(sw);
+                c.drawPath(path("M91 162 Q95.5 157 100 162 Q104.5 167 109 162"), line);
                 break;
             case OKAY:
                 c.drawPath(path("M74 142 Q80 135 86 142"), line);

@@ -251,6 +251,7 @@ final class Ui {
         static final int CARD_FACE = 40;     // 홈 "이번 달 쉼표" 상자 숨숨이
         static final int TOAST_FACE = 40;    // 토스트 숨숨이
         static final int EMPTY_FACE = 88;    // 빈 화면 숨숨이
+        static final int BUDGET_FACE = 56;   // 홈 "오늘 쓸 수 있는 돈" 숨숨이
         static final int FIELD_WIDTH = 130;  // 설정 입력칸 폭
         static final int ROW_LABEL = 48;     // 리포트 강도 이름 칸
         static final float STROKE = 1f;

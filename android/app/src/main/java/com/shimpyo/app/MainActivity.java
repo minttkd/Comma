@@ -496,12 +496,18 @@ public class MainActivity extends Activity {
         boolean over = b.todaySpent > b.limit;
 
         LinearLayout c = Ui.tintBox(this, signalTone(b.signal()).bg, Ui.Pad.TODAY_CARD, Ui.Pad.TODAY_CARD);
+        // 왼쪽 위 숨숨이: 여유 → 웃음, 주의 → 갸웃, 초과 → 걱정
         LinearLayout head = Ui.h(this);
-        head.addView(Ui.text(this, "오늘 쓸 수 있는 돈", Ui.Font.SMALL, Ui.MUTED, Ui.REGULAR), Ui.weight1());
-        head.addView(signalTag(b.signal()));
-        c.addView(head, Ui.fillW());
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        int signal = b.signal();
+        Sumsumi.Mood mood = signal == 0 ? Sumsumi.Mood.OKAY : signal == 1 ? Sumsumi.Mood.CURIOUS : Sumsumi.Mood.WORRIED;
+        head.addView(new Sumsumi(this, mood, true), Ui.square(this, Ui.Size.BUDGET_FACE));
+        LinearLayout texts = Ui.v(this);
+        texts.addView(Ui.text(this, "오늘 쓸 수 있는 돈", Ui.Font.SMALL, Ui.MUTED, Ui.REGULAR));
         String amount = b.available >= 0 ? Money.won(b.available) + " 남음" : Money.won(-b.available) + " 초과";
-        Ui.stack(c, Ui.text(this, amount, Ui.Font.AMOUNT, Ui.TEXT, Ui.BOLD), Ui.Space.ITEM);
+        Ui.stack(texts, Ui.text(this, amount, Ui.Font.AMOUNT, b.available < 0 ? Ui.RED : Ui.TEXT, Ui.BOLD), Ui.Space.LINE);
+        Ui.inlineFill(head, texts, Ui.Space.ROW);
+        c.addView(head, Ui.fillW());
         float ratio = b.limit == 0 ? 1f : Math.min(1f, (float) b.todaySpent / b.limit);
         Ui.stack(c, Ui.bar(this, ratio, over ? Ui.RED : Ui.BRAND, Ui.WHITE), Ui.Space.ITEM);
         Ui.stack(c, Ui.text(this, "오늘 한도 " + Money.won(b.limit) + " 중 " + Money.won(b.todaySpent) + " 사용",
@@ -534,10 +540,6 @@ public class MainActivity extends Activity {
         return signal == 0 ? Ui.Tone.SUCCESS : signal == 1 ? Ui.Tone.WARNING : Ui.Tone.DANGER;
     }
 
-    /** 0 여유 · 1 주의 · 2 초과 */
-    private TextView signalTag(int signal) {
-        return Ui.smallTag(this, signal == 0 ? "여유" : signal == 1 ? "주의" : "초과", signalTone(signal));
-    }
 
     private View recentRecordsCard(List<Record> recs) {
         LinearLayout list = Ui.outlineCard(this, Ui.Pad.CARD, Ui.Pad.CARD);
