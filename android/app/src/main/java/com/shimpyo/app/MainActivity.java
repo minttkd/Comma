@@ -51,6 +51,8 @@ public class MainActivity extends Activity {
     // 하단 탭 순서
     // 화면: 홈이 기본이고, 나머지는 홈에서 들어가는 하위 화면 (← 뒤로 · 기기 뒤로가기로 홈)
     private static final int PAGE_HOME = 0, PAGE_RECORDS = 1, PAGE_REPORT = 2, PAGE_SETTINGS = 3;
+    // 리포트에서 들어가는 하위 화면 (← 뒤로 · 기기 뒤로가기로 리포트)
+    private static final int PAGE_HISTORY = 4, PAGE_SPEND = 5;
 
     // 온보딩 단계 (0이면 온보딩이 끝난 상태)
     private static final int ONBOARD_DONE = 0, ONBOARD_PERMISSION = 1, ONBOARD_INCOME = 2, ONBOARD_BUDGET = 3;
@@ -68,29 +70,84 @@ public class MainActivity extends Activity {
     private FrameLayout layer;
     private View reviewSheet;
     private int page = PAGE_HOME;
+    /** 결제 · 후회 자세히 화면: 후회 쪽인지, 앞세울 카테고리 (없으면 null). */
+    private boolean spendRegret = false;
+    private ReportViews.Category spendFocus = null;
+    /** 전체 기록 화면에서 볼 기록 (오른쪽 위 보기 필터). */
+    private RecordFilter recordFilter = RecordFilter.ALL;
     private int onboardStep = ONBOARD_DONE;
+
+    /** 전체 기록 보기 필터. 기록 줄의 결과 태그와 같은 기준으로 나눈다. */
+    private enum RecordFilter {
+        ALL("전체"),
+        STOPPED("멈춘 결제"),
+        TALKED("대화 후 결제"),
+        REGRET("후회한 결제"),
+        PASSED("말 안 건 결제"),
+        FOOD("식비 예산"),
+        BANK("계좌 내역");
+
+        final String label;
+
+        RecordFilter(String label) {
+            this.label = label;
+        }
+
+        boolean matches(Record r) {
+            switch (this) {
+                case STOPPED:
+                    return r.outcome == Outcome.PREVENTED || r.outcome == Outcome.EXIT; // 사지 않은 것
+                case TALKED:
+                    return r.outcome == Outcome.REASON_PAY || r.outcome == Outcome.DELIBERATE_PAY;
+                case REGRET:
+                    return r.review != null && r.review.contains("후회");
+                case PASSED:
+                    return r.outcome == Outcome.PASS && !isFoodOnly(r);
+                case FOOD:
+                    return isFoodOnly(r);
+                case BANK:
+                    return r.outcome == Outcome.SYNC;
+                default:
+                    return true;
+            }
+        }
+    }
     private boolean bankConsent = true;
     private boolean cycleConsent = true;
     private boolean showAllDemos = false;
     private boolean reviewDismissed = false;
 
-    /** 상태바·내비게이션바·창 바탕을 앱 바탕색에 맞춘다 (Figma StatusBar: 밝은 바탕 + 어두운 글자). */
+    /**
+     * 상태바·내비게이션바·창 바탕을 앱 바탕색에 맞춘다 (Figma StatusBar: 밝은 바탕 + 어두운 글자).
+     * 어두운 화면(Ui.dark)이면 시스템 아이콘도 밝게. Ui.applyTheme() 다음에 부른다.
+     */
     static void styleWindow(Activity a) {
         Window w = a.getWindow();
         w.setBackgroundDrawable(new android.graphics.drawable.ColorDrawable(Ui.BG)); // 화면이 그려지기 전 흰 번쩍임 방지
         w.setStatusBarColor(Ui.BG);
-        int flags = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
+        int flags = Ui.dark ? 0 : View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
         if (Build.VERSION.SDK_INT >= 26) {
             w.setNavigationBarColor(Ui.WHITE);
-            flags |= View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
+            if (!Ui.dark) flags |= View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
         }
         w.getDecorView().setSystemUiVisibility(flags);
     }
 
+    /** 이 화면을 만들 때 쓴 색 한 벌 (어두운 화면이었는지). 돌아왔을 때 바뀌었으면 다시 만든다. */
+    private boolean builtDark;
+
     @Override
     protected void onCreate(Bundle b) {
         super.onCreate(b);
-        if (b != null) page = b.getInt("page", PAGE_HOME); // 화면을 다시 만들어도(회전 등) 보던 화면 그대로
+        Ui.applyTheme(this); // 다크 모드: 화면을 만들기 전에 색 한 벌을 고른다
+        builtDark = Ui.dark;
+        if (b != null) { // 화면을 다시 만들어도(회전 등) 보던 화면 그대로
+            page = b.getInt("page", PAGE_HOME);
+            spendRegret = b.getBoolean("spendRegret", false);
+            String f = b.getString("spendFocus");
+            spendFocus = f == null ? null : ReportViews.Category.valueOf(f);
+            recordFilter = RecordFilter.valueOf(b.getString("recordFilter", RecordFilter.ALL.name()));
+        }
         styleWindow(this);
         setContentView(buildLayout());
         BackendSlots.load(this);
@@ -122,11 +179,20 @@ public class MainActivity extends Activity {
     protected void onSaveInstanceState(Bundle out) {
         super.onSaveInstanceState(out);
         out.putInt("page", page);
+        out.putBoolean("spendRegret", spendRegret);
+        if (spendFocus != null) out.putString("spendFocus", spendFocus.name());
+        out.putString("recordFilter", recordFilter.name());
     }
 
     @Override
     protected void onResume() {
         super.onResume();
+        // 데모 결제 화면(항상 밝게)에서 돌아오거나 휴대폰 다크 모드가 바뀌었으면 색을 다시 고른다
+        Ui.applyTheme(this);
+        if (Ui.dark != builtDark) {
+            recreate();
+            return;
+        }
         refresh();
     }
 
@@ -143,7 +209,7 @@ public class MainActivity extends Activity {
             return;
         }
         if (onboardStep == ONBOARD_DONE && page != PAGE_HOME) {
-            open(PAGE_HOME);
+            open(page == PAGE_HISTORY || page == PAGE_SPEND ? PAGE_REPORT : PAGE_HOME);
             return;
         }
         super.onBackPressed();
@@ -172,6 +238,8 @@ public class MainActivity extends Activity {
         if (page == PAGE_HOME) homeScreen();
         else if (page == PAGE_RECORDS) recordsScreen();
         else if (page == PAGE_REPORT) reportScreen();
+        else if (page == PAGE_HISTORY) historyScreen();
+        else if (page == PAGE_SPEND) spendScreen();
         else settingsScreen();
     }
 
@@ -477,10 +545,13 @@ public class MainActivity extends Activity {
                 Ui.statTile(this, "식비 예산", Money.won(b.foodRemaining), man(b.foodBudget) + " 원 중 남음", true,
                         tileBar(b.foodRemaining, b.foodBudget), remainColor(b.foodRemaining), remainTrack(b.foodRemaining)),
                 Ui.Space.BLOCK), Ui.Space.BLOCK);
-        add(Ui.highlightBox(this, "이번 달 쉼표", st.prevented == 0 ? "결제 직전에 멈춘 기록이 여기 쌓여요"
-                : st.prevented + "번 멈춰서 " + Money.won(st.preventedSum) + " 아꼈어요", v -> open(PAGE_REPORT)), Ui.Space.BLOCK);
-        add(Ui.sectionHeader(this, "최근 기록", "더보기 ›", v -> open(PAGE_RECORDS)), Ui.Space.BLOCK);
-        add(recentRecordsCard(recs), Ui.Space.BLOCK);
+        // 리포트 입구: 얇은 막대로 조용히, 버튼만 진하게 (주인공은 "오늘 쓸 수 있는 돈")
+        add(Ui.entryBar(this, LocalDate.now(zone).getMonthValue() + "월 리포트",
+                st.prevented == 0 ? "어디에 쓰고 무엇을 후회했는지" : st.prevented + "번 멈춰서 " + Money.won(st.preventedSum) + " 아꼈어요",
+                "리포트 보기 →", v -> open(PAGE_REPORT)), Ui.Space.BLOCK);
+        add(Ui.cardHeader(this, "최근 기록", "쉼표가 본 결제와 계좌 내역, 최근 " + HOME_RECENT_COUNT + "건이에요",
+                "전체 기록 ›", v -> { recordFilter = RecordFilter.ALL; open(PAGE_RECORDS); }), Ui.Space.SECTION);
+        add(recentRecordsCard(recs), Ui.Space.ITEM);
         add(demoCard(), Ui.Space.BLOCK);
 
         maybeShowReview(recs, now);
@@ -493,7 +564,12 @@ public class MainActivity extends Activity {
         long mins = lastSyncTs == 0 ? -1 : (now - lastSyncTs) / 60_000;
         String sync = mins < 0 ? "동기화 전" : mins < 1 ? "마지막 동기화 방금 전" : "마지막 동기화 " + (mins < 60 ? mins + "분 전" : (mins / 60) + "시간 전");
         top.addView(Ui.meta(this, sync));
-        Ui.inline(top, Ui.settingsButton(this, v -> open(PAGE_SETTINGS)), Ui.Space.LINE, Ui.Size.ICON_BUTTON + 2 * Ui.Pad.ICON);
+        // 화면 모드 토글: 어두운 화면이면 달, 밝은 화면이면 해. 누르면 반대로 바꾸고 다시 만든다 (보던 화면은 유지)
+        Ui.inline(top, Ui.themeToggle(this, v -> {
+            Ui.saveTheme(this, !Ui.dark);
+            recreate();
+        }), Ui.Space.LINE, Ui.Size.ICON_BUTTON + 2 * Ui.Pad.ICON);
+        Ui.inline(top, Ui.settingsButton(this, v -> open(PAGE_SETTINGS)), 0, Ui.Size.ICON_BUTTON + 2 * Ui.Pad.ICON);
         return top;
     }
 
@@ -535,7 +611,7 @@ public class MainActivity extends Activity {
 
     /** 요약 타일 막대 바탕: 평소 회색, 다 쓰면 연빨강 (빈 막대여도 다 쓴 게 보이게). */
     private static int remainTrack(long remaining) {
-        return remaining > 0 ? Ui.BG : Ui.RED_BG;
+        return remaining > 0 ? Ui.FILL : Ui.RED_BG;
     }
 
     /** 0 여유 · 1 주의 · 2 초과 */
@@ -562,7 +638,7 @@ public class MainActivity extends Activity {
     /** D1 "데모 결제로 체험하기" 카드. 처음엔 3개, 더 보기로 전부. */
     private View demoCard() {
         LinearLayout c = Ui.card(this);
-        c.addView(Ui.caption(this, "데모 결제로 체험하기"));
+        c.addView(Ui.cardHeader(this, "데모 결제로 체험하기", "실제 쇼핑 앱 없이, 결제 직전에 쉼표가 어떻게 말을 거는지 눌러서 볼 수 있어요", null, null), Ui.fillW());
         int all = DemoCheckoutActivity.PRESETS.length;
         int count = showAllDemos ? all : DEMO_PREVIEW_COUNT;
         for (int i = 0; i < count; i++) {
@@ -656,10 +732,21 @@ public class MainActivity extends Activity {
     // ================================================================== 기록 (홈 › 최근 기록 더보기)
 
     private void recordsScreen() {
-        add(Ui.screenHeader(this, "기록", v -> open(PAGE_HOME)), 0);
-        add(Ui.bodySmall(this, "길게 누르면 지울 수 있어요 (결제하지 않았는데 기록된 건 등)."), Ui.Space.TIGHT);
-        List<Record> sorted = store.records();
-        Collections.sort(sorted, (x, y) -> Long.compare(y.ts, x.ts));
+        List<Record> all = store.records();
+        Collections.sort(all, (x, y) -> Long.compare(y.ts, x.ts));
+        List<Record> sorted = new ArrayList<>();
+        for (Record r : all) if (recordFilter.matches(r)) sorted.add(r);
+
+        // 오른쪽 위 보기 필터: 누르면 고를 수 있는 기록 종류와 건수가 메뉴로 열린다
+        TextView filter = Ui.filterButton(this, recordFilter.label, null);
+        filter.setContentDescription("볼 기록 고르기, 지금 " + recordFilter.label);
+        filter.setOnClickListener(v -> showRecordFilterMenu(v, all));
+        add(Ui.screenHeader(this, "전체 기록", v -> open(PAGE_HOME), filter), 0);
+
+        String desc = recordFilter == RecordFilter.ALL
+                ? "쉼표가 본 결제와 계좌 내역이 최근 순으로 있어요. 결제하지 않았는데 기록된 건은 길게 눌러 지울 수 있어요."
+                : recordFilter.label + " " + sorted.size() + "건 · 전체 " + all.size() + "건 중이에요. 오른쪽 위에서 다른 기록을 고를 수 있어요.";
+        add(Ui.bodySmall(this, desc), Ui.Space.TIGHT);
         LinearLayout list = Ui.outlineCard(this, Ui.Pad.CARD, Ui.Pad.CARD);
         boolean first = true;
         for (Record r : sorted) {
@@ -676,8 +763,25 @@ public class MainActivity extends Activity {
             }
             first = false;
         }
-        if (sorted.isEmpty()) list.addView(Ui.bodySmall(this, "아직 기록이 없어요."));
+        if (sorted.isEmpty()) list.addView(Ui.bodySmall(this, recordFilter == RecordFilter.ALL ? "아직 기록이 없어요." : "이번엔 " + recordFilter.label + " 기록이 없어요."));
         add(list, Ui.Space.BLOCK);
+    }
+
+    /** 보기 필터 메뉴: "멈춘 결제 3건"처럼 종류마다 건수를 붙인다. 고르면 화면을 다시 그린다. */
+    private void showRecordFilterMenu(View anchor, List<Record> all) {
+        android.widget.PopupMenu menu = new android.widget.PopupMenu(this, anchor, Gravity.END);
+        RecordFilter[] fs = RecordFilter.values();
+        for (int i = 0; i < fs.length; i++) {
+            int n = 0;
+            for (Record r : all) if (fs[i].matches(r)) n++;
+            menu.getMenu().add(0, i, i, (fs[i] == recordFilter ? "✓ " : "") + fs[i].label + "  " + n + "건");
+        }
+        menu.setOnMenuItemClickListener(item -> {
+            recordFilter = fs[item.getItemId()];
+            refresh();
+            return true;
+        });
+        menu.show();
     }
 
     // ================================================================== 리포트 (S10, 홈 › 이번 달 쉼표)
@@ -691,15 +795,39 @@ public class MainActivity extends Activity {
         add(Ui.screenHeader(this, LocalDate.now(zone).getMonthValue() + "월 리포트", v -> open(PAGE_HOME)), 0);
         add(Ui.text(this, b.cycleStart + " ~ " + b.nextPayday.minusDays(1) + " (급여일 기준)", Ui.Font.CAPTION, Ui.SUBTLE, Ui.REGULAR), Ui.Space.LINE);
 
-        // 사용자가 직접 한 판단(고른 이유 · 다음 날 만족/후회)으로 돌아보는 "가치 회고". 그리는 코드는 ReportViews.
-        ReportViews.reflect(this, content, ReportViews.Data.of(s, recs, now, zone), zone);
-        add(foodNote(b), Ui.Space.BLOCK);
+        // 결제 vs 후회 · 원그래프 → 다음 달엔 → 아낀 돈 그래프 → 돌아본 기록 → 미리 떼어 둔 돈 비교. 그리는 코드는 ReportViews.
+        ReportViews.render(this, content, reportData(), zone, new ReportViews.Nav() {
+            @Override
+            public void openSpend(boolean regret, ReportViews.Category focus) {
+                spendRegret = regret;
+                spendFocus = focus;
+                open(PAGE_SPEND);
+            }
+
+            @Override
+            public void openHistory() {
+                open(PAGE_HISTORY);
+            }
+        });
     }
 
-    /** 리포트 맨 아래 식비 예산 한 줄. */
-    private View foodNote(BudgetEngine.State b) {
-        return Ui.tintNote(this, "식비 예산 " + Money.won(b.foodSpent) + " / " + Money.won(b.foodBudget) + " 사용 · 다음 달부터 쿠팡 식료품 실측값으로 보정해요",
-                Ui.Font.CAPTION, Ui.BRAND, Ui.Radius.INPUT, Ui.Pad.FOOD_NOTE_H, Ui.Pad.FOOD_NOTE_V);
+    private ReportViews.Data reportData() {
+        return ReportViews.Data.of(store.settings(), store.records(), System.currentTimeMillis(), zone);
+    }
+
+    /** 리포트 › 돌아본 기록 [더보기 ›]. */
+    private void historyScreen() {
+        add(Ui.screenHeader(this, "돌아본 기록", v -> open(PAGE_REPORT)), 0);
+        ReportViews.historyPage(this, content, reportData(), zone);
+    }
+
+    /** 리포트 › 결제 · 후회 원그래프를 누르면. 막대를 누르면 그 카테고리만 본다. */
+    private void spendScreen() {
+        add(Ui.screenHeader(this, spendRegret ? "후회한 결제" : "이번 달 결제", v -> open(PAGE_REPORT)), 0);
+        ReportViews.spendPage(this, content, reportData(), spendRegret, spendFocus, r -> recordRow(r, false), cat -> {
+            spendFocus = cat;
+            refresh();
+        });
     }
 
     // ================================================================== 설정 · 테스트 도구 (홈 › 톱니바퀴)
@@ -823,7 +951,7 @@ public class MainActivity extends Activity {
             addSampleOutcomes();
             toast("예시 기록 4건을 넣었어요");
         }));
-        tc.addView(testButton("리포트 예시 기록 12건 추가 (고른 이유·다음 날 만족/후회 포함, 리포트 후보 확인용)", () -> {
+        tc.addView(testButton("리포트 예시 기록 16건 추가 (고른 이유·다음 날 만족/후회·계좌 내역 포함, 리포트 확인용)", () -> {
             addSampleMonth();
             toast("이번 주기에 예시 기록 12건을 넣었어요");
         }));
@@ -945,7 +1073,7 @@ public class MainActivity extends Activity {
         }
     }
 
-    /** 리포트 후보 확인용: 이번 급여일 주기에 고루 퍼진 12건 (고른 이유 · 다음 날 회고 · 멈춘 질문 포함). */
+    /** 리포트 확인용: 이번 급여일 주기에 고루 퍼진 16건 (고른 이유 · 다음 날 회고 · 멈춘 질문 포함). */
     private void addSampleMonth() {
         long now = System.currentTimeMillis();
         BudgetEngine.State b = BudgetEngine.compute(store.settings(), store.records(), now, zone);
@@ -964,6 +1092,11 @@ public class MainActivity extends Activity {
                 {TargetApp.COUPANG, "운동화 (예시)", 69_000L, Outcome.DELIBERATE_PAY, Intensity.STRONG, null, "만족해요", 0, false, false},
                 {TargetApp.BAEMIN, "버거 세트 (예시)", 12_000L, Outcome.REASON_PAY, Intensity.LIGHT, "약속이 있어요", null, 0, false, false},
                 {TargetApp.COUPANG, "식료품 (예시)", 18_000L, Outcome.PASS, null, null, null, 0, false, true},
+                // 계좌 내역 (앱 없음): 리포트 카테고리 외식 · 카페 · 편의점, 마트는 식비
+                {null, "카페 · 학교 앞 커피 (예시)", 4_500L, Outcome.SYNC, null, null, null, 0, false, false},
+                {null, "편의점 · GS25 (예시)", 6_800L, Outcome.SYNC, null, null, null, 0, false, false},
+                {null, "외식 · 학교 앞 식당 (예시)", 9_000L, Outcome.SYNC, null, null, null, 0, false, false},
+                {null, "마트 · 동네 마트 (예시)", 22_000L, Outcome.SYNC, null, null, null, 0, false, true},
         };
         for (int i = 0; i < samples.length; i++) {
             Object[] s = samples[i];

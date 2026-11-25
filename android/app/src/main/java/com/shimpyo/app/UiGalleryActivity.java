@@ -42,6 +42,7 @@ public class UiGalleryActivity extends Activity {
     @Override
     protected void onCreate(Bundle b) {
         super.onCreate(b);
+        Ui.applyTheme(this);
         MainActivity.styleWindow(this);
         LinearLayout root = Ui.v(this);
         root.setBackgroundColor(Ui.BG);
@@ -343,7 +344,7 @@ public class UiGalleryActivity extends Activity {
         LinearLayout tint = Ui.tintCard(this, Ui.BRAND_LIGHT);
         tint.addView(Ui.body(this, "색 바탕 카드예요."));
         sample("Ui.tintCard(BRAND_LIGHT)", tint);
-        LinearLayout box = Ui.tintBox(this, Ui.BG, Ui.Pad.ANSWER_BOX, Ui.Pad.ANSWER_BOX);
+        LinearLayout box = Ui.tintBox(this, Ui.FILL, Ui.Pad.ANSWER_BOX, Ui.Pad.ANSWER_BOX);
         box.addView(Ui.body(this, "색 바탕 상자예요."));
         sampleOnCard("Ui.tintBox(BG, …)", box);
         LinearLayout sheet = Ui.bottomSheet(this, Ui.Pad.SHEET_TOP);
@@ -367,7 +368,7 @@ public class UiGalleryActivity extends Activity {
         Ui.stack(list, Ui.listRow(this, Ui.LINE, "외식 · 학교 앞 식당", "오늘 12:30", "8,000원", Ui.smallTag(this, "여윳돈", Ui.Tone.NEUTRAL)), Ui.Space.BLOCK);
         sample("Ui.listRow(dotColor, …)  — 점 없는 버전은 dotColor 없이", list);
         sample("Ui.statTile(outlined = true, ratio, barColor, barTrack) · Ui.tilePair", Ui.tilePair(this,
-                Ui.statTile(this, "남은 여윳돈", "280,000원", "급여일까지 8일", true, 0.7f, Ui.GREEN, Ui.BG),
+                Ui.statTile(this, "남은 여윳돈", "280,000원", "급여일까지 8일", true, 0.7f, Ui.GREEN, Ui.FILL),
                 Ui.statTile(this, "식비 예산", "0원", "10만 원 중 남음", true, 0f, Ui.RED, Ui.RED_BG), Ui.Space.BLOCK));
         sample("Ui.statTile(outlined = true)  — 막대 없는 버전", Ui.tilePair(this,
                 Ui.statTile(this, "남은 여윳돈", "280,000원", "급여일까지 8일", true),
@@ -383,8 +384,8 @@ public class UiGalleryActivity extends Activity {
         sample("Ui.tintNote(…)", Ui.tintNote(this, "비밀번호·카드번호·메시지는 읽지 않아요.", Ui.Font.CAPTION, Ui.GREEN, Ui.Radius.BOX, Ui.Pad.PRIVACY_NOTE, Ui.Pad.PRIVACY_NOTE));
         sampleOnCard("Ui.factBox", Ui.factBox(this, "23,000원을 결제하면 오늘 31,000원 · 오늘 한도 14,000원"));
         LinearLayout bars = Ui.card(this);
-        bars.addView(Ui.bar(this, 0.4f, Ui.BRAND, Ui.BG), Ui.fillW());
-        Ui.stack(bars, Ui.bar(this, 1f, Ui.RED, Ui.BG), Ui.Space.ITEM);
+        bars.addView(Ui.bar(this, 0.4f, Ui.BRAND, Ui.FILL), Ui.fillW());
+        Ui.stack(bars, Ui.bar(this, 1f, Ui.RED, Ui.FILL), Ui.Space.ITEM);
         sample("Ui.bar(ratio, fill, track)", bars);
         LinearLayout div = Ui.card(this);
         div.addView(Ui.body(this, "위"));
@@ -416,7 +417,7 @@ public class UiGalleryActivity extends Activity {
         section("입력");
         sampleOnCard("Ui.input", Ui.input(this, "힌트 글자", null, false));
         LinearLayout plain = Ui.h(this);
-        plain.setBackground(Ui.round(this, Ui.BG, Ui.Radius.INPUT));
+        plain.setBackground(Ui.round(this, Ui.FILL, Ui.Radius.INPUT));
         plain.addView(Ui.plainInput(this, "직접 입력 (선택)", null), Ui.weight1());
         sampleOnCard("Ui.plainInput (바탕은 감싸는 쪽에서)", plain);
         sampleOnCard("Ui.labeledField", Ui.labeledField(this, "월 수입", Ui.input(this, "", "1000000", true)));

@@ -53,6 +53,15 @@ final class BackendSlots {
     /** 알림 권한 허용 여부 (S01 "알림" 줄의 ✓). 알림 기능이 생기면 실제 값으로. */
     boolean notificationAllowed = false;
 
+    /**
+     * 이번 달 계좌에서 실제로 나간 고정지출 (리포트 "미리 떼어 둔 돈" 그래프).
+     * 순서는 월세·관리비 · 공과금 · 통신비 · 교통비 · 구독 (Settings 고정지출 5항목과 같다).
+     * 아직 청구되지 않은 항목은 -1. 계좌 동기화가 생기면 가맹점 분류 결과로 채운다.
+     */
+    long[] fixedThisMonth = {350_000, 62_000, 45_000, 33_000, 29_000};
+    /** true면 fixedThisMonth가 데모 값이라 화면에 "(데모)"를 붙인다. */
+    boolean fixedDemo = true;
+
     BackendSlots() {
         incomeSources.add(new IncomeSource("용돈", 600_000));
         incomeSources.add(new IncomeSource("과외비", 400_000));

@@ -39,6 +39,11 @@ public final class KeywordJudge {
         return false;
     }
 
+    /** 생활필수품 단어가 들어 있는지. 판정 값이 없는 기록(예시 기록 등)을 리포트 카테고리로 나눌 때 쓴다. */
+    public static boolean looksNeed(String text) {
+        return text != null && containsAny(text, NEED);
+    }
+
     /** text에는 상품명(또는 화면 텍스트 전체)을 넣는다. */
     public static void judge(PaymentAttempt a, String text) {
         a.judgedBy = "키워드";

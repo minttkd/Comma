@@ -49,46 +49,124 @@ final class Ui {
 
     // ================================================================== 색 (Figma Color 변수)
     // brand/blue는 이름과 달리 짙은 먹색이다. 서비스 색(쉼표 초록)은 GREEN · BRAND_LIGHT.
+    //
+    // 밝은 화면 · 어두운 화면 두 벌이 있다 (applyPalette 아래 표). 그래서 final이 아니다.
+    // 화면을 만들기 전에 applyTheme(context)를 부르면 저장된 화면 모드(홈 위 해/달 토글)대로 한 벌을 고른다.
+    // 이름은 밝은 화면 기준이다: WHITE는 "카드 바탕(surface)", BRAND는 "가장 진한 강조 색"이라
+    // 어두운 화면에서는 WHITE가 짙은 회색, BRAND가 밝은 색이 된다.
 
-    static final int BRAND = Color.parseColor("#292D2B");      // brand/blue · brand/navy · Primary 버튼
-    static final int BRAND_LIGHT = Color.parseColor("#EAF1EC"); // brand/blue-light · 서비스 색 연한 바탕
-    static final int TEXT = Color.parseColor("#292D2B");       // text/primary
-    static final int MUTED = Color.parseColor("#737A75");      // text/muted
-    static final int SUBTLE = Color.parseColor("#879A8A");     // text/subtle
-    static final int LINE = Color.parseColor("#DFE3DF");       // line · chip/stroke
-    static final int BG = Color.parseColor("#F3F5F2");         // bg
-    static final int WHITE = Color.WHITE;                      // surface (카드 · 시트 바탕)
-    static final int RED = Color.parseColor("#A14D46");        // status/red
-    static final int RED_BG = Color.parseColor("#F7EAE8");     // status/red-bg
-    static final int AMBER = Color.parseColor("#8C6C23");      // status/amber
-    static final int AMBER_BG = Color.parseColor("#F7F0DE");   // status/amber-bg
-    static final int GREEN = Color.parseColor("#37624C");      // status/green · 서비스 색(쉼표 초록)
-    static final int GREEN_BG = Color.parseColor("#E8EFE9");   // status/green-bg
-    static final int DIM = Color.argb(140, 0x17, 0x20, 0x1A);  // dim #17201A · 55%
+    static int BRAND;          // brand/blue · brand/navy · Primary 버튼
+    static int BRAND_LIGHT;    // brand/blue-light · 서비스 색 연한 바탕
+    static int TEXT;           // text/primary
+    static int MUTED;          // text/muted
+    static int SUBTLE;         // text/subtle
+    static int LINE;           // line · chip/stroke
+    static int BG;             // bg (화면 바탕)
+    static int FILL;           // 카드 안 회색 칸 · 막대 바탕. 밝은 화면은 BG와 같고, 어두운 화면은 카드보다 살짝 밝게
+    static int WHITE;          // surface (카드 · 시트 바탕)
+    static int RED;            // status/red
+    static int RED_BG;         // status/red-bg
+    static int AMBER;          // status/amber
+    static int AMBER_BG;       // status/amber-bg
+    static int GREEN;          // status/green · 서비스 색(쉼표 초록)
+    static int GREEN_BG;       // status/green-bg
+    static int DIM;            // dim · 개입 시트 뒤 어두운 막
+    static int ON_BRAND;       // 먹색(BRAND) 바탕 위 글자
+    static int ON_BRAND_SUB;   // 먹색 바탕 위 보조 글자
+    // 강조 카드(heroCard · 리포트 결제 vs 후회)는 서비스 색(쉼표 초록) 바탕. 어두운 화면에서는 눈부시지 않게 짙은 초록
+    static int HERO_BG;
+    static int ON_HERO;        // 강조 카드 위 글자
+    static int ON_HERO_SUB;    // 강조 카드 위 보조 글자 (밝은 화면: 초록 바탕 대비 5:1)
+    static int ON_HERO_BOX;    // 강조 카드 안 상자 (흰색 14%)
+    static int GUARD_FILL;     // status/green 16% · 결제 버튼 가드 표시
 
-    static final int ON_BRAND = WHITE;                         // 먹색(BRAND) 바탕 위 글자
-    static final int ON_BRAND_SUB = LINE;                      // 먹색 바탕 위 보조 글자
-    // 강조 카드(heroCard · 리포트 "이번 달 내 기준")는 서비스 색(쉼표 초록) 바탕
-    static final int HERO_BG = GREEN;
-    static final int ON_HERO = WHITE;                          // 강조 카드 위 글자
-    static final int ON_HERO_SUB = Color.parseColor("#CFE0D5"); // 강조 카드 위 보조 글자 (초록 바탕 대비 5:1)
-    static final int ON_HERO_BOX = Color.argb(36, 255, 255, 255); // 강조 카드 안 상자 (흰색 14%)
-    static final int GUARD_FILL = Color.argb(40, 0x37, 0x62, 0x4C); // status/green 16% · 결제 버튼 가드 표시
+    /** 지금 어두운 화면 색을 쓰는 중인지. */
+    static boolean dark;
 
-    /** 상태 색 묶음 (바탕, 글자). 태그·알림에 쓴다. */
+    static {
+        applyPalette(false);
+    }
+
+    private static final String PREFS = "ui";
+    private static final String KEY_THEME = "theme"; // "light" · "dark" · 없으면 휴대폰 설정 따라
+
+    /** 저장된 화면 모드대로 색 한 벌을 고른다. 화면(Activity · 오버레이)을 만들기 전에 부른다. */
+    static void applyTheme(Context c) {
+        applyPalette(wantsDark(c));
+    }
+
+    /** 저장된 화면 모드가 어두운 화면인지. 고른 적이 없으면 휴대폰 다크 모드 설정을 따른다. */
+    static boolean wantsDark(Context c) {
+        String t = c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).getString(KEY_THEME, null);
+        if ("dark".equals(t)) return true;
+        if ("light".equals(t)) return false;
+        int night = c.getResources().getConfiguration().uiMode & android.content.res.Configuration.UI_MODE_NIGHT_MASK;
+        return night == android.content.res.Configuration.UI_MODE_NIGHT_YES;
+    }
+
+    /** 화면 모드를 저장한다 (홈 위 해/달 토글). 저장한 뒤 화면을 다시 만들어야 반영된다. */
+    static void saveTheme(Context c, boolean d) {
+        c.getSharedPreferences(PREFS, Context.MODE_PRIVATE).edit().putString(KEY_THEME, d ? "dark" : "light").apply();
+    }
+
+    /** 색 두 벌. 왼쪽 밝은 화면(Figma 값) · 오른쪽 어두운 화면. */
+    static void applyPalette(boolean d) {
+        dark = d;
+        BRAND = c(d, "#292D2B", "#DCE4DE");
+        BRAND_LIGHT = c(d, "#EAF1EC", "#2A3C32");
+        TEXT = c(d, "#292D2B", "#E6EBE7");
+        MUTED = c(d, "#737A75", "#A3ACA6");
+        SUBTLE = c(d, "#879A8A", "#8FA396");
+        LINE = c(d, "#DFE3DF", "#414A44");
+        BG = c(d, "#F3F5F2", "#121513");
+        WHITE = c(d, "#FFFFFF", "#262C28");
+        FILL = c(d, "#F3F5F2", "#333B36");
+        RED = c(d, "#A14D46", "#E8968C");
+        RED_BG = c(d, "#F7EAE8", "#4A2D29");
+        AMBER = c(d, "#8C6C23", "#DDB96B");
+        AMBER_BG = c(d, "#F7F0DE", "#463A20");
+        GREEN = c(d, "#37624C", "#88C8A3");
+        GREEN_BG = c(d, "#E8EFE9", "#26392D");
+        DIM = d ? Color.argb(170, 0, 0, 0) : Color.argb(140, 0x17, 0x20, 0x1A); // 밝은 화면: #17201A 55%
+        ON_BRAND = c(d, "#FFFFFF", "#151916");
+        ON_BRAND_SUB = c(d, "#DFE3DF", "#55605A");
+        HERO_BG = c(d, "#37624C", "#2F4A3A");
+        ON_HERO = c(d, "#FFFFFF", "#E6EBE7");
+        ON_HERO_SUB = c(d, "#CFE0D5", "#A6B6AB");
+        ON_HERO_BOX = Color.argb(36, 255, 255, 255);
+        GUARD_FILL = d ? Color.argb(48, 0x88, 0xC8, 0xA3) : Color.argb(40, 0x37, 0x62, 0x4C);
+        Tone.refresh();
+    }
+
+    private static int c(boolean dark, String light, String darkHex) {
+        return Color.parseColor(dark ? darkHex : light);
+    }
+
+    /** 상태 색 묶음 (바탕, 글자). 태그·알림에 쓴다. 색 한 벌이 바뀌면 refresh()로 다시 채운다. */
     enum Tone {
-        SUCCESS(GREEN_BG, GREEN),       // Tag/Green · 멈춤, 여유, 만족
-        WARNING(AMBER_BG, AMBER),       // Tag/Amber · 주의, 숙고 후 결제
-        DANGER(RED_BG, RED),            // Tag/Red · 초과, 재무 위험, 후회
-        BRAND(BRAND_LIGHT, Ui.BRAND),   // Tag/Blue · 강도, 회고
-        ACCENT(BRAND_LIGHT, GREEN),     // 연초록 바탕 + 초록 글자 · 필수, 이유 선택 결제
-        NEUTRAL(BG, MUTED),             // 회색 · 선택, 기타
-        PLAIN(WHITE, MUTED),            // 흰 바탕 + 회색 글자 · 색 바탕 위 태그
-        INVERSE(Ui.BRAND, WHITE);       // 먹색 바탕 · 강한 개입
+        SUCCESS,   // Tag/Green · 멈춤, 여유, 만족              (GREEN_BG, GREEN)
+        WARNING,   // Tag/Amber · 주의, 숙고 후 결제            (AMBER_BG, AMBER)
+        DANGER,    // Tag/Red · 초과, 재무 위험, 후회           (RED_BG, RED)
+        BRAND,     // Tag/Blue · 강도, 회고                     (BRAND_LIGHT, BRAND)
+        ACCENT,    // 연초록 바탕 + 초록 글자 · 필수, 이유 선택 결제 (BRAND_LIGHT, GREEN)
+        NEUTRAL,   // 회색 · 선택, 기타                         (FILL, MUTED)
+        PLAIN,     // 흰 바탕 + 회색 글자 · 색 바탕 위 태그      (WHITE, MUTED)
+        INVERSE;   // 먹색 바탕 · 강한 개입                      (BRAND, ON_BRAND)
 
-        final int bg, fg;
+        int bg, fg;
 
-        Tone(int bg, int fg) {
+        static void refresh() {
+            SUCCESS.set(GREEN_BG, GREEN);
+            WARNING.set(AMBER_BG, AMBER);
+            DANGER.set(RED_BG, RED);
+            BRAND.set(BRAND_LIGHT, Ui.BRAND);
+            ACCENT.set(BRAND_LIGHT, GREEN);
+            NEUTRAL.set(FILL, MUTED);
+            PLAIN.set(WHITE, MUTED);
+            INVERSE.set(Ui.BRAND, ON_BRAND);
+        }
+
+        private void set(int bg, int fg) {
             this.bg = bg;
             this.fg = fg;
         }
@@ -616,6 +694,70 @@ final class Ui {
         return b;
     }
 
+    /**
+     * 화면 모드 토글 (홈 위, 톱니바퀴 옆): 어두운 화면이면 달, 밝은 화면이면 해 모양.
+     * 누르면 반대 모드로 바뀐다 (click에서 saveTheme 후 화면을 다시 만든다).
+     */
+    static ImageView themeToggle(Context c, View.OnClickListener click) {
+        ImageView b = new ImageView(c);
+        b.setImageDrawable(new SunMoonDrawable(dark, MUTED));
+        pad(b, c, Pad.ICON);
+        b.setContentDescription(dark ? "어두운 화면 · 눌러서 밝은 화면으로" : "밝은 화면 · 눌러서 어두운 화면으로");
+        b.setOnClickListener(click);
+        return b;
+    }
+
+    /** 해(가운데 원 + 빛줄기 8개) 또는 달(원에서 비껴 놓은 원을 뺀 초승달). 이미지 파일 없이 코드로 그린다. */
+    static final class SunMoonDrawable extends Drawable {
+        private final boolean moon;
+        private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
+
+        SunMoonDrawable(boolean moon, int color) {
+            this.moon = moon;
+            paint.setColor(color);
+        }
+
+        @Override
+        public void draw(Canvas canvas) {
+            RectF b = new RectF(getBounds());
+            float cx = b.centerX(), cy = b.centerY();
+            float r = Math.min(b.width(), b.height()) / 2f * 0.9f;
+            if (moon) {
+                Path m = new Path();
+                m.addCircle(cx, cy, r * 0.8f, Path.Direction.CW);
+                Path cut = new Path();
+                cut.addCircle(cx + r * 0.45f, cy - r * 0.35f, r * 0.68f, Path.Direction.CW);
+                m.op(cut, Path.Op.DIFFERENCE);
+                canvas.drawPath(m, paint);
+                return;
+            }
+            canvas.drawCircle(cx, cy, r * 0.42f, paint);
+            paint.setStrokeWidth(r * 0.16f);
+            paint.setStrokeCap(Paint.Cap.ROUND);
+            for (int i = 0; i < 8; i++) {
+                double a = Math.toRadians(i * 45);
+                float x1 = cx + (float) Math.cos(a) * r * 0.66f, y1 = cy + (float) Math.sin(a) * r * 0.66f;
+                float x2 = cx + (float) Math.cos(a) * r * 0.92f, y2 = cy + (float) Math.sin(a) * r * 0.92f;
+                canvas.drawLine(x1, y1, x2, y2, paint);
+            }
+        }
+
+        @Override
+        public void setAlpha(int alpha) {
+            paint.setAlpha(alpha);
+        }
+
+        @Override
+        public void setColorFilter(ColorFilter cf) {
+            paint.setColorFilter(cf);
+        }
+
+        @Override
+        public int getOpacity() {
+            return PixelFormat.TRANSLUCENT;
+        }
+    }
+
     /** 톱니바퀴 모양: 몸통 원 + 이 8개 − 가운데 구멍. 이미지 파일 없이 코드로 그린다. */
     static final class GearDrawable extends Drawable {
         private final Paint paint = new Paint(Paint.ANTI_ALIAS_FLAG);
@@ -670,11 +812,76 @@ final class Ui {
         return r;
     }
 
+    /** 하위 화면 윗줄 + 오른쪽 끝에 붙는 부품 (전체 기록의 보기 필터 등). */
+    static LinearLayout screenHeader(Context c, String title, View.OnClickListener back, View right) {
+        LinearLayout r = screenHeader(c, title, back);
+        r.setGravity(Gravity.CENTER_VERTICAL);
+        r.addView(new View(c), new LinearLayout.LayoutParams(0, 1, 1f));
+        r.addView(right);
+        return r;
+    }
+
+    /** 고르기 버튼 (테두리 알약, 13 Bold): "전체 ▾"처럼 지금 고른 값과 ▾. 누르면 메뉴를 연다. */
+    static TextView filterButton(Context c, String label, View.OnClickListener click) {
+        TextView t = text(c, label + "  ▾", Font.SMALL, TEXT, BOLD);
+        t.setGravity(Gravity.CENTER);
+        t.setBackground(roundStroke(c, WHITE, Radius.CHIP, LINE, Size.STROKE_STRONG));
+        pad(t, c, Pad.CHIP_H, Space.TIGHT);
+        t.setOnClickListener(click);
+        return t;
+    }
+
     /** 섹션 머리말 + 오른쪽 글자 링크 ("최근 기록 · 더보기 ›"). */
     static LinearLayout sectionHeader(Context c, String title, String link, View.OnClickListener click) {
         LinearLayout r = h(c);
         r.addView(sectionTitle(c, title), new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
         r.addView(textLink(c, link, MUTED, click));
+        return r;
+    }
+
+    /**
+     * 카드 머리말: 굵은 제목(17 Bold) + 한 줄 설명(12 muted) + 오른쪽 위 이동 링크(초록 13 Bold, 없으면 null).
+     * 카드가 무엇을 보여 주는지, 어디로 갈 수 있는지 처음 보는 사람도 알 수 있게 한다 (리포트 · 홈 섹션).
+     */
+    static LinearLayout cardHeader(Context c, String title, String desc, String link, View.OnClickListener click) {
+        LinearLayout r = h(c);
+        r.setGravity(Gravity.TOP);
+        LinearLayout t = v(c);
+        t.addView(text(c, title, Font.HEADING, TEXT, BOLD));
+        if (desc != null && !desc.isEmpty()) stack(t, wordBreak(text(c, desc, Font.CAPTION, MUTED, REGULAR)), Space.TEXT);
+        r.addView(t, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        if (link != null) {
+            TextView l = textLink(c, link, GREEN, click);
+            pad(l, c, Space.ITEM, Space.TEXT, 0, Space.ITEM); // 누르는 영역을 조금 넓힌다
+            r.addView(l);
+        }
+        return r;
+    }
+
+    /**
+     * 이동 막대 (홈 › 리포트): 얇은 흰 테두리 막대 · 왼쪽 라벨(12 초록) + 한 줄 요약(14 Bold) · 오른쪽 초록 알약 버튼.
+     * 바탕은 조용하게 두고 버튼만 진하게 해서, 홈의 주인공("오늘 쓸 수 있는 돈")보다 눈에 덜 띄면서 갈 곳은 보이게 한다.
+     * 막대 전체를 눌러도 이동한다.
+     */
+    static LinearLayout entryBar(Context c, String label, String summary, String action, View.OnClickListener click) {
+        LinearLayout r = h(c);
+        r.setGravity(Gravity.CENTER_VERTICAL);
+        r.setBackground(roundStroke(c, WHITE, Radius.BOX, LINE));
+        pad(r, c, Pad.BOX_H, Space.BLOCK);
+        LinearLayout t = v(c);
+        t.addView(text(c, label, Font.CAPTION, GREEN, MEDIUM));
+        TextView sum = text(c, summary, Font.LABEL, TEXT, BOLD);
+        sum.setSingleLine(true);
+        sum.setEllipsize(android.text.TextUtils.TruncateAt.END);
+        stack(t, sum, Space.TEXT);
+        r.addView(t, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        TextView b = text(c, action, Font.SMALL, WHITE, BOLD);
+        b.setGravity(Gravity.CENTER);
+        b.setBackground(round(c, GREEN, Radius.CHIP));
+        pad(b, c, Pad.CHIP_H, Space.ITEM);
+        inline(r, b, Space.ITEM);
+        r.setOnClickListener(click);
+        b.setOnClickListener(click);
         return r;
     }
 
@@ -996,7 +1203,7 @@ final class Ui {
     /** 나눠진 막대: values 비율대로 colors를 이어 붙인다 (리포트 만족·후회). 합이 0이면 빈 막대. */
     static LinearLayout splitBar(Context c, long[] values, int[] colors) {
         LinearLayout track = h(c);
-        track.setBackground(round(c, BG, Radius.BAR));
+        track.setBackground(round(c, FILL, Radius.BAR));
         track.setClipToOutline(true); // 양 끝만 둥글게
         long total = 0;
         for (long v : values) total += Math.max(0, v);
@@ -1028,7 +1235,7 @@ final class Ui {
     /** Bubble/AI: "쉼표" 라벨 + 질문 (bg, 모서리 4/16/16/16). */
     static LinearLayout bubbleAi(Context c, String question, boolean faded) {
         LinearLayout b = v(c);
-        b.setBackground(corners(c, BG, Radius.BAR, Radius.CARD, Radius.CARD, Radius.CARD));
+        b.setBackground(corners(c, FILL, Radius.BAR, Radius.CARD, Radius.CARD, Radius.CARD));
         pad(b, c, Pad.BUBBLE_H, Pad.BUBBLE_AI_V);
         b.addView(text(c, "쉼표", Font.CAPTION, BRAND, MEDIUM));
         stack(b, text(c, question, Font.BODY, TEXT, MEDIUM), Space.LINE);

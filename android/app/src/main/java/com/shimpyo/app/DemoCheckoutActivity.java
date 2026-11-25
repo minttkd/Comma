@@ -74,6 +74,7 @@ public class DemoCheckoutActivity extends Activity {
     @Override
     protected void onCreate(Bundle b) {
         super.onCreate(b);
+        Ui.applyPalette(false); // 배민·쿠팡·무신사 결제 화면 흉내라 다크 모드여도 밝게 (돌아가면 MainActivity가 다시 고른다)
         MainActivity.styleWindow(this);
         int idx = getIntent().getIntExtra(EXTRA_PRESET, 0);
         current = PRESETS[Math.max(0, Math.min(PRESETS.length - 1, idx))];

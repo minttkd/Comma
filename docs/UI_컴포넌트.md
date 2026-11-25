@@ -11,23 +11,36 @@
 
 ### 색 (Figma Color 변수)
 
-| 이름 | 값 | Figma |
-|---|---|---|
-| `BRAND` | #292D2B | brand/blue · brand/navy (먹색) |
-| `BRAND_LIGHT` | #EAF1EC | brand/blue-light · 서비스 색 연한 바탕 (개입 시트, 다음 달엔 상자, 이번 달 쉼표) |
-| `TEXT` | #292D2B | text/primary |
-| `MUTED` | #737A75 | text/muted |
-| `SUBTLE` | #879A8A | text/subtle |
-| `LINE` | #DFE3DF | line · chip/stroke |
-| `BG` | #F3F5F2 | bg |
-| `WHITE` | #FFFFFF | surface |
-| `RED` / `RED_BG` | #A14D46 / #F7EAE8 | status/red |
-| `AMBER` / `AMBER_BG` | #8C6C23 / #F7F0DE | status/amber |
-| `GREEN` / `GREEN_BG` | #37624C / #E8EFE9 | status/green · **서비스 색(쉼표 초록)** |
-| `DIM` | #17201A 55% | dim |
-| `ON_BRAND` / `ON_BRAND_SUB` | WHITE / LINE | 먹색 바탕 위 글자 |
-| `HERO_BG` / `ON_HERO` / `ON_HERO_SUB` / `ON_HERO_BOX` | GREEN / WHITE / #CFE0D5 / 흰색 14% | 강조 카드 (heroCard · heroSentence). 서비스 색 바탕 |
-| `GUARD_FILL` | status/green 16% | 결제 버튼 가드 표시 |
+밝은 화면 · 어두운 화면 두 벌이 있다 (`Ui.applyPalette` 안의 표). 그래서 색은 `final`이 아니다.
+이름은 밝은 화면 기준이라, 어두운 화면에서는 `WHITE`(카드 바탕)가 짙은 회색, `BRAND`(가장 진한 강조)가 밝은 색이 된다.
+
+| 이름 | 밝게 | 어둡게 | Figma |
+|---|---|---|---|
+| `BRAND` | #292D2B | #DCE4DE | brand/blue · brand/navy (먹색) |
+| `BRAND_LIGHT` | #EAF1EC | #2A3C32 | brand/blue-light · 서비스 색 연한 바탕 (개입 시트, 다음 달엔 상자) |
+| `TEXT` | #292D2B | #E6EBE7 | text/primary |
+| `MUTED` | #737A75 | #A3ACA6 | text/muted |
+| `SUBTLE` | #879A8A | #8FA396 | text/subtle |
+| `LINE` | #DFE3DF | #414A44 | line · chip/stroke |
+| `BG` | #F3F5F2 | #121513 | bg (화면 바탕) |
+| `WHITE` | #FFFFFF | #262C28 | surface (카드 · 시트) |
+| `FILL` | #F3F5F2 | #333B36 | 카드 안 회색 칸 · 막대 바탕 · AI 말풍선. 밝은 화면은 BG와 같고, 어두운 화면은 카드보다 살짝 밝게 (BG를 쓰면 카드 안에 까만 구멍처럼 보여서 따로 둠) |
+| `RED` / `RED_BG` | #A14D46 / #F7EAE8 | #E8968C / #4A2D29 | status/red |
+| `AMBER` / `AMBER_BG` | #8C6C23 / #F7F0DE | #DDB96B / #463A20 | status/amber |
+| `GREEN` / `GREEN_BG` | #37624C / #E8EFE9 | #88C8A3 / #26392D | status/green · **서비스 색(쉼표 초록)** |
+| `DIM` | #17201A 55% | 검정 67% | dim |
+| `ON_BRAND` / `ON_BRAND_SUB` | #FFFFFF / #DFE3DF | #151916 / #55605A | 먹색 바탕 위 글자 |
+| `HERO_BG` / `ON_HERO` / `ON_HERO_SUB` | #37624C / #FFFFFF / #CFE0D5 | #2F4A3A / #E6EBE7 / #A6B6AB | 강조 카드 (heroCard · heroSentence). 어두운 화면은 눈부시지 않게 짙은 초록 |
+| `ON_HERO_BOX` | 흰색 14% | 흰색 14% | 강조 카드 안 상자 |
+| `GUARD_FILL` | status/green 16% | #88C8A3 19% | 결제 버튼 가드 표시 |
+
+**화면 모드 (다크 모드)**
+- 홈 윗줄의 해/달 토글(`Ui.themeToggle`)로 바꾼다. 밝은 화면이면 해, 어두운 화면이면 달 모양이고 누르면 반대로 바뀐다. 보던 화면은 그대로 다시 그린다.
+- 고른 값은 `SharedPreferences("ui")`의 `theme`(light · dark)에 저장한다 (`Ui.saveTheme`). 한 번도 안 골랐으면 휴대폰 다크 모드 설정을 따른다 (`Ui.wantsDark`).
+- 화면(Activity · 개입 오버레이 · 토스트)을 만들기 전에 `Ui.applyTheme(context)`를 부른다. `MainActivity`는 돌아왔을 때 모드가 바뀌었으면 다시 만든다.
+- 데모 결제 화면(`DemoCheckoutActivity`)은 배민 · 쿠팡 · 무신사 흉내라 다크 모드여도 항상 밝게 (`Ui.applyPalette(false)`).
+- 리포트 카테고리 색(`ReportViews.Category.color()`)도 어두운 화면용 단계가 따로 있다.
+- 어두운 화면은 바탕(BG) < 카드(WHITE) < 카드 안 칸(FILL) 순으로 밝아진다. 카드 안 칸에 BG를 쓰지 않는다.
 
 ### `Ui.Tone`: 상태 색 묶음 (바탕 + 글자)
 
@@ -38,7 +51,7 @@
 | `DANGER` | RED_BG / RED | 초과, 재무 트리거 |
 | `BRAND` | BRAND_LIGHT / BRAND | 강도 태그, 회고 태그 |
 | `ACCENT` | BRAND_LIGHT / GREEN | 필수 권한, 이유 선택 결제 |
-| `NEUTRAL` | BG / MUTED | 선택 권한, 여윳돈, 기타 결과 |
+| `NEUTRAL` | FILL / MUTED | 선택 권한, 여윳돈, 기타 결과 |
 | `INVERSE` | BRAND / WHITE | 강한 개입 강도 |
 
 ### `Ui.Font`: 글자 크기 (sp / 줄 높이)
@@ -178,8 +191,10 @@
 | `bar(c, ratio, fill, track[, heightDp])` | 진행 막대 | 홈, 리포트 |
 | `splitBar(c, values[], colors[])` | 나눠진 막대 (값 비율대로 색 이어 붙임) | 리포트 가치별 만족/후회 |
 | `legendRow(c, color, label, value)` | 색 점 · 이름 · 값 | 리포트 |
-| `heroSentence(c, label, sentence, sub, rows...)` | 강조 카드 + 큰 한 문장 + 아래 줄들(반투명 상자) | 리포트 이번 달 내 기준 |
-| `heroRow(c, tag, Tone, name, value)` | 강조 카드 안 한 줄: 만족/후회 태그 · 이름 · 금액 | 리포트 이번 달 내 기준 |
+| `cardHeader(c, title, desc, link, click)` | 카드 머리말: 굵은 제목 17 · 한 줄 설명 12 · 오른쪽 위 초록 링크(없으면 null). 카드가 무엇을 보여 주고 어디로 갈 수 있는지 알려 준다 | 홈 최근 기록 · 데모, 리포트 카드 전부 |
+| `entryBar(c, label, summary, action, click)` | 얇은 흰 테두리 이동 막대: 왼쪽 라벨(초록) + 한 줄 요약, 오른쪽 초록 알약 버튼 "○○ 보기 →". 바탕은 조용히, 버튼만 진하게 (홈 주인공보다 덜 눈에 띄게). 막대 전체도 눌림 | 홈 › 리포트 입구 |
+| `heroSentence(c, label, sentence, sub, rows...)` | 강조 카드 + 큰 한 문장 + 아래 줄들(반투명 상자) | 리포트 결제 vs 후회 |
+| `heroRow(c, tag, Tone, name, value)` | 강조 카드 안 한 줄: 태그 · 이름 · 금액 | 리포트 결제 vs 후회 |
 | `quote(c, said, sub)` | 내가 한 말 인용 (왼쪽 초록 선) | 리포트 그때 내가 한 말 |
 | `divider(c)` | 1dp 선 | 기록 화면 |
 
@@ -189,8 +204,11 @@
 |---|---|
 | `bubbleAi(c, question, faded)` · `bubbleUser(c, answer)` | Bubble/AI(회색, 이름표) · Bubble/User |
 | `screenHeader(c, title, back)` | ← 뒤로 + 화면 제목 (기록 · 리포트 · 설정) |
+| `screenHeader(c, title, back, right)` | 위와 같고 오른쪽 끝에 부품 하나 (전체 기록의 보기 필터) |
+| `filterButton(c, label, click)` | 테두리 알약 "전체 ▾": 지금 고른 값 + ▾, 누르면 메뉴 (전체 기록 보기 필터) |
 | `sectionHeader(c, title, link, click)` | 섹션 머리말 + 오른쪽 글자 링크 (홈 "최근 기록 · 더보기 ›") |
 | `settingsButton(c, click)` | 톱니바퀴 아이콘 (코드로 그림, `GearDrawable`) |
+| `themeToggle(c, click)` | 화면 모드 토글: 밝은 화면이면 해, 어두운 화면이면 달 (코드로 그림, `SunMoonDrawable`) |
 | `avatar(c)` | 쉼표 얼굴 (초록 동그라미 "쉼", 개입 채팅 머리줄) |
 | `bubbleAi(c, question, faded, bg)` · `bubbleUser(c, answer, bg, fg)` | 얼굴 + 말풍선 · 색 지정 내 답 (개입 채팅: 연초록 시트 위 흰 말풍선) |
 | `bottomNav(c, labels, selected, onSelect)` | BottomNav (지금 앱에서는 안 씀) |
@@ -216,17 +234,24 @@
 트리거 · 강도("재정위험 전환점", "보통 ●●○") 같은 시스템 용어는 보이지 않는다.
 UI 갤러리의 "개입 화면 미리보기"에서 바로 눌러 볼 수 있다.
 
-## 리포트: 가치 회고 (`ReportViews.reflect`)
+## 리포트 (`ReportViews.render`)
 
-시스템 용어(가벼움·보통·강함, 결과 분류) 대신 사용자가 직접 한 판단으로 돌아보게 한다.
 집계는 `ReportViews.Data`가 화면에서 직접 센다 (core `Stats`는 그대로).
-설정 › 테스트 도구 › **리포트 예시 기록 12건 추가**로 데이터를 넣고 보면 된다.
+설정 › 테스트 도구 › **① 시나리오 10일째로 맞추기** → **리포트 예시 기록 16건 추가**로 데이터를 넣고 보면 된다 (주별 그래프에 두 주 이상 나온다).
 
-1. **이번 달 내 기준** (서비스 색 강조 카드, `heroSentence`): 고른 이유를 가치로 묶어(`ReportViews.Value`: 사람 때문에 · 기분으로 · 대화 끝에) 다음 날 만족/후회와 잇는 큰 한 문장. 아래에 만족한 가치 · 후회한 가치를 금액과 함께 (`heroRow`).
-2. **무엇 때문에 썼고, 다음 날 어땠나요**: 가치마다 한 칸. 칸 바탕과 태그가 판정 색이다 (만족했어요 연초록 · 후회했어요 연빨강 · 반반이에요 / 아직 몰라요 회색). 만족/후회 막대 · 횟수와 금액 · 그 안의 이유들.
-3. **그때 내가 한 말**: 대화에서 직접 적은 가장 긴 답을 인용 (`Record.qa`)
-4. **멈춘 결제, 지금은 어때요?** [아직 사고 싶어요] [안 사길 잘했어요]
-5. **다음 달엔 어떤 결제를 줄이고 싶어요?** (연초록 상자): 이번 달 후회가 남은 가치를 앞에 두고, 고르면 쉼표가 한마디 한다.
+1. **이번 달 결제 vs 후회** (서비스 색 강조 카드): 결제 합계 중 다음 날 '후회돼요'라고 답한 금액 · 비율 (막대 + 후회 / 그 밖의 결제 두 줄).
+   아래 **무엇에 썼나요** 카드에 결제 · 후회 원그래프 두 개(`ReportViews.PieChart`, 도넛 모양, 큰 순 5조각 + 나머지는 "그 밖").
+   조각을 누르면 그 조각이 커진 채로 남고(나머지는 흐려짐) 가운데에 이름 · 금액 · 비율이 나온다. 같은 조각이나 가운데를 다시 누르면 풀린다 (마우스가 있으면 올리기만 해도 보인다). 그래프를 눌러도 화면은 넘어가지 않고, 그래프 아래 [결제 자세히 보기] [후회 자세히 보기] 버튼으로 **자세히 화면**에 간다 (`MainActivity.spendScreen` → `ReportViews.spendPage`): 합계 → 카테고리별 지출 막대(누르면 그 카테고리만) → 결제 목록.
+   카테고리(`ReportViews.Category`)는 앱과 품목 판정으로 나눈다: 배민 → 배달 음식, 식비 예산에서 나간 것 → 식료품, 무신사 → 옷·잡화, 쿠팡 필요 판정 → 생활용품, 나머지 쿠팡 → 그 밖의 쇼핑. 판정 값이 없는 기록은 상품명 키워드(`KeywordJudge.looksNeed`)로 본다.
+   계좌 내역은 가맹점 이름으로 외식 · 카페 · 편의점으로 나누고(`Category.ofMerchant`), 모르는 가맹점은 기타 (맨 뒤). 색은 카테고리마다 고정(dataviz 기본 범주 팔레트 순서)이라 원그래프 · 막대 · 범례가 같은 색을 쓴다.
+2. **다음 달엔 어떤 결제를 줄이고 싶어요?** (연초록 상자): 이번 달 후회가 남은 가치를 앞에 두고, 고르면 쉼표가 한마디 한다.
+3. **쉼표로 아낀 돈**: 멈춘 결제 합계 · "말을 건 N번 중 M번 멈췄어요" · 급여일 기준 주별 막대 그래프(`ReportViews.WeekBars`, 한 가지 색, 막대 위에 값, 이번 주는 굵게, 아직 안 온 주는 흐리게).
+4. **돌아본 기록**: 가치 회고 한 문장 + 건수. 제목 줄 오른쪽 위 [더보기 ›]를 누르면 **돌아본 기록 화면**(`MainActivity.historyScreen` → `ReportViews.historyPage`)으로 넘어간다.
+   - **무엇 때문에 썼고, 다음 날 어땠나요**: 고른 이유를 가치로 묶어(`ReportViews.Value`: 사람 때문에 · 기분으로 · 대화 끝에) 가치마다 한 칸. 칸 바탕과 태그가 판정 색이다 (만족했어요 연초록 · 후회했어요 연빨강 · 반반이에요 / 아직 몰라요 회색). 만족/후회 막대 · 횟수와 금액 · 그 안의 이유들.
+   - **그때 내가 한 말**: 대화에서 직접 적은 가장 긴 답을 인용 (`Record.qa`)
+   - **멈춘 결제, 지금은 어때요?** [아직 사고 싶어요] [안 사길 잘했어요]
+5. **미리 떼어 둔 돈, 평균과 비교** (맨 아래): 고정지출 5항목 · 마트 장보기 · 쿠팡 식료품마다 평균(= 떼어 둔 금액)과의 차이를 가운데가 평균인 막대로 (`ReportViews.DiffBar`, 더 나가면 오른쪽 빨강 · 덜 나가면 왼쪽 초록, 글자에 +/− 부호).
+   식비는 한 달 내내 나가서 "오늘까지 평균 속도"(평균 × 지난 날 비율)와 비교한다. 고정지출의 이번 달 금액은 `BackendSlots.fixedThisMonth`(지금은 데모 값, 계좌 연동 후 채움).
 
 - **필요해서 한 결제는 회고에서 뺀다**: 생필품 · 끼니 이유 칩, AI가 필요(`Judgment.NEED`)로 판정한 결제. 이미 판단 기준이 정해진 것이라 가치판단이 아니다 (차민상).
 - 4 · 5는 화면만 있고 저장하지 않는다. 답을 어디에 둘지(Record 구조, `core/Stats` 후회율)는 차민상과 합의 후 연결.
@@ -240,13 +265,15 @@ UI 갤러리의 "개입 화면 미리보기"에서 바로 눌러 볼 수 있다.
 | S01 권한 | `onboardingPermissionScreen()` | `permissionCard`, `permissionRow` |
 | S02 정기 수입 | `onboardingIncomeScreen()` | `linkedAccountCard`, `incomeCard`, `consentCard` |
 | S03 예산 | `onboardingBudgetScreen()` | `amountListCard`, heroCard |
-| S04 홈 | `homeScreen()` | `homeHeader`(톱니바퀴), `todayBudgetCard`, 이번 달 쉼표(→ 리포트), 최근 기록(더보기 → 기록), `recentRecordsCard`, `demoCard` |
+| S04 홈 | `homeScreen()` | `homeHeader`(해/달 토글 · 톱니바퀴), `todayBudgetCard`, 리포트 입구(`entryBar` → 리포트), 최근 기록(`cardHeader`, 전체 기록 › → 기록), `recentRecordsCard`, `demoCard` |
 | S09 회고 | `showReview()` | `reviewSheetContent` |
-| 기록 (홈 › 더보기) | `recordsScreen()` | `recordRow` |
-| S10 리포트 (홈 › 이번 달 쉼표) | `reportScreen()` → `ReportViews.reflect` | `standardCard`, `valuesCard`, `saidCard`, `stoppedCard`, `nextMonthCard`, `foodNote` |
+| 전체 기록 (홈 › 전체 기록 ›) | `recordsScreen()` | 오른쪽 위 보기 필터(`RecordFilter`: 전체 · 멈춘 결제 · 대화 후 결제 · 후회한 결제 · 말 안 건 결제 · 식비 예산 · 계좌 내역, 메뉴에 건수), `recordRow` |
+| S10 리포트 (홈 › 이번 달 쉼표) | `reportScreen()` → `ReportViews.render` | `regretHero`, `piesCard`, `nextMonthCard`, `savedCard`, `historyCard`, `setAsideCard` |
+| 리포트 › 결제 · 후회 자세히 | `spendScreen()` → `ReportViews.spendPage` | 합계, `categoryCard`, 결제 목록(`recordRow`) |
+| 리포트 › 돌아본 기록 | `historyScreen()` → `ReportViews.historyPage` | `valuesCard`, `saidCard`, `stoppedCard` |
 | 설정 (홈 › 톱니바퀴) | `settingsScreen()` | `statusCard`, `numberField`, `testTools`, `logCard`, `screenTextCard` |
 
-하단 탭은 없다. 홈이 기본 화면이고 기록 · 리포트 · 설정은 홈에서 들어가는 하위 화면이다 (`open(PAGE_...)`, ← 뒤로나 기기 뒤로가기로 홈).
+하단 탭은 없다. 홈이 기본 화면이고 기록 · 리포트 · 설정은 홈에서 들어가는 하위 화면이다 (`open(PAGE_...)`, ← 뒤로나 기기 뒤로가기로 홈). 리포트의 결제 · 후회 자세히(`PAGE_SPEND`)와 돌아본 기록(`PAGE_HISTORY`)은 뒤로 가면 리포트로 돌아간다.
 
 각 화면 메서드는 맨 위에서 데이터(`Store`, `BudgetEngine`, `Stats`, `BackendSlots`)를 한 번 읽고 카드 메서드에 값으로 넘긴다.
 
