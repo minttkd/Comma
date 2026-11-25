@@ -510,7 +510,7 @@ public class MainActivity extends Activity {
         Sumsumi.Mood mood = signal == 0 ? Sumsumi.Mood.OKAY : signal == 1 ? Sumsumi.Mood.CURIOUS : Sumsumi.Mood.WORRIED;
         head.addView(new Sumsumi(this, mood, true), Ui.square(this, Ui.Size.BUDGET_FACE));
         LinearLayout texts = Ui.v(this);
-        texts.addView(Ui.text(this, "오늘 쓸 수 있는 돈", Ui.Font.SMALL, Ui.TODAY_SUB, Ui.REGULAR));
+        texts.addView(Ui.text(this, "오늘 쓸 수 있는 돈", Ui.Font.SMALL, Ui.TEXT, Ui.BOLD));
         String amount = b.available >= 0 ? Money.won(b.available) + " 남음" : Money.won(-b.available) + " 초과";
         Ui.stack(texts, Ui.text(this, amount, Ui.Font.AMOUNT, b.available < 0 ? Ui.RED : Ui.TEXT, Ui.BOLD), Ui.Space.LINE);
         Ui.inlineFill(head, texts, Ui.Space.ROW);
