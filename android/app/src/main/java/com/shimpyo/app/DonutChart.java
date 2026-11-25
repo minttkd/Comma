@@ -35,6 +35,7 @@ final class DonutChart extends View {
         text.setTextAlign(Paint.Align.CENTER);
         StringBuilder d = new StringBuilder("카테고리별 지출 원형표. ");
         if (centerMain != null) d.append(centerMain).append(' ').append(centerSub);
+        else if (centerTop != null) d.append(centerTop).append(' ').append(centerSub);
         setContentDescription(d);
     }
 
@@ -81,7 +82,8 @@ final class DonutChart extends View {
 
         // 가운데 글자: 위 회색 작은 글 · 가운데 굵은 글 · 아래 큰 숫자
         float sp = getResources().getDisplayMetrics().scaledDensity;
-        float y = cy - 14 * sp;
+        // 가운데 글이 두 줄(작은 글 + 큰 숫자)이면 세 줄일 때보다 가운데로 모은다
+        float y = centerMain == null ? cy - 6 * sp : cy - 14 * sp;
         if (centerTop != null) {
             text.setTypeface(Typeface.DEFAULT);
             text.setTextSize(12 * sp);
@@ -96,9 +98,9 @@ final class DonutChart extends View {
         }
         if (centerSub != null) {
             text.setTypeface(Typeface.DEFAULT_BOLD);
-            text.setTextSize(24 * sp);
+            text.setTextSize((centerMain == null ? 20 : 24) * sp);
             text.setColor(Ui.TEXT);
-            c.drawText(centerSub, cx, y + 48 * sp, text);
+            c.drawText(centerSub, cx, y + (centerMain == null ? 26 : 48) * sp, text);
         }
     }
 }

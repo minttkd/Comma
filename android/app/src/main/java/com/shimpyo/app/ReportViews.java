@@ -80,10 +80,19 @@ final class ReportViews {
         long lateSum;
         int lateCount;
 
+        /** 이 데이터의 급여 주기 [시작, 끝) 와 이름("10월" = 시작한 달). */
+        LocalDate[] cycle;
+        String monthLabel;
+
+        /** 이번 주기(진행 중). */
         static Data of(Settings s, List<Record> records, long now, ZoneId zone) {
+            return of(s, records, cycleAt(s, Instant.ofEpochMilli(now).atZone(zone).toLocalDate(), 0), zone);
+        }
+
+        static Data of(Settings s, List<Record> records, LocalDate[] cycle, ZoneId zone) {
             Data d = new Data();
-            LocalDate today = Instant.ofEpochMilli(now).atZone(zone).toLocalDate();
-            LocalDate[] cycle = BudgetEngine.cycle(s, today);
+            d.cycle = cycle;
+            d.monthLabel = cycle[0].getMonthValue() + "월";
             for (Record r : records) {
                 LocalDate day = Instant.ofEpochMilli(r.ts).atZone(zone).toLocalDate();
                 if (day.isBefore(cycle[0]) || !day.isBefore(cycle[1])) continue;
@@ -117,6 +126,33 @@ final class ReportViews {
         }
     }
 
+    /**
+     * offset번째 급여 주기: 0 = 이번(진행 중), -1 = 지난달, -2 = 지지난달 …
+     * 급여일 주기는 한 달씩, 테스트용 시작일 지정 주기는 30일씩 거슬러 간다 (BudgetEngine.cycle과 같은 규칙).
+     */
+    static LocalDate[] cycleAt(Settings s, LocalDate today, int offset) {
+        LocalDate[] c = BudgetEngine.cycle(s, today);
+        for (int i = 0; i < -offset; i++) {
+            LocalDate start = s.cycleStartOverride >= 0 ? c[0].minusDays(30) : c[0].minusMonths(1);
+            c = new LocalDate[]{start, c[0]};
+        }
+        return c;
+    }
+
+    /** 리포트를 처음 열 때 보여 줄 주기: 지난달에 쓴 기록이 있으면 지난달, 없으면(첫 달) 이번 달. */
+    static int defaultOffset(Settings s, List<Record> records, LocalDate today, ZoneId zone) {
+        Data prev = Data.of(s, records, cycleAt(s, today, -1), zone);
+        return prev.total > 0 || !prev.regretted.isEmpty() ? -1 : 0;
+    }
+
+    /** 이 주기보다 앞선 기록이 있으면 더 거슬러 볼 수 있다. */
+    static boolean hasEarlier(List<Record> records, LocalDate[] cycle, ZoneId zone) {
+        for (Record r : records) {
+            if (Instant.ofEpochMilli(r.ts).atZone(zone).toLocalDate().isBefore(cycle[0])) return true;
+        }
+        return false;
+    }
+
     // ================================================================== 화면
 
     static void build(Context c, LinearLayout out, Store store, Data d, ZoneId zone) {
@@ -131,7 +167,7 @@ final class ReportViews {
         card.addView(Ui.caption(c, "어디에 많이 썼나요"));
         List<Category> ranked = d.ranked();
         if (ranked.isEmpty()) {
-            Ui.stack(card, Ui.emptyState(c, "이번 달 결제가 쌓이면 카테고리별로 보여 드려요."), Ui.Space.ITEM);
+            Ui.stack(card, Ui.emptyState(c, "이 달 결제가 쌓이면 카테고리별로 보여 드려요."), Ui.Space.ITEM);
             return card;
         }
         // 원형표 조각은 카테고리 순서(고정)로 그리고, 목록은 많이 쓴 순서로 둔다.
@@ -142,8 +178,12 @@ final class ReportViews {
             vals[i] = d.sums.getOrDefault(all[i], 0L);
             cols[i] = all[i].color;
         }
-        Category top = ranked.get(0);
-        DonutChart chart = new DonutChart(c, vals, cols, "가장 많이 쓴 곳", top.label, d.percent(top) + "%");
+        // 가운데: 가장 많이 쓴 카테고리. 기타(분류 안 된 계좌 지출)가 가장 크면 카테고리 대신 그달 전체 지출.
+        Category largest = ranked.get(0);
+        for (Category cat : ranked) if (d.sums.get(cat) > d.sums.get(largest)) largest = cat;
+        DonutChart chart = largest == Category.OTHER
+                ? new DonutChart(c, vals, cols, d.monthLabel + " 지출", null, Money.won(d.total))
+                : new DonutChart(c, vals, cols, "가장 많이 쓴 곳", largest.label, d.percent(largest) + "%");
         LinearLayout.LayoutParams lp = new LinearLayout.LayoutParams(Ui.dp(c, 200), Ui.dp(c, 200));
         lp.gravity = android.view.Gravity.CENTER_HORIZONTAL;
         lp.topMargin = Ui.dp(c, Ui.Space.WIDE);
@@ -206,7 +246,7 @@ final class ReportViews {
         return card;
     }
 
-    /** 3) 앞으로 줄이고 싶은 결제: 여러 개 고를 수 있고, 고르면 바로 저장. 고른 것은 이번 달 쓴 돈과 함께 보여 준다. */
+    /** 3) 앞으로 줄이고 싶은 결제: 여러 개 고를 수 있고, 고르면 바로 저장. 고른 것은 보고 있는 달에 쓴 돈과 함께 보여 준다. */
     private static View reduceCard(Context c, Store store, Data d) {
         LinearLayout box = Ui.tintBox(c, Ui.BRAND_LIGHT, Ui.Pad.CARD, Ui.Pad.CARD);
         box.addView(Ui.text(c, "앞으로", Ui.Font.CAPTION, Ui.GREEN, Ui.BOLD));
@@ -245,17 +285,17 @@ final class ReportViews {
         return box;
     }
 
-    /** 고른 결제마다 "이번 달 N원" 한 줄 (다음 달과 비교할 기준). */
+    /** 고른 결제마다 "그달 N원" 한 줄 (다음 달과 비교할 기준). */
     private static void fillSummary(Context c, LinearLayout summary, Set<String> chosen, Data d) {
         summary.removeAllViews();
         if (chosen.isEmpty()) {
-            summary.addView(Ui.text(c, "고르면 이번 달 쓴 돈을 기준으로 남겨 둘게요.", Ui.Font.SMALL, Ui.MUTED, Ui.REGULAR));
+            summary.addView(Ui.text(c, "고르면 " + d.monthLabel + "에 쓴 돈을 기준으로 남겨 둘게요.", Ui.Font.SMALL, Ui.MUTED, Ui.REGULAR));
             return;
         }
         LinearLayout list = Ui.v(c);
         list.setBackground(Ui.round(c, Ui.WHITE, Ui.Radius.INPUT));
         Ui.pad(list, c, Ui.Pad.BOX_H, Ui.Pad.BOX_V);
-        list.addView(Ui.text(c, "줄이기로 한 결제 · 이번 달 쓴 돈", Ui.Font.CAPTION, Ui.MUTED, Ui.REGULAR));
+        list.addView(Ui.text(c, "줄이기로 한 결제 · " + d.monthLabel + "에 쓴 돈", Ui.Font.CAPTION, Ui.MUTED, Ui.REGULAR));
         for (String o : chosen) {
             long sum;
             if (LATE_NIGHT.equals(o)) sum = d.lateSum;

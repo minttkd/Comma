@@ -70,6 +70,8 @@ public class MainActivity extends Activity {
     private boolean bankConsent = true;
     private boolean cycleConsent = true;
     private boolean reviewDismissed = false;
+    /** 리포트에서 보고 있는 급여 주기 (0 이번 달, -1 지난달 …). 입구에서 열 때 기본값으로 맞춘다. */
+    private int reportOffset = -1;
 
     /** 상태바·내비게이션바·창 바탕을 앱 바탕색에 맞춘다 (Figma StatusBar: 밝은 바탕 + 어두운 글자). */
     static void styleWindow(Activity a) {
@@ -469,8 +471,10 @@ public class MainActivity extends Activity {
                 Ui.statTile(this, "식비 예산", Money.won(b.foodRemaining), man(b.foodBudget) + " 원 중 남음", true,
                         tileBar(b.foodRemaining, b.foodBudget), remainColor(b.foodRemaining), remainTrack(b.foodRemaining)),
                 Ui.Space.BLOCK), Ui.Space.BLOCK);
-        add(Ui.entryCard(this, new Sumsumi(this, Sumsumi.Mood.OKAY, true).prop(topCategoryProp(s, recs, now)),
-                LocalDate.now(zone).getMonthValue() + "월 리포트", v -> open(PAGE_REPORT)), Ui.Space.BLOCK);
+        int reportDefault = ReportViews.defaultOffset(s, recs, LocalDate.now(zone), zone);
+        add(Ui.entryCard(this, new Sumsumi(this, Sumsumi.Mood.OKAY, true).prop(topCategoryProp(s, recs, reportDefault)),
+                reportDefault < 0 ? "지난달 소비 돌아보기" : "이번 달 소비 돌아보기",
+                v -> { reportOffset = reportDefault; open(PAGE_REPORT); }), Ui.Space.BLOCK);
         add(Ui.highlightBox(this, st.prevented == 0 ? Sumsumi.Mood.NORMAL : Sumsumi.Mood.PROUD, "이번 달 멈춘 결제", st.prevented == 0 ? "결제 직전에 멈춘 기록이 여기 쌓여요"
                 : st.prevented + "번 멈춰서 " + Money.won(st.preventedSum) + " 아꼈어요", v -> open(PAGE_STOPPED)), Ui.Space.BLOCK);
         add(Ui.sectionHeader(this, "결제 내역", "더보기 ›", v -> open(PAGE_RECORDS)), Ui.Space.BLOCK);
@@ -545,8 +549,8 @@ public class MainActivity extends Activity {
 
 
     /** 홈 "N월 리포트" 입구 숨숨이가 드는 소품: 이번 달 가장 많이 쓴 카테고리. */
-    private Sumsumi.Prop topCategoryProp(Settings s, List<Record> recs, long now) {
-        List<ReportViews.Category> ranked = ReportViews.Data.of(s, recs, now, zone).ranked();
+    private Sumsumi.Prop topCategoryProp(Settings s, List<Record> recs, int offset) {
+        List<ReportViews.Category> ranked = ReportViews.Data.of(s, recs, ReportViews.cycleAt(s, LocalDate.now(zone), offset), zone).ranked();
         if (ranked.isEmpty()) return Sumsumi.Prop.NONE;
         switch (ranked.get(0)) {
             case DELIVERY: return Sumsumi.Prop.DRUMSTICK;   // 배달 음식: 닭다리
@@ -720,13 +724,37 @@ public class MainActivity extends Activity {
         Settings s = store.settings();
         long now = System.currentTimeMillis();
         List<Record> recs = store.records();
-        BudgetEngine.State b = BudgetEngine.compute(s, recs, now, zone);
+        LocalDate today = LocalDate.now(zone);
+        if (reportOffset > 0) reportOffset = 0;
+        LocalDate[] cycle = ReportViews.cycleAt(s, today, reportOffset);
+        ReportViews.Data d = ReportViews.Data.of(s, recs, cycle, zone);
+        boolean canPrev = ReportViews.hasEarlier(recs, cycle, zone);
+        boolean canNext = reportOffset < 0;
 
-        add(Ui.screenHeader(this, LocalDate.now(zone).getMonthValue() + "월 리포트", v -> open(PAGE_HOME)), 0);
-        add(Ui.text(this, b.cycleStart + " ~ " + b.nextPayday.minusDays(1) + " (급여일 기준)", Ui.Font.CAPTION, Ui.SUBTLE, Ui.REGULAR), Ui.Space.LINE);
+        add(Ui.screenHeader(this, "소비 돌아보기", v -> open(PAGE_HOME)), 0);
+        // 달 넘기기: ‹ 10월 ›  (이번 달이면 "진행 중")
+        LinearLayout nav = Ui.h(this);
+        nav.setGravity(Gravity.CENTER_VERTICAL);
+        nav.addView(monthArrow("‹", canPrev, v -> { reportOffset--; refresh(); }), Ui.square(this, Ui.Size.ICON_BUTTON));
+        nav.addView(Ui.text(this, d.monthLabel, Ui.Font.HEADING, Ui.TEXT, Ui.BOLD));
+        nav.addView(monthArrow("›", canNext, v -> { reportOffset++; refresh(); }), Ui.square(this, Ui.Size.ICON_BUTTON));
+        if (reportOffset == 0) Ui.inline(nav, Ui.smallTag(this, "진행 중", Ui.Tone.NEUTRAL), Ui.Space.ITEM);
+        add(nav, Ui.Space.ITEM);
+        java.time.format.DateTimeFormatter md = java.time.format.DateTimeFormatter.ofPattern("M/d");
+        add(Ui.text(this, cycle[0].format(md) + " ~ " + cycle[1].minusDays(1).format(md) + " · 급여일 기준",
+                Ui.Font.CAPTION, Ui.SUBTLE, Ui.REGULAR), Ui.Space.LINE);
 
         // 카테고리별 지출 원형표 · 후회한 결제 · 앞으로 줄이고 싶은 결제. 그리는 코드는 ReportViews.
-        ReportViews.build(this, content, store, ReportViews.Data.of(s, recs, now, zone), zone);
+        ReportViews.build(this, content, store, d, zone);
+    }
+
+    /** 리포트 달 넘기기 화살표. 갈 수 없는 쪽은 흐리게, 눌러도 아무 일 없음. */
+    private TextView monthArrow(String glyph, boolean enabled, View.OnClickListener click) {
+        TextView t = Ui.text(this, glyph, Ui.Font.TITLE, enabled ? Ui.TEXT : Ui.LINE, Ui.BOLD);
+        t.setGravity(Gravity.CENTER);
+        t.setContentDescription(glyph.equals("‹") ? "이전 달" : "다음 달");
+        if (enabled) t.setOnClickListener(click);
+        return t;
     }
 
     // ================================================================== 설정 · 테스트 도구 (홈 › 톱니바퀴)
@@ -832,7 +860,7 @@ public class MainActivity extends Activity {
             addSampleOutcomes();
             toast("예시 기록 4건을 넣었어요");
         }));
-        tc.addView(testButton("리포트 예시 기록 12건 추가 (고른 이유·다음 날 만족/후회 포함, 리포트 후보 확인용)", () -> {
+        tc.addView(testButton("리포트 예시 기록 12건 추가 (지난달 주기에, 고른 이유·다음 날 만족/후회 포함)", () -> {
             addSampleMonth();
             toast("이번 주기에 예시 기록 12건을 넣었어요");
         }));
@@ -956,9 +984,10 @@ public class MainActivity extends Activity {
 
     /** 리포트 후보 확인용: 이번 급여일 주기에 고루 퍼진 12건 (고른 이유 · 다음 날 회고 · 멈춘 질문 포함). */
     private void addSampleMonth() {
-        long now = System.currentTimeMillis();
-        BudgetEngine.State b = BudgetEngine.compute(store.settings(), store.records(), now, zone);
-        long start = b.cycleStart.atStartOfDay(zone).toInstant().toEpochMilli();
+        // 리포트는 지난달(끝난 급여 주기)을 기본으로 보여 주니, 예시 기록도 지난달 주기에 고르게 넣는다.
+        LocalDate[] prev = ReportViews.cycleAt(store.settings(), LocalDate.now(zone), -1);
+        long start = prev[0].atStartOfDay(zone).toInstant().toEpochMilli();
+        long now = prev[1].atStartOfDay(zone).toInstant().toEpochMilli();
         Object[][] samples = {
                 // 앱, 제목, 금액, 결과, 강도, 고른 이유, 다음 날 회고, 멈춘 질문, 야식, 식비
                 {TargetApp.MUSINSA, "울 코트 (예시)", 129_000L, Outcome.PREVENTED, Intensity.STRONG, null, null, 3, false, false},
