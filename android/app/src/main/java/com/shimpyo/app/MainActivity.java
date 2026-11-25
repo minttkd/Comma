@@ -479,11 +479,11 @@ public class MainActivity extends Activity {
         maybeShowReview(recs, now);
     }
 
-    /** 홈 윗줄: 마지막 동기화 시각 + 톱니바퀴(설정), 오른쪽 정렬. */
+    /** 홈 윗줄: 왼쪽 서비스명 "쉼표" · 오른쪽 마지막 동기화 시각 + 톱니바퀴(설정). */
     private View homeHeader(long lastSyncTs, long now) {
         LinearLayout top = Ui.h(this);
         top.setGravity(android.view.Gravity.CENTER_VERTICAL);
-        top.addView(new View(this), Ui.weight1());
+        top.addView(Ui.title(this, "쉼표"), Ui.weight1());
         long mins = lastSyncTs == 0 ? -1 : (now - lastSyncTs) / 60_000;
         String sync = mins < 0 ? "동기화 전" : mins < 1 ? "마지막 동기화 방금 전" : "마지막 동기화 " + (mins < 60 ? mins + "분 전" : (mins / 60) + "시간 전");
         top.addView(Ui.meta(this, sync));
