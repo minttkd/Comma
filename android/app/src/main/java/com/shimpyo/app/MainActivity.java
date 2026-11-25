@@ -694,10 +694,24 @@ public class MainActivity extends Activity {
                 : "이번 달 " + stopped.size() + "번 멈춰서 " + Money.won(sum) + " 아꼈어요", Ui.Font.SMALL, Ui.GREEN, Ui.MEDIUM), Ui.Space.TIGHT);
         LinearLayout list = Ui.outlineCard(this, Ui.Pad.CARD, Ui.Pad.CARD);
         for (int i = 0; i < stopped.size(); i++) {
-            Ui.stack(list, recordRow(stopped.get(i), true), i == 0 ? 0 : Ui.Space.BLOCK);
+            Ui.stack(list, stoppedRow(stopped.get(i)), i == 0 ? 0 : Ui.Space.BLOCK);
         }
         if (stopped.isEmpty()) list.addView(Ui.emptyState(this, "결제 직전에 멈추면 여기 쌓여요."));
         add(list, Ui.Space.BLOCK);
+    }
+
+    /** 멈춘 결제 한 줄: 앱 아이콘 · 제목 · 시각 · 금액 (결과 태그 · 강도 없이). 길게 누르면 지운다. */
+    private View stoppedRow(Record r) {
+        String sub = time(r.ts) + (r.lateNight ? " · 야식" : "");
+        LinearLayout row = Ui.listRow(this, AppIcons.icon(this, r.app, Ui.Size.APP_ICON), r.title, sub, Money.won(r.amount), null);
+        Ui.tintRow(this, row, Ui.Tone.SUCCESS.bg);
+        row.setOnLongClickListener(v -> {
+            store.deleteRecord(r.id);
+            toast("기록을 지웠어요");
+            refresh();
+            return true;
+        });
+        return row;
     }
 
     // ================================================================== 리포트 (S10, 홈 › N월 리포트)

@@ -971,16 +971,16 @@ final class Ui {
         return b;
     }
 
-    /** 누르는 입구 카드 (홈 "N월 리포트"): 흰 테두리 카드, 왼쪽 숨숨이 · 제목, 오른쪽 →. */
+    /** 누르는 입구 카드 (홈 "N월 리포트"): 바로 아래 "이번 달 멈춘 결제"와 같은 연초록 상자, 왼쪽 숨숨이 · 제목, 오른쪽 →. */
     static LinearLayout entryCard(Context c, View lead, String title, View.OnClickListener click) {
-        LinearLayout b = outlineCard(c, Pad.BOX_H, Pad.BOX_V);
+        LinearLayout b = tintBox(c, BRAND_LIGHT, Pad.BOX_H, Pad.BOX_V);
         b.setOrientation(LinearLayout.HORIZONTAL);
         b.setGravity(Gravity.CENTER_VERTICAL);
         LinearLayout.LayoutParams lp = square(c, Size.CARD_FACE);
         lp.rightMargin = dp(c, Space.ROW);
         b.addView(lead, lp);
-        b.addView(text(c, title, Font.BUTTON, TEXT, BOLD), new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
-        inline(b, text(c, "→", Font.HEADING, TEXT, BOLD), Space.ITEM);
+        b.addView(text(c, title, Font.BUTTON, GREEN, BOLD), new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        inline(b, text(c, "→", Font.HEADING, GREEN, BOLD), Space.ITEM);
         b.setOnClickListener(click);
         return b;
     }
