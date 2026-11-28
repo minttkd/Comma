@@ -67,7 +67,7 @@ public class MainActivity extends Activity {
     private View reviewSheet;
     private int page = PAGE_HOME;
     private int onboardStep = ONBOARD_DONE;
-    private boolean cycleConsent = true;
+    private boolean cycleConsent = false; // 급여일 기준 예산 주기: 눌러서 켜는 선택 항목
     private boolean reviewDismissed = false;
     /** 리포트에서 보고 있는 급여 주기 (0 이번 달, -1 지난달 …). 입구에서 열 때 기본값으로 맞춘다. */
     private int reportOffset = -1;
@@ -599,7 +599,7 @@ public class MainActivity extends Activity {
             }
             detail = b.toString();
         } else {
-            detail = "최근 " + data.incomeStreakMonths + "개월 연속 같은 날 들어왔어요";
+            detail = "최근 " + data.incomeStreakMonths + "개월 같은 날 들어왔어요";
         }
         Ui.stack(c, Ui.meta(this, detail), Ui.Space.ITEM);
         return c;

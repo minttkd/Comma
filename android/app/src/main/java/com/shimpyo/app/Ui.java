@@ -1186,7 +1186,11 @@ final class Ui {
     /** 20dp 체크 상자 + 문구 (Figma S02). */
     static LinearLayout checkRow(Context c, String label, boolean checked, View.OnClickListener click) {
         LinearLayout r = h(c);
-        View box = new View(c);
+        r.setGravity(Gravity.CENTER_VERTICAL);
+        // 체크 상자: 켜지면 먹색 바탕 + 흰 체크 표시, 꺼지면 테두리만
+        TextView box = text(c, checked ? "✓" : "", 14, WHITE, BOLD);
+        box.setGravity(Gravity.CENTER);
+        box.setIncludeFontPadding(false);
         box.setBackground(checked ? round(c, BRAND, Radius.CHECK) : roundStroke(c, WHITE, Radius.CHECK, LINE, Size.STROKE_STRONG));
         r.addView(box, square(c, Size.CHECKBOX));
         inlineFill(r, text(c, label, Font.BODY, TEXT, REGULAR), Space.ROW);
