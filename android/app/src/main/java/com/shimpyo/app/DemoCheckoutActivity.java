@@ -51,8 +51,8 @@ public class DemoCheckoutActivity extends Activity {
     static final Preset[] PRESETS = {
             new Preset(TargetApp.BAEMIN, "배민 · 치킨 세트", "보통", 23_000, 2_000, "설정 ①② 후 → 재정위험 · 보통",
                     new String[]{"후라이드 반 + 양념 반 세트"}, new long[]{21_000}),
-            new Preset(TargetApp.COUPANG, "쿠팡 · 휴지·세제", "가벼움", 24_000, 0, "설정 ①② 후 → 필요 판정 · 한 단계 낮춰 가벼움 (26,000원 이상이면 고액이라 강함)",
-                    new String[]{"3겹 롤화장지 30롤", "중성세제 2.5L"}, new long[]{15_900, 8_100}),
+            new Preset(TargetApp.COUPANG, "쿠팡 · 휴지·세제", "가벼움", 26_000, 0, "설정 ①② 후 → 필요 판정 · 한 단계 낮춰 가벼움",
+                    new String[]{"3겹 롤화장지 30롤", "중성세제 2.5L"}, new long[]{15_900, 10_100}),
             new Preset(TargetApp.MUSINSA, "무신사 · 울 코트", "강함", 129_000, 0, "설정 ① 후 → 재정위험+고액 · 강함 (질문 3개)",
                     new String[]{"울 블렌드 싱글 코트 (차콜, M)"}, new long[]{129_000}),
             new Preset(TargetApp.BAEMIN, "배민 · 떡볶이", "가벼움", 12_000, 2_000, "설정 ③④ 후 → 야식 반복 · 가벼움 (②도 하면 보통)",

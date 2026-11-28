@@ -139,7 +139,7 @@ public class MainActivity extends Activity {
             hideReview();
             return;
         }
-        if (onboardStep > ONBOARD_WELCOME) {
+        if (onboardStep > ONBOARD_PERMISSION) { // 권한 안내에서 뒤로 가면 첫 화면이 아니라 앱을 닫는다
             onboardStep--;
             refresh();
             return;
@@ -248,7 +248,9 @@ public class MainActivity extends Activity {
 
     /** 1,000,000 → "100만" */
     private static String man(long v) {
-        return v % 10_000 == 0 ? (v / 10_000) + "만" : Money.num(v);
+        if (v % 10_000 == 0) return (v / 10_000) + "만";
+        if (v % 1_000 == 0) return (v / 10_000) + "." + (v % 10_000) / 1_000 + "만"; // 625,000 → 62.5만
+        return Money.num(v);
     }
 
     // ------------------------------------------------------------------ 공통 부품 (이 화면들에서만)
@@ -317,8 +319,13 @@ public class MainActivity extends Activity {
         return r;
     }
 
-    /** S00 첫 화면: 앱을 처음 켜면 나오는 소개. 숨숨이 · 서비스 이름 · 한 줄 소개 → 시작하기. */
+    /** S00 첫 화면: 보여 주기용. 숨숨이 · "쉼표" · 한 줄 소개를 잠깐 보여 주고 권한 안내로 저절로 넘어간다. */
+    private final Runnable welcomeNext = () -> {
+        if (onboardStep == ONBOARD_WELCOME) goOnboarding(ONBOARD_PERMISSION);
+    };
+
     private void onboardingWelcomeScreen() {
+        footer.setVisibility(View.GONE);
         View top = Ui.spacer(this);
         content.addView(top);
         LinearLayout box = Ui.v(this);
@@ -330,14 +337,12 @@ public class MainActivity extends Activity {
         TextView line = Ui.text(this, "결제 버튼 앞에서,\n한 번 더 생각하게", Ui.Font.HEADING, Ui.TEXT, Ui.MEDIUM);
         line.setGravity(Gravity.CENTER);
         Ui.stack(box, line, Ui.Space.ITEM);
-        TextView sub = Ui.text(this, "월말에 후회하지 않도록, 무리한 결제 앞에서만 잠깐 멈춰요", Ui.Font.SMALL, Ui.MUTED, Ui.REGULAR);
-        sub.setGravity(Gravity.CENTER);
-        Ui.stack(box, sub, Ui.Space.BLOCK);
         add(box, 0);
         View bottom = Ui.spacer(this);
         content.addView(bottom);
-        ((LinearLayout.LayoutParams) bottom.getLayoutParams()).weight = 1.4f;
-        footerButton(Ui.button(this, "시작하기", true, v -> goOnboarding(ONBOARD_PERMISSION)));
+        ((LinearLayout.LayoutParams) bottom.getLayoutParams()).weight = 1.2f;
+        content.removeCallbacks(welcomeNext);
+        content.postDelayed(welcomeNext, 1600);
     }
 
     /** S01 권한 안내. */
@@ -473,7 +478,7 @@ public class MainActivity extends Activity {
     }
 
     private static final String[][] BANK_ACCOUNTS = {
-            {"입출금 통장", "****1234", "매달 용돈·과외비가 들어와요"},
+            {"입출금 통장", "****1234", "매달 용돈·알바비가 들어와요"},
             {"생활비 통장", "****5678", "자동이체 · 카드값"},
     };
 
@@ -547,7 +552,7 @@ public class MainActivity extends Activity {
         return root;
     }
 
-    /** 정기 수입 카드. 내역(BackendSlots)의 합계가 월 수입과 같을 때만 "용돈 … + 과외비 …"를 보여 준다. */
+    /** 정기 수입 카드. 내역(BackendSlots)의 합계가 월 수입과 같을 때만 "용돈 … + 알바비 …"를 보여 준다. */
     private View incomeCard(Settings s, BackendSlots data) {
         LinearLayout c = Ui.tintCard(this, Ui.BRAND_LIGHT);
         c.addView(Ui.text(this, "정기 수입", Ui.Font.CAPTION, Ui.BRAND, Ui.MEDIUM));
@@ -1007,16 +1012,16 @@ public class MainActivity extends Activity {
     private void testTools(Settings s) {
         add(Ui.sectionTitle(this, "테스트 도구 (시연용)"), Ui.Space.LARGE);
         LinearLayout tc = Ui.card(this);
-        tc.addView(Ui.body(this, "시나리오 기준: 수입 100만 · 고정 64만 · 식비 10만 → 여윳돈 26만, 10일째 적용 한도 12,000원."));
-        tc.addView(testButton("① 대학생 수민: 10일째로 맞추기 (용돈·과외 100만 · 이전 지출 20,000원)", () -> {
+        tc.addView(Ui.body(this, "시나리오 기준: 수입 110만 · 고정 62.5만 · 식비 10만 → 여윳돈 37.5만, 10일째 적용 한도 14,000원."));
+        tc.addView(testButton("① 대학생 수민: 10일째로 맞추기 (용돈·알바 110만 · 이전 지출 95,000원)", () -> {
             Settings st = store.settings();
             Settings d = new Settings();
             setBudget(st, d.income, d.rent, d.utilities, d.phone, d.transport, d.subscriptions, d.martBudget, d.coupangFoodBudget);
             st.cycleStartOverride = LocalDate.now(zone).minusDays(10).toEpochDay();
             store.saveSettings(st);
             store.deleteWhere(Outcome.SYNC);
-            addSync("이번 주기 이전 지출(Mock)", 20_000, LocalDate.now(zone).minusDays(1), 12, 0, false);
-            toast("수민 · 10일째 · 남은 여윳돈 240,000원으로 맞췄어요");
+            addSync("이번 주기 이전 지출(Mock)", 95_000, LocalDate.now(zone).minusDays(1), 12, 0, false);
+            toast("수민 · 10일째 · 남은 여윳돈 280,000원으로 맞췄어요");
         }));
         tc.addView(testButton("⑤ 사회초년생 지수: 월급 210만 · 10일째 · 점심 10,000원 · 지난달 무신사 후회 1건", () -> {
             Settings st = store.settings();

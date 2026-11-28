@@ -11,7 +11,7 @@ import java.util.List;
  * 화면 코드는 이 객체에서만 값을 읽는다. 백엔드(계좌 연동, 알림 권한 확인 등)가 생기면
  * load() 안에서 받아 온 값으로 필드를 채우면 되고, 화면 코드는 고칠 필요가 없다.
  *
- * 지금 값은 PRD의 데모 시나리오(수입 100만 원 = 용돈 60만 + 과외비 40만)에 맞춘 Mock이다.
+ * 지금 값은 PRD의 데모 시나리오(수입 110만 원 = 용돈 60만 + 알바비 50만)에 맞춘 Mock이다.
  * 예산·기록처럼 이미 Store / core 에서 오는 값은 여기 두지 않는다.
  */
 final class BackendSlots {
@@ -60,7 +60,7 @@ final class BackendSlots {
 
     BackendSlots() {
         incomeSources.add(new IncomeSource("용돈", 600_000));
-        incomeSources.add(new IncomeSource("과외비", 400_000));
+        incomeSources.add(new IncomeSource("알바비", 500_000));
     }
 
     // ------------------------------------------------------------------ 불러오기
