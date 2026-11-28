@@ -747,18 +747,24 @@ public class MainActivity extends Activity {
                     "접근성 설정 열기 ›", v -> openA11ySettings()), Ui.Space.BLOCK);
         }
         add(todayBudgetCard(b), Ui.Space.BLOCK);
-        add(Ui.tilePair(this,
-                Ui.statTile(this, "남은 여윳돈", Money.won(b.remainingNow), "급여일까지 " + b.daysLeft + "일", true,
-                        tileBar(b.remainingNow, b.monthly), remainColor(b.remainingNow), remainTrack(b.remainingNow)),
-                Ui.statTile(this, "식비 예산", Money.won(b.foodRemaining), man(b.foodBudget) + " 원 중 남음", true,
-                        tileBar(b.foodRemaining, b.foodBudget), remainColor(b.foodRemaining), remainTrack(b.foodRemaining)),
-                Ui.Space.BLOCK), Ui.Space.BLOCK);
+        View tileL = Ui.statTile(this, "남은 여윳돈", Money.won(b.remainingNow), "급여일까지 " + b.daysLeft + "일", true,
+                tileBar(b.remainingNow, b.monthly), remainColor(b.remainingNow), remainTrack(b.remainingNow));
+        View tileR = Ui.statTile(this, "식비 예산", Money.won(b.foodRemaining), man(b.foodBudget) + " 원 중 남음", true,
+                tileBar(b.foodRemaining, b.foodBudget), remainColor(b.foodRemaining), remainTrack(b.foodRemaining));
+        // 홈 카드 모양: 숨숨이처럼 둥글게, 흰 카드는 테두리 없이
+        tileL.setBackground(Ui.round(this, Ui.WHITE, HOME_RADIUS));
+        tileR.setBackground(Ui.round(this, Ui.WHITE, HOME_RADIUS));
+        add(Ui.tilePair(this, tileL, tileR, Ui.Space.BLOCK), Ui.Space.BLOCK);
         int reportDefault = ReportViews.defaultOffset(s, recs, LocalDate.now(zone), zone);
-        add(Ui.entryCard(this, new Sumsumi(this, Sumsumi.Mood.OKAY, true).prop(topCategoryProp(s, recs, reportDefault)),
+        View entry = Ui.entryCard(this, new Sumsumi(this, Sumsumi.Mood.OKAY, true).prop(topCategoryProp(s, recs, reportDefault)),
                 reportDefault < 0 ? "지난달 소비 돌아보기" : "이번 달 소비 돌아보기",
-                v -> { reportOffset = reportDefault; open(PAGE_REPORT); }), Ui.Space.BLOCK);
-        add(Ui.highlightBox(this, st.prevented == 0 ? Sumsumi.Mood.NORMAL : Sumsumi.Mood.PROUD, "이번 달 멈춘 결제", st.prevented == 0 ? "멈춘 결제가 여기 쌓여요"
-                : st.prevented + "번 멈춰서 " + Money.won(st.preventedSum) + " 아꼈어요", v -> open(PAGE_STOPPED)), Ui.Space.BLOCK);
+                v -> { reportOffset = reportDefault; open(PAGE_REPORT); });
+        entry.setBackground(Ui.round(this, Ui.REPORT_BG, HOME_RADIUS));
+        add(entry, Ui.Space.BLOCK);
+        View stopped = Ui.highlightBox(this, st.prevented == 0 ? Sumsumi.Mood.NORMAL : Sumsumi.Mood.PROUD, "이번 달 멈춘 결제", st.prevented == 0 ? "멈춘 결제가 여기 쌓여요"
+                : st.prevented + "번 멈춰서 " + Money.won(st.preventedSum) + " 아꼈어요", v -> open(PAGE_STOPPED));
+        stopped.setBackground(Ui.round(this, Ui.BRAND_LIGHT, HOME_RADIUS));
+        add(stopped, Ui.Space.BLOCK);
         add(Ui.sectionHeader(this, "결제 내역", "더보기 ›", v -> open(PAGE_RECORDS)), Ui.Space.BLOCK);
         add(recentRecordsCard(recs), Ui.Space.BLOCK);
 
@@ -785,6 +791,7 @@ public class MainActivity extends Activity {
         boolean over = b.todaySpent > b.limit;
 
         LinearLayout c = Ui.tintBox(this, todayBg(b.signal()), Ui.Pad.TODAY_CARD, Ui.Pad.TODAY_CARD);
+        c.setBackground(Ui.round(this, todayBg(b.signal()), HOME_RADIUS));
         // 왼쪽 위 숨숨이: 여유 → 웃음, 주의 → 갸웃, 초과 → 걱정
         LinearLayout head = Ui.h(this);
         head.setGravity(Gravity.CENTER_VERTICAL);
@@ -805,6 +812,9 @@ public class MainActivity extends Activity {
                 Ui.Font.CAPTION, Ui.TODAY_SUB, Ui.REGULAR), Ui.Space.ITEM);
         return c;
     }
+
+    /** 홈 카드 모서리: 숨숨이처럼 둥글게. */
+    private static final int HOME_RADIUS = 22;
 
     /** 남은 비율 (0~1). 전체가 0이면 0. */
     private static float remainRatio(long remaining, long total) {
@@ -856,6 +866,7 @@ public class MainActivity extends Activity {
 
     private View recentRecordsCard(List<Record> recs) {
         LinearLayout list = Ui.outlineCard(this, Ui.Pad.CARD, Ui.Pad.CARD);
+        list.setBackground(Ui.round(this, Ui.WHITE, HOME_RADIUS));
         List<Record> sorted = paidOnly(recs);
         Collections.sort(sorted, (x, y) -> Long.compare(y.ts, x.ts));
         for (int i = 0; i < sorted.size() && i < HOME_RECENT_COUNT; i++) {
@@ -906,13 +917,7 @@ public class MainActivity extends Activity {
         if (total > 1) Ui.inline(tags, Ui.text(this, total + "건 중 1번째", Ui.Font.CAPTION, Ui.SUBTLE, Ui.MEDIUM), Ui.Space.ITEM);
         sheet.addView(tags, Ui.fillW());
 
-        LocalDate d = Instant.ofEpochMilli(r.ts).atZone(zone).toLocalDate();
-        String when = d.equals(LocalDate.now(zone).minusDays(1)) ? "어제" : d.getMonthValue() + "/" + d.getDayOfMonth();
-        Ui.stack(sheet, Ui.heading(this, when + " " + appShort(r.app) + " " + r.title + " " + Money.won(r.amount) + ",\n만족하시나요?"), Ui.Space.BLOCK);
-        String why = r.outcome == Outcome.DELIBERATE_PAY
-                ? "[" + (r.app == TargetApp.BAEMIN ? "그래도 시킬게요" : "그래도 살게요") + "]로 결제한 건이에요. 답은 다음 대화의 질문 재료가 돼요."
-                : "'" + r.chip + "' 이유를 고르고 결제한 건이에요. 답은 다음 대화의 질문 재료가 돼요.";
-        Ui.stack(sheet, Ui.meta(this, why), Ui.Space.BLOCK);
+        Ui.stack(sheet, Ui.heading(this, "구매한 " + appShort(r.app) + " " + r.title + " " + Money.won(r.amount) + ",\n만족하시나요?"), Ui.Space.BLOCK);
         Ui.stack(sheet, Ui.buttonPair(this,
                 Ui.button(this, "만족해요", false, v -> answerReview(r, "만족해요")),
                 Ui.button(this, "후회돼요", false, v -> answerReview(r, "후회돼요"))), Ui.Space.BLOCK);
