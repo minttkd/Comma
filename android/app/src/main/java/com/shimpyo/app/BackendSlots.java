@@ -16,15 +16,20 @@ import java.util.List;
  */
 final class BackendSlots {
 
-    /** 연결된 계좌 (S02 "연결된 계좌" 카드). */
+    /** 연결된 계좌 (S02 "연결된 계좌" 카드). S02에서 은행을 고르고 은행 앱 연결 화면에서 동의하면 채워진다. */
     static final class Account {
-        String bank = "데모은행";
-        String kind = "입출금";
+        String bank;                      // Banks.Bank.name
+        String kind = "입출금 통장";
         String maskedNumber = "****1234";
-        boolean demo = true;              // true면 이름 뒤에 "(데모)"를 붙인다
+
+        Account(String bank, String kind, String maskedNumber) {
+            this.bank = bank;
+            this.kind = kind;
+            this.maskedNumber = maskedNumber;
+        }
 
         String displayName() {
-            return bank + " " + kind + " " + maskedNumber + (demo ? " (데모)" : "");
+            return bank + " " + kind + " " + maskedNumber;
         }
     }
 
@@ -41,14 +46,14 @@ final class BackendSlots {
 
     // ------------------------------------------------------------------ 백엔드가 채울 값
 
-    /** 연결된 계좌. 연결 전이면 null. */
-    Account account = new Account();
+    /** 연결된 계좌. 연결 전이면 null (S02가 은행 고르기 격자를 보여 준다). */
+    Account account = null;
 
     /** 정기 수입 내역. 합계가 설정의 월 수입과 같을 때만 화면에 내역을 보여 준다. */
     List<IncomeSource> incomeSources = new ArrayList<>();
 
-    /** 정기 수입이 몇 개월 연속 같은 날 들어왔는지. */
-    int incomeStreakMonths = 6;
+    /** 정기 수입을 찾을 때 보는 기간이자, 같은 날 연속으로 들어온 개월 수 (최근 3개월). */
+    int incomeStreakMonths = 3;
 
     /** 알림 권한 허용 여부 (S01 "알림" 줄의 ✓). 알림 기능이 생기면 실제 값으로. */
     boolean notificationAllowed = false;

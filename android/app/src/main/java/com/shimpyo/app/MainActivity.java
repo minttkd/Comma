@@ -67,7 +67,6 @@ public class MainActivity extends Activity {
     private View reviewSheet;
     private int page = PAGE_HOME;
     private int onboardStep = ONBOARD_DONE;
-    private boolean bankConsent = true;
     private boolean cycleConsent = true;
     private boolean reviewDismissed = false;
     /** 리포트에서 보고 있는 급여 주기 (0 이번 달, -1 지난달 …). 입구에서 열 때 기본값으로 맞춘다. */
@@ -131,6 +130,10 @@ public class MainActivity extends Activity {
 
     @Override
     public void onBackPressed() {
+        if (bankLink != null) {
+            hideBankLink();
+            return;
+        }
         if (reviewSheet != null) {
             reviewDismissed = true;
             hideReview();
@@ -326,16 +329,18 @@ public class MainActivity extends Activity {
         if (on) {
             footerButton(Ui.button(this, "다음", true, v -> goOnboarding(ONBOARD_INCOME)));
         } else {
-            footerButton(Ui.button(this, "허용하러 가기", true, v -> openA11ySettings()));
-            Ui.stack(footer, Ui.linkButton(this, "나중에 켤게요 (설정 탭에서 켤 수 있어요)", v -> goOnboarding(ONBOARD_INCOME)), Ui.Space.LINE);
+            // 접근성 권한을 켜야만 다음 단계로 넘어간다 (설정에서 돌아오면 onResume → refresh 로 "다음"이 된다).
+            footerButton(Ui.button(this, "접근성 권한 켜러 가기", true, v -> openA11ySettings()));
+            TextView why = Ui.text(this, "권한을 켜야 다음 단계로 넘어갈 수 있어요", Ui.Font.CAPTION, Ui.MUTED, Ui.MEDIUM);
+            why.setGravity(Gravity.CENTER);
+            Ui.stack(footer, why, Ui.Space.ITEM);
         }
     }
 
     private View permissionCard(boolean on) {
         LinearLayout c = Ui.card(this);
         c.setBackground(Ui.round(this, Ui.WHITE, Ui.Radius.BOX));
-        c.addView(permissionRow(true, "접근성 서비스", "결제 화면의 상품명과 금액을 읽어요", on), Ui.fillW());
-        Ui.stack(c, permissionRow(true, "결제 화면 위 질문 표시", "결제 화면 위에 질문을 띄워요 (접근성 서비스로 함께 허용돼요)", on), Ui.Space.STACK);
+        c.addView(permissionRow(true, "접근성 서비스", "결제 화면의 상품명과 금액을 읽고, 그 위에 질문을 띄워요", on), Ui.fillW());
         Ui.stack(c, permissionRow(false, "알림", "다음 날 어제 결제를 돌아보자고 물어봐요", BackendSlots.get().notificationAllowed), Ui.Space.STACK);
         return c;
     }
@@ -352,31 +357,162 @@ public class MainActivity extends Activity {
         return r;
     }
 
-    /** S02 정기 수입 확인. */
+    /** S02 계좌 연결 → 정기 수입 확인. 연결 전에는 은행 고르기 격자, 연결 뒤에는 찾은 정기 수입. */
     private void onboardingIncomeScreen() {
         Settings s = store.settings();
-        add(onboardingTopBar(ONBOARD_INCOME), 0);
-        add(Ui.title(this, "정기 수입을\n확인했어요"), Ui.Space.WIDE);
         BackendSlots data = BackendSlots.get();
-        boolean demo = data.account == null || data.account.demo;
-        add(Ui.body(this, "최근 " + data.incomeStreakMonths + "개월 입출금 내역으로 매달 들어오는 돈을 찾았어요." + (demo ? " (데모: Mock 계좌)" : "")), Ui.Space.WIDE);
-        add(linkedAccountCard(data.account == null ? "연결된 계좌가 없어요" : data.account.displayName()), Ui.Space.WIDE);
+        add(onboardingTopBar(ONBOARD_INCOME), 0);
+        if (data.account == null) {
+            add(Ui.title(this, "수입이 들어오는 계좌를\n연결해 주세요"), Ui.Space.WIDE);
+            add(Ui.bodySmall(this, "은행을 고르면 은행 앱에서 계좌를 연결해요. 최근 " + data.incomeStreakMonths
+                    + "개월 입출금 내역으로 매달 들어오는 돈을 찾아요."), Ui.Space.ITEM);
+            add(Banks.grid(this, this::showBankLink), Ui.Space.WIDE);
+            TextView next = Ui.button(this, "다음", true, v -> { });
+            Ui.setEnabled(next, false);
+            footerButton(next);
+            return;
+        }
+        add(Ui.title(this, "정기 수입을\n확인했어요"), Ui.Space.WIDE);
+        add(Ui.body(this, "최근 " + data.incomeStreakMonths + "개월 입출금 내역으로 매달 들어오는 돈을 찾았어요."), Ui.Space.WIDE);
+        add(linkedAccountCard(data.account), Ui.Space.WIDE);
         add(incomeCard(s, data), Ui.Space.WIDE);
         add(consentCard(), Ui.Space.WIDE);
-
-        TextView next = Ui.button(this, "다음", true, v -> {
-            if (!bankConsent) return;
-            goOnboarding(ONBOARD_BUDGET);
-        });
-        Ui.setEnabled(next, bankConsent);
-        footerButton(next);
+        footerButton(Ui.button(this, "다음", true, v -> goOnboarding(ONBOARD_BUDGET)));
     }
 
-    private View linkedAccountCard(String account) {
+    private View linkedAccountCard(BackendSlots.Account a) {
         LinearLayout c = Ui.card(this);
-        c.addView(Ui.caption(this, "연결된 계좌"));
-        Ui.stack(c, Ui.text(this, account, Ui.Font.BODY, Ui.TEXT, Ui.MEDIUM), Ui.Space.TIGHT);
+        LinearLayout head = Ui.h(this);
+        head.setGravity(Gravity.CENTER_VERTICAL);
+        head.addView(Ui.caption(this, "연결된 계좌"), Ui.weight1());
+        head.addView(Ui.textLink(this, "다른 은행으로 바꾸기", Ui.MUTED, v -> {
+            BackendSlots.get().account = null;
+            refresh();
+        }), Ui.wrap());
+        c.addView(head, Ui.fillW());
+        Banks.Bank b = Banks.byName(a.bank);
+        if (b != null) Ui.stack(c, Banks.accountRow(this, b, b.name + " " + a.kind, a.maskedNumber), Ui.Space.ROW);
+        else Ui.stack(c, Ui.text(this, a.displayName(), Ui.Font.BODY, Ui.TEXT, Ui.MEDIUM), Ui.Space.TIGHT);
         return c;
+    }
+
+    // ------------------------------------------------------------------ S02 은행 앱 연결 (오픈뱅킹 연동 전 시연 흐름)
+
+    private View bankLink;
+    private int bankAccountPick = 0;
+    private boolean bankLinkConsent = true;
+
+    /** 은행을 고르면: "은행 앱으로 이동" → 계좌 고르기 · 내역 조회 동의 → 연결 → S02로 돌아와 정기 수입 표시. */
+    private void showBankLink(Banks.Bank b) {
+        bankAccountPick = 0;
+        bankLinkConsent = true;
+        showBankLayer(bankMoving(b, Banks.fullName(b) + " 앱으로 이동하고 있어요"));
+        content.postDelayed(() -> {
+            if (bankLink != null) showBankLayer(bankLinkScreen(b));
+        }, 900);
+    }
+
+    private void showBankLayer(View v) {
+        hideBankLink();
+        v.setClickable(true); // 아래 화면으로 터치가 새지 않게
+        layer.addView(v, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+        bankLink = v;
+    }
+
+    private void hideBankLink() {
+        if (bankLink != null) {
+            layer.removeView(bankLink);
+            bankLink = null;
+        }
+    }
+
+    /** 이동 중 화면: 은행 원 + 한 줄. */
+    private View bankMoving(Banks.Bank b, String line) {
+        LinearLayout box = Ui.v(this);
+        box.setBackgroundColor(Ui.WHITE);
+        box.setGravity(Gravity.CENTER);
+        box.addView(Banks.badge(this, b, 64), Ui.square(this, 64));
+        TextView t = Ui.text(this, line, Ui.Font.BODY, Ui.TEXT, Ui.MEDIUM);
+        t.setGravity(Gravity.CENTER);
+        LinearLayout.LayoutParams lp = Ui.wrap();
+        lp.topMargin = Ui.dp(this, Ui.Space.WIDE);
+        box.addView(t, lp);
+        return box;
+    }
+
+    private static final String[][] BANK_ACCOUNTS = {
+            {"입출금 통장", "****1234", "매달 용돈·과외비가 들어와요"},
+            {"생활비 통장", "****5678", "자동이체 · 카드값"},
+    };
+
+    /** 은행 앱 연결 화면 (흰 바탕, 은행 색 버튼). */
+    private View bankLinkScreen(Banks.Bank b) {
+        FrameLayout root = new FrameLayout(this);
+        root.setBackgroundColor(Ui.WHITE);
+        ScrollView sc = new ScrollView(this);
+        sc.setFillViewport(true);
+        LinearLayout col = Ui.v(this);
+        Ui.pad(col, this, Ui.Pad.SCREEN_H, 18, Ui.Pad.SCREEN_H, 120);
+
+        LinearLayout top = Ui.h(this);
+        top.setGravity(Gravity.CENTER_VERTICAL);
+        top.addView(Banks.badge(this, b, 28), Ui.square(this, 28));
+        Ui.inlineFill(top, Ui.text(this, Banks.fullName(b), Ui.Font.LABEL, Ui.TEXT, Ui.BOLD), Ui.Space.ITEM);
+        top.addView(Ui.textLink(this, "취소", Ui.MUTED, v -> hideBankLink()), Ui.wrap());
+        col.addView(top, Ui.fillW());
+
+        Ui.stack(col, Ui.title(this, "쉼표에 계좌를\n연결할까요?"), Ui.Space.LARGE);
+        Ui.stack(col, Ui.bodySmall(this, "쉼표는 고른 계좌의 입출금 내역만 볼 수 있어요. 돈을 보내거나 결제할 수는 없어요."), Ui.Space.ITEM);
+
+        Ui.stack(col, Ui.caption(this, "연결할 계좌"), Ui.Space.LARGE);
+        for (int i = 0; i < BANK_ACCOUNTS.length; i++) {
+            final int k = i;
+            boolean on = bankAccountPick == i;
+            LinearLayout r = Ui.h(this);
+            r.setGravity(Gravity.CENTER_VERTICAL);
+            r.setBackground(on ? Ui.roundStroke(this, Ui.WHITE, Ui.Radius.BOX, b.bg, 2) : Ui.roundStroke(this, Ui.WHITE, Ui.Radius.BOX, Ui.LINE));
+            Ui.pad(r, this, 16, 14);
+            LinearLayout t = Ui.v(this);
+            t.addView(Ui.text(this, BANK_ACCOUNTS[i][0] + "  " + BANK_ACCOUNTS[i][1], Ui.Font.LABEL, Ui.TEXT, Ui.BOLD));
+            Ui.stack(t, Ui.meta(this, BANK_ACCOUNTS[i][2]), Ui.Space.TEXT);
+            r.addView(t, Ui.weight1());
+            View dot = new View(this);
+            dot.setBackground(on ? Ui.circle(b.bg) : Ui.roundStroke(this, Ui.WHITE, 10, Ui.LINE, 2));
+            r.addView(dot, Ui.square(this, 20));
+            r.setOnClickListener(v -> {
+                bankAccountPick = k;
+                showBankLayer(bankLinkScreen(b));
+            });
+            Ui.stack(col, r, Ui.Space.ITEM);
+        }
+
+        Ui.stack(col, Ui.caption(this, "동의"), Ui.Space.LARGE);
+        Ui.stack(col, Ui.checkRow(this, "입출금 내역 조회 · 최근 3개월 (필수)", bankLinkConsent, v -> {
+            bankLinkConsent = !bankLinkConsent;
+            showBankLayer(bankLinkScreen(b));
+        }), Ui.Space.ITEM);
+        sc.addView(col, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
+        root.addView(sc, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
+
+        TextView go = Ui.button(this, "동의하고 연결하기", true, v -> {
+            if (!bankLinkConsent) return;
+            String[] acc = BANK_ACCOUNTS[bankAccountPick];
+            showBankLayer(bankMoving(b, "연결했어요. 쉼표로 돌아갈게요"));
+            content.postDelayed(() -> {
+                BackendSlots.get().account = new BackendSlots.Account(b.name, acc[0], acc[1]);
+                hideBankLink();
+                refresh();
+            }, 900);
+        });
+        go.setBackground(Ui.round(this, b.bg, Ui.Radius.BOX));
+        go.setTextColor(b.fg);
+        Ui.setEnabled(go, bankLinkConsent);
+        LinearLayout bottom = Ui.v(this);
+        bottom.setBackgroundColor(Ui.WHITE);
+        Ui.pad(bottom, this, Ui.Pad.SCREEN_H, Ui.Pad.FOOTER_TOP, Ui.Pad.SCREEN_H, Ui.Pad.SCREEN_BOTTOM);
+        bottom.addView(go, Ui.fillW());
+        root.addView(bottom, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM));
+        return root;
     }
 
     /** 정기 수입 카드. 내역(BackendSlots)의 합계가 월 수입과 같을 때만 "용돈 … + 과외비 …"를 보여 준다. */
@@ -401,14 +537,10 @@ public class MainActivity extends Activity {
 
     private View consentCard() {
         LinearLayout c = Ui.card(this);
-        c.addView(Ui.checkRow(this, "계좌 입출금 내역 조회 동의 (필수)", bankConsent, v -> {
-            bankConsent = !bankConsent;
-            refresh();
-        }), Ui.fillW());
-        Ui.stack(c, Ui.checkRow(this, "급여일 기준으로 예산 주기 설정", cycleConsent, v -> {
+        c.addView(Ui.checkRow(this, "급여일 기준으로 예산 주기 설정", cycleConsent, v -> {
             cycleConsent = !cycleConsent;
             refresh();
-        }), Ui.Space.ROW);
+        }), Ui.fillW());
         return c;
     }
 
@@ -931,7 +1063,10 @@ public class MainActivity extends Activity {
             store.clearRecords();
             toast("기록을 모두 지웠어요");
         }));
-        tc.addView(testButton("온보딩 다시 보기", () -> onboardStep = ONBOARD_PERMISSION));
+        tc.addView(testButton("온보딩 다시 보기", () -> {
+            onboardStep = ONBOARD_PERMISSION;
+            BackendSlots.get().account = null; // 계좌 연결부터 다시
+        }));
         add(tc, Ui.Space.ITEM);
 
         add(Ui.sectionTitle(this, "감지 로그"), Ui.Space.SECTION);
