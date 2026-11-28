@@ -844,13 +844,38 @@ public class MainActivity extends Activity {
         add(Ui.sectionTitle(this, "테스트 도구 (시연용)"), Ui.Space.LARGE);
         LinearLayout tc = Ui.card(this);
         tc.addView(Ui.body(this, "시나리오 기준: 수입 100만 · 고정 50만 · 식비 10만 → 여윳돈 40만, 10일째 적용 한도 14,000원."));
-        tc.addView(testButton("① 시나리오 10일째로 맞추기 (이전 지출 120,000원)", () -> {
+        tc.addView(testButton("① 대학생 수민: 10일째로 맞추기 (용돈·과외 100만 · 이전 지출 120,000원)", () -> {
             Settings st = store.settings();
+            Settings d = new Settings();
+            setBudget(st, d.income, d.rent, d.utilities, d.phone, d.transport, d.subscriptions, d.martBudget, d.coupangFoodBudget);
             st.cycleStartOverride = LocalDate.now(zone).minusDays(10).toEpochDay();
             store.saveSettings(st);
             store.deleteWhere(Outcome.SYNC);
             addSync("이번 주기 이전 지출(Mock)", 120_000, LocalDate.now(zone).minusDays(1), 12, 0, false);
-            toast("10일째 · 남은 여윳돈 280,000원으로 맞췄어요");
+            toast("수민 · 10일째 · 남은 여윳돈 280,000원으로 맞췄어요");
+        }));
+        tc.addView(testButton("⑤ 사회초년생 지수: 월급 210만 · 10일째 · 점심 10,000원 · 지난달 무신사 후회 1건", () -> {
+            Settings st = store.settings();
+            // 월급 210만 − 고정 95만(월세·관리비 65 · 공과금 10 · 통신 7 · 교통 8 · 구독 5) − 식비 25만 = 여윳돈 90만
+            setBudget(st, 2_100_000, 650_000, 100_000, 70_000, 80_000, 50_000, 150_000, 100_000);
+            st.cycleStartOverride = LocalDate.now(zone).minusDays(10).toEpochDay();
+            store.saveSettings(st);
+            store.deleteWhere(Outcome.SYNC);
+            // 월급 직후에 몰아서 쓴 돈 → 남은 여윳돈 480,000원, 오늘 한도 24,000원
+            addSync("이번 주기 이전 지출(Mock)", 420_000, LocalDate.now(zone).minusDays(1), 12, 0, false);
+            addSync("외식 · 회사 근처 점심", 10_000, LocalDate.now(zone), 12, 20, false);
+            // 지난달 무신사에서 사고 다음 날 '후회돼요'라고 답한 기록 → 강함의 과거 연결 질문 재료
+            Record r = new Record();
+            r.ts = LocalDate.now(zone).minusDays(24).atTime(23, 10).atZone(zone).toInstant().toEpochMilli();
+            r.app = TargetApp.MUSINSA;
+            r.title = "후드 집업";
+            r.amount = 79_000;
+            r.discretionary = 79_000;
+            r.outcome = Outcome.DELIBERATE_PAY;
+            r.intensity = Intensity.MEDIUM;
+            r.review = "후회돼요";
+            store.addRecord(r);
+            toast("지수 · 10일째 · 오늘 한도 24,000원 중 10,000원 사용");
         }));
         tc.addView(testButton("② 점심 외식 8,000원 추가 (계좌 동기화 Mock)", () -> {
             addSync("외식 · 학교 앞 식당", 8_000, LocalDate.now(zone), 12, 30, false);
@@ -1045,6 +1070,19 @@ public class MainActivity extends Activity {
         SAMPLE_QA.put("회·초밥 세트 (예시)", new String[]{
                 "Q1. 4만 원이 넘는 야식이에요. 오늘 특별한 날이에요? / A. 그냥 먹고 싶어요",
                 "Q2. 지난주 야식 뒤에 '후회돼요'라고 답했어요. 오늘은 뭐가 달라요? / A. 다를 게 없네요, 내일 아침에 후회할 것 같아요"});
+    }
+
+    /** 테스트 페르소나 예산: 수입 · 고정지출 5종 · 식비(마트 · 쿠팡 식료품). */
+    private static void setBudget(Settings st, long income, long rent, long utilities, long phone, long transport,
+                                  long subscriptions, long mart, long coupangFood) {
+        st.income = income;
+        st.rent = rent;
+        st.utilities = utilities;
+        st.phone = phone;
+        st.transport = transport;
+        st.subscriptions = subscriptions;
+        st.martBudget = mart;
+        st.coupangFoodBudget = coupangFood;
     }
 
     private void addSync(String title, long amount, LocalDate day, int hour, int min, boolean food) {
