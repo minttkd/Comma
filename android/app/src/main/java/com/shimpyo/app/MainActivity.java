@@ -52,7 +52,7 @@ public class MainActivity extends Activity {
     private static final int PAGE_HOME = 0, PAGE_RECORDS = 1, PAGE_REPORT = 2, PAGE_SETTINGS = 3, PAGE_STOPPED = 4;
 
     // 온보딩 단계 (0이면 온보딩이 끝난 상태)
-    private static final int ONBOARD_DONE = 0, ONBOARD_PERMISSION = 1, ONBOARD_INCOME = 2, ONBOARD_BUDGET = 3;
+    private static final int ONBOARD_DONE = 0, ONBOARD_WELCOME = 1, ONBOARD_PERMISSION = 2, ONBOARD_INCOME = 3, ONBOARD_BUDGET = 4;
 
     private static final int HOME_RECENT_COUNT = 5;   // 홈 최근 기록 개수
     private static final int LOG_COUNT = 40;          // 설정 감지 로그 개수
@@ -93,7 +93,7 @@ public class MainActivity extends Activity {
         setContentView(buildLayout());
         BackendSlots.load(this);
         getWindow().setNavigationBarColor(Ui.BG); // 하단 탭이 없어 시스템 내비게이션 바도 바탕색으로
-        if (!store.settings().onboarded) onboardStep = ONBOARD_PERMISSION;
+        if (!store.settings().onboarded) onboardStep = ONBOARD_WELCOME;
     }
 
     /** 화면 뼈대: 스크롤 내용(content) · 하단 버튼 영역(footer, 온보딩). */
@@ -139,7 +139,7 @@ public class MainActivity extends Activity {
             hideReview();
             return;
         }
-        if (onboardStep > ONBOARD_PERMISSION) {
+        if (onboardStep > ONBOARD_WELCOME) {
             onboardStep--;
             refresh();
             return;
@@ -165,7 +165,8 @@ public class MainActivity extends Activity {
         scroll.scrollTo(0, 0);
         if (onboardStep != ONBOARD_DONE) {
             footer.setVisibility(View.VISIBLE);
-            if (onboardStep == ONBOARD_PERMISSION) onboardingPermissionScreen();
+            if (onboardStep == ONBOARD_WELCOME) onboardingWelcomeScreen();
+            else if (onboardStep == ONBOARD_PERMISSION) onboardingPermissionScreen();
             else if (onboardStep == ONBOARD_INCOME) onboardingIncomeScreen();
             else onboardingBudgetScreen();
             return;
@@ -308,12 +309,35 @@ public class MainActivity extends Activity {
         LinearLayout r = Ui.h(this);
         if (step > ONBOARD_PERMISSION) {
             r.addView(Ui.backButton(this, v -> goOnboarding(step - 1)), Ui.square(this, Ui.Size.ICON_BUTTON));
-            Ui.inline(r, Ui.steps(this, step, ONBOARD_BUDGET, true), Ui.Space.BLOCK);
+            Ui.inline(r, Ui.steps(this, step - ONBOARD_WELCOME, ONBOARD_BUDGET - ONBOARD_WELCOME, true), Ui.Space.BLOCK);
         } else {
             Ui.pad(r, this, 0, Ui.Pad.STEPS_TOP, 0, Ui.Pad.STEPS_BOTTOM);
-            r.addView(Ui.steps(this, step, ONBOARD_BUDGET, true));
+            r.addView(Ui.steps(this, step - ONBOARD_WELCOME, ONBOARD_BUDGET - ONBOARD_WELCOME, true));
         }
         return r;
+    }
+
+    /** S00 첫 화면: 앱을 처음 켜면 나오는 소개. 숨숨이 · 서비스 이름 · 한 줄 소개 → 시작하기. */
+    private void onboardingWelcomeScreen() {
+        View top = Ui.spacer(this);
+        content.addView(top);
+        LinearLayout box = Ui.v(this);
+        box.setGravity(Gravity.CENTER_HORIZONTAL);
+        box.addView(new Sumsumi(this, Sumsumi.Mood.NORMAL, false), Ui.square(this, 132));
+        TextView name = Ui.text(this, "쉼표", 40, Ui.TEXT, Ui.BOLD);
+        name.setGravity(Gravity.CENTER);
+        Ui.stack(box, name, Ui.Space.LARGE);
+        TextView line = Ui.text(this, "결제 버튼 앞에서,\n한 번 더 생각하게", Ui.Font.HEADING, Ui.TEXT, Ui.MEDIUM);
+        line.setGravity(Gravity.CENTER);
+        Ui.stack(box, line, Ui.Space.ITEM);
+        TextView sub = Ui.text(this, "월말에 후회하지 않도록, 무리한 결제 앞에서만 잠깐 멈춰요", Ui.Font.SMALL, Ui.MUTED, Ui.REGULAR);
+        sub.setGravity(Gravity.CENTER);
+        Ui.stack(box, sub, Ui.Space.BLOCK);
+        add(box, 0);
+        View bottom = Ui.spacer(this);
+        content.addView(bottom);
+        ((LinearLayout.LayoutParams) bottom.getLayoutParams()).weight = 1.4f;
+        footerButton(Ui.button(this, "시작하기", true, v -> goOnboarding(ONBOARD_PERMISSION)));
     }
 
     /** S01 권한 안내. */
@@ -364,11 +388,16 @@ public class MainActivity extends Activity {
         add(onboardingTopBar(ONBOARD_INCOME), 0);
         if (data.account == null) {
             add(Ui.title(this, "수입이 들어오는 계좌를\n연결해 주세요"), Ui.Space.WIDE);
-            add(Ui.bodySmall(this, "은행을 고르면 은행 앱에서 계좌를 연결해요. 최근 " + data.incomeStreakMonths
+            add(Ui.bodySmall(this, "은행을 고르고 다음을 누르면 은행 앱에서 계좌를 연결해요. 최근 " + data.incomeStreakMonths
                     + "개월 입출금 내역으로 매달 들어오는 돈을 찾아요."), Ui.Space.ITEM);
-            add(Banks.grid(this, this::showBankLink), Ui.Space.WIDE);
-            TextView next = Ui.button(this, "다음", true, v -> { });
-            Ui.setEnabled(next, false);
+            TextView next = Ui.button(this, "다음", true, v -> {
+                if (pickedBank != null) showBankLink(pickedBank);
+            });
+            Ui.setEnabled(next, pickedBank != null);
+            add(Banks.grid(this, pickedBank, b -> {
+                pickedBank = b;
+                Ui.setEnabled(next, true);
+            }), Ui.Space.WIDE);
             footerButton(next);
             return;
         }
@@ -387,6 +416,7 @@ public class MainActivity extends Activity {
         head.addView(Ui.caption(this, "연결된 계좌"), Ui.weight1());
         head.addView(Ui.textLink(this, "다른 은행으로 바꾸기", Ui.MUTED, v -> {
             BackendSlots.get().account = null;
+            pickedBank = null;
             refresh();
         }), Ui.wrap());
         c.addView(head, Ui.fillW());
@@ -399,6 +429,8 @@ public class MainActivity extends Activity {
     // ------------------------------------------------------------------ S02 은행 앱 연결 (오픈뱅킹 연동 전 시연 흐름)
 
     private View bankLink;
+    /** S02에서 고른 은행 (다음을 누르면 그 은행 앱 연결 화면으로). */
+    private Banks.Bank pickedBank;
     private int bankAccountPick = 0;
     private boolean bankLinkConsent = true;
 
@@ -527,7 +559,7 @@ public class MainActivity extends Activity {
                 if (b.length() > 0) b.append(" + ");
                 b.append(src.label).append(' ').append(Money.won(src.amount));
             }
-            detail = b + " (" + data.incomeStreakMonths + "개월 연속)";
+            detail = b.toString();
         } else {
             detail = "최근 " + data.incomeStreakMonths + "개월 연속 같은 날 들어왔어요";
         }
@@ -560,7 +592,7 @@ public class MainActivity extends Activity {
 
         long daily = Math.round(s.monthlyDiscretionary() / 30.0 / 100.0) * 100;
         add(Ui.heroCard(this, "월 여윳돈", Money.won(s.monthlyDiscretionary()),
-                "수입 " + man(s.income) + " − 고정 " + man(s.fixedTotal()) + " − 식비 " + man(s.foodBudget()) + " · 하루 기준 약 " + Money.won(daily),
+                "수입 " + man(s.income) + " − 고정 " + man(s.fixedTotal()) + " − 식비 " + man(s.foodBudget()) + "\n하루 기준 약 " + Money.won(daily),
                 false), Ui.Space.BLOCK);
 
         footerButton(Ui.button(this, "시작하기", true, v -> {
@@ -975,16 +1007,16 @@ public class MainActivity extends Activity {
     private void testTools(Settings s) {
         add(Ui.sectionTitle(this, "테스트 도구 (시연용)"), Ui.Space.LARGE);
         LinearLayout tc = Ui.card(this);
-        tc.addView(Ui.body(this, "시나리오 기준: 수입 100만 · 고정 50만 · 식비 10만 → 여윳돈 40만, 10일째 적용 한도 14,000원."));
-        tc.addView(testButton("① 대학생 수민: 10일째로 맞추기 (용돈·과외 100만 · 이전 지출 120,000원)", () -> {
+        tc.addView(Ui.body(this, "시나리오 기준: 수입 100만 · 고정 64만 · 식비 10만 → 여윳돈 26만, 10일째 적용 한도 12,000원."));
+        tc.addView(testButton("① 대학생 수민: 10일째로 맞추기 (용돈·과외 100만 · 이전 지출 20,000원)", () -> {
             Settings st = store.settings();
             Settings d = new Settings();
             setBudget(st, d.income, d.rent, d.utilities, d.phone, d.transport, d.subscriptions, d.martBudget, d.coupangFoodBudget);
             st.cycleStartOverride = LocalDate.now(zone).minusDays(10).toEpochDay();
             store.saveSettings(st);
             store.deleteWhere(Outcome.SYNC);
-            addSync("이번 주기 이전 지출(Mock)", 120_000, LocalDate.now(zone).minusDays(1), 12, 0, false);
-            toast("수민 · 10일째 · 남은 여윳돈 280,000원으로 맞췄어요");
+            addSync("이번 주기 이전 지출(Mock)", 20_000, LocalDate.now(zone).minusDays(1), 12, 0, false);
+            toast("수민 · 10일째 · 남은 여윳돈 240,000원으로 맞췄어요");
         }));
         tc.addView(testButton("⑤ 사회초년생 지수: 월급 210만 · 10일째 · 점심 10,000원 · 지난달 무신사 후회 1건", () -> {
             Settings st = store.settings();
@@ -1064,8 +1096,9 @@ public class MainActivity extends Activity {
             toast("기록을 모두 지웠어요");
         }));
         tc.addView(testButton("온보딩 다시 보기", () -> {
-            onboardStep = ONBOARD_PERMISSION;
-            BackendSlots.get().account = null; // 계좌 연결부터 다시
+            onboardStep = ONBOARD_WELCOME;
+            BackendSlots.get().account = null;
+            pickedBank = null; // 계좌 연결부터 다시
         }));
         add(tc, Ui.Space.ITEM);
 

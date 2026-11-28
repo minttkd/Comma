@@ -36,10 +36,18 @@ public class EngineTest {
         return LocalDateTime.of(TODAY.minusDays(d), java.time.LocalTime.of(hour, 0)).atZone(Z).toInstant().toEpochMilli();
     }
 
-    /** 주기 10일째로 맞추고, 어제까지 여윳돈 120,000원을 쓴 상태. */
+    /** 주기 10일째로 맞추고, 어제까지 여윳돈 20,000원을 쓴 상태 (여윳돈 26만 = 100만 − 고정 64만 − 식비 10만). */
     static Settings settings() {
         Settings s = new Settings();
         s.cycleStartOverride = TODAY.minusDays(10).toEpochDay();
+        return s;
+    }
+
+    /** 야식 규칙만 보려는 테스트용: 고정지출을 줄여 여윳돈 40만 (오늘 한도에 여유가 있어 재정 위험이 섞이지 않게). */
+    static Settings roomy() {
+        Settings s = settings();
+        s.rent = 350_000;
+        s.transport = 40_000;
         return s;
     }
 
@@ -47,7 +55,7 @@ public class EngineTest {
         List<Record> list = new ArrayList<>();
         Record past = new Record();
         past.ts = daysAgo(1, 12);
-        past.amount = past.discretionary = 120_000;
+        past.amount = past.discretionary = 20_000;
         past.outcome = Outcome.SYNC;
         past.title = "이번 주기 지출";
         list.add(past);
@@ -86,13 +94,13 @@ public class EngineTest {
     @Test
     public void budgetBaseline() {
         BudgetEngine.State b = BudgetEngine.compute(settings(), base(true), at(19, 0), Z);
-        assertEquals(400_000, b.monthly);
+        assertEquals(260_000, b.monthly);
         assertEquals(30, b.cycleDays);
         assertEquals(20, b.daysLeft);
-        assertEquals(14_000, b.limit);
+        assertEquals(12_000, b.limit);
         assertEquals(8_000, b.todaySpent);
-        assertEquals(6_000, b.available);
-        assertEquals(272_000, b.remainingNow);
+        assertEquals(4_000, b.available);
+        assertEquals(232_000, b.remainingNow);
         assertEquals(100_000, b.foodRemaining);
     }
 
@@ -103,12 +111,12 @@ public class EngineTest {
         assertTrue(e.has(Trigger.FIN_RISK));
         assertFalse(e.has(Trigger.HIGH_AMOUNT));
         assertEquals(Intensity.MEDIUM, e.intensity);
-        assertEquals(17_000, e.overLimit);
+        assertEquals(19_000, e.overLimit);
     }
 
     @Test
     public void coupangTissueNeedIsLight() {
-        Evaluation e = TriggerEngine.evaluate(attempt(TargetApp.COUPANG, 26_000, "휴지·세제", Judgment.NEED, false),
+        Evaluation e = TriggerEngine.evaluate(attempt(TargetApp.COUPANG, 24_000, "휴지·세제", Judgment.NEED, false),
                 settings(), base(true), at(19, 0), Z, 0);
         assertTrue(e.has(Trigger.FIN_RISK));
         assertEquals(Intensity.MEDIUM, e.base);
@@ -136,14 +144,14 @@ public class EngineTest {
     }
 
     @Test
-    public void coatIsStrongWithDaily7500() {
+    public void coatIsStrongWithDaily5500() {
         Evaluation e = TriggerEngine.evaluate(attempt(TargetApp.MUSINSA, 129_000, "오버핏 울 코트", Judgment.IMPULSE, false),
                 settings(), base(false), at(21, 0), Z, 0);
         assertTrue(e.has(Trigger.FIN_RISK));
         assertTrue(e.has(Trigger.HIGH_AMOUNT));
         assertEquals(Intensity.STRONG, e.intensity);
-        assertEquals(7_500, e.dailyAfter);
-        assertEquals("129,000원 · 결제하면 급여일까지 하루 약 7,500원",
+        assertEquals(5_500, e.dailyAfter);
+        assertEquals("129,000원 · 결제하면 급여일까지 하루 약 5,500원",
                 QuestionTemplates.factLine(e, attempt(TargetApp.MUSINSA, 129_000, "코트", Judgment.IMPULSE, false)));
     }
 
@@ -173,7 +181,7 @@ public class EngineTest {
         recs.add(lateRecord(3, 14_000));
         recs.add(lateRecord(1, 12_000));
         Evaluation e = TriggerEngine.evaluate(attempt(TargetApp.BAEMIN, 12_000, "떡볶이", null, false),
-                settings(), recs, at(23, 0), Z, 0);
+                roomy(), recs, at(23, 0), Z, 0);
         assertEquals(1, e.triggers.size());
         assertTrue(e.has(Trigger.LATE_NIGHT));
         assertEquals(4, e.lateCountNow);
@@ -189,14 +197,14 @@ public class EngineTest {
         recs.add(lateRecord(3, 14_000));
         recs.add(lateRecord(1, 12_000));
         Evaluation e = TriggerEngine.evaluate(attempt(TargetApp.BAEMIN, 12_000, "떡볶이", null, false),
-                settings(), recs, at(23, 0), Z, 0);
+                roomy(), recs, at(23, 0), Z, 0);
         assertFalse(e.intervene());
         assertEquals(3, e.lateCountNow);
     }
 
     @Test
     public void lateNightResetAfterIntervention() {
-        Settings s = settings();
+        Settings s = roomy();
         List<Record> recs = base(false);
         recs.add(lateRecord(5, 13_000));
         recs.add(lateRecord(3, 14_000));
@@ -233,7 +241,7 @@ public class EngineTest {
         recs.add(lateRecord(3, 14_000));
         recs.add(lateRecord(1, 12_000));
         Evaluation e = TriggerEngine.evaluate(attempt(TargetApp.BAEMIN, 12_000, "떡볶이", null, false),
-                settings(), recs, at(19, 0), Z, 0);
+                roomy(), recs, at(19, 0), Z, 0);
         assertFalse(e.intervene());
     }
 
@@ -308,7 +316,7 @@ public class EngineTest {
         assertTrue(q.requireInput);
         assertTrue(q.text.contains("숏 패딩"));
         Question q3 = QuestionTemplates.build(e, a, 2, h);
-        assertTrue(q3.text.contains("7,500원"));
+        assertTrue(q3.text.contains("5,500원"));
     }
 
     @Test

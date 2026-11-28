@@ -72,9 +72,10 @@ final class Banks {
         return t;
     }
 
-    /** 은행 고르기 격자 (3열). */
-    static LinearLayout grid(Context c, Consumer<Bank> pick) {
+    /** 은행 고르기 격자 (3열). 누르면 그 칸만 테두리로 표시하고 pick에 알린다 (화면을 다시 그리지 않아 스크롤 위치 유지). */
+    static LinearLayout grid(Context c, Bank selected, Consumer<Bank> pick) {
         LinearLayout g = Ui.v(c);
+        java.util.List<LinearLayout> tiles = new java.util.ArrayList<>();
         LinearLayout row = null;
         for (int i = 0; i < ALL.length; i++) {
             if (i % 3 == 0) {
@@ -85,7 +86,7 @@ final class Banks {
             Bank b = ALL[i];
             LinearLayout tile = Ui.v(c);
             tile.setGravity(Gravity.CENTER_HORIZONTAL);
-            tile.setBackground(Ui.round(c, Ui.WHITE, Ui.Radius.CARD));
+            tile.setBackground(tileBg(c, b == selected));
             Ui.pad(tile, c, 4, 14);
             tile.addView(badge(c, b, 36), Ui.square(c, 36));
             TextView name = Ui.text(c, b.name, Ui.Font.SMALL, Ui.TEXT, Ui.MEDIUM);
@@ -93,11 +94,21 @@ final class Banks {
             name.setSingleLine(true);
             Ui.stack(tile, name, Ui.Space.TIGHT);
             tile.setClickable(true);
-            tile.setOnClickListener(v -> pick.accept(b));
+            tile.setContentDescription(b.name);
+            tile.setOnClickListener(v -> {
+                for (int k = 0; k < tiles.size(); k++) tiles.get(k).setBackground(tileBg(c, ALL[k] == b));
+                pick.accept(b);
+            });
+            tiles.add(tile);
             if (i % 3 == 0) row.addView(tile, Ui.weight1());
             else Ui.inlineFill(row, tile, Ui.Space.ITEM);
         }
         return g;
+    }
+
+    /** 고른 칸: 먹색 2dp 테두리 · 나머지: 흰 칸. 테두리 두께만큼 높이가 변하지 않게 둘 다 테두리를 둔다. */
+    private static android.graphics.drawable.GradientDrawable tileBg(Context c, boolean on) {
+        return Ui.roundStroke(c, Ui.WHITE, Ui.Radius.CARD, on ? Ui.TEXT : Ui.WHITE, 2);
     }
 
     /** 연결된 계좌 카드 안 한 줄: 은행 원 + 이름 + 계좌. */
