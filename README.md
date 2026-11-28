@@ -13,7 +13,7 @@
 | 중간점검 발표자료 (12장) | [`presentation/쉼표_중간점검_발표.pdf`](presentation/쉼표_중간점검_발표.pdf) · 원본 [`.pptx`](presentation/쉼표_중간점검_발표.pptx) |
 | Figma 하이파이 프로토타입 (21화면) | [figma.com/design/NCFIvnfUcQ8BBIgFgkBOfE](https://www.figma.com/design/NCFIvnfUcQ8BBIgFgkBOfE?node-id=31-73) — Hi-Fi 프로토타입 › 쉼표 와이어프레임 › ▶ Present |
 | FigJam User Flow | [figma.com/board/urLBlIngX8aXahBFmfaj4W](https://www.figma.com/board/urLBlIngX8aXahBFmfaj4W) |
-| Android 프로토타입 APK (v0.25, 설정 정리 · 테스트 도구는 설정 제목 길게 누르기) | [`apk/shimpyo-v0.25.apk`](apk/shimpyo-v0.25.apk) · 이전 버전 [`v0.24`](apk/shimpyo-v0.24.apk) · [`v0.23`](apk/shimpyo-v0.23.apk) · [`v0.22`](apk/shimpyo-v0.22.apk) · [`v0.21`](apk/shimpyo-v0.21.apk) · [`v0.20`](apk/shimpyo-v0.20.apk) · [`v0.19`](apk/shimpyo-v0.19.apk) · [`v0.18`](apk/shimpyo-v0.18.apk) · [`v0.17`](apk/shimpyo-v0.17.apk) · [`v0.16`](apk/shimpyo-v0.16.apk) · [`v0.15`](apk/shimpyo-v0.15.apk) · [`v0.14`](apk/shimpyo-v0.14.apk) · [`v0.13`](apk/shimpyo-v0.13.apk) · [`v0.12`](apk/shimpyo-v0.12.apk) · [`v0.11`](apk/shimpyo-v0.11.apk) · [`v0.10`](apk/shimpyo-v0.10.apk) · [`v0.9`](apk/shimpyo-v0.9.apk) · [`v0.8`](apk/shimpyo-v0.8.apk) · [`v0.7`](apk/shimpyo-v0.7.apk) · [`v0.6`](apk/shimpyo-v0.6.apk) · [`v0.5`](apk/shimpyo-v0.5.apk) · [`v0.4`](apk/shimpyo-v0.4.apk) · [`v0.3`](apk/shimpyo-v0.3.apk) |
+| Android 프로토타입 APK (v0.26, 은행으로 페르소나 선택 · IBK기업 = 지수) | [`apk/shimpyo-v0.26.apk`](apk/shimpyo-v0.26.apk) · 이전 버전 [`v0.25`](apk/shimpyo-v0.25.apk) · [`v0.24`](apk/shimpyo-v0.24.apk) · [`v0.23`](apk/shimpyo-v0.23.apk) · [`v0.22`](apk/shimpyo-v0.22.apk) · [`v0.21`](apk/shimpyo-v0.21.apk) · [`v0.20`](apk/shimpyo-v0.20.apk) · [`v0.19`](apk/shimpyo-v0.19.apk) · [`v0.18`](apk/shimpyo-v0.18.apk) · [`v0.17`](apk/shimpyo-v0.17.apk) · [`v0.16`](apk/shimpyo-v0.16.apk) · [`v0.15`](apk/shimpyo-v0.15.apk) · [`v0.14`](apk/shimpyo-v0.14.apk) · [`v0.13`](apk/shimpyo-v0.13.apk) · [`v0.12`](apk/shimpyo-v0.12.apk) · [`v0.11`](apk/shimpyo-v0.11.apk) · [`v0.10`](apk/shimpyo-v0.10.apk) · [`v0.9`](apk/shimpyo-v0.9.apk) · [`v0.8`](apk/shimpyo-v0.8.apk) · [`v0.7`](apk/shimpyo-v0.7.apk) · [`v0.6`](apk/shimpyo-v0.6.apk) · [`v0.5`](apk/shimpyo-v0.5.apk) · [`v0.4`](apk/shimpyo-v0.4.apk) · [`v0.3`](apk/shimpyo-v0.3.apk) |
 | 실행 · 테스트 가이드 | [`android/README_실행·테스트.md`](android/README_실행·테스트.md) |
 
 ## 폴더 구조
@@ -22,7 +22,7 @@
 comma/
 ├── android/        Android 프로토타입 소스 (Java · 접근성 서비스 · 결제 버튼 가드 · 오버레이 질문)
 │   └── app/src/test/…/EngineTest.java   예산 · 트리거 엔진 단위 테스트 31개
-├── apk/            빌드된 APK (shimpyo-v0.25 최신, v0.24, v0.23, v0.22, v0.21, v0.20, v0.19, v0.18, v0.17, v0.16, v0.15, v0.14, v0.13, v0.12, v0.11, v0.10, v0.9, v0.8, v0.7, v0.6, v0.5, v0.4, v0.3)
+├── apk/            빌드된 APK (shimpyo-v0.26 최신, v0.25, v0.24, v0.23, v0.22, v0.21, v0.20, v0.19, v0.18, v0.17, v0.16, v0.15, v0.14, v0.13, v0.12, v0.11, v0.10, v0.9, v0.8, v0.7, v0.6, v0.5, v0.4, v0.3)
 ├── docs/           기획 · 설계 문서
 │   ├── 쉼표_PRD.md
 │   ├── 쉼표_6주차_시나리오명세.pdf

@@ -477,11 +477,6 @@ public class MainActivity extends Activity {
         return box;
     }
 
-    private static final String[][] BANK_ACCOUNTS = {
-            {"입출금 통장", "****1234", "매달 용돈·알바비가 들어와요"},
-            {"생활비 통장", "****5678", "자동이체 · 카드값"},
-    };
-
     /** 은행 앱 연결 화면 (흰 바탕, 은행 색 버튼). */
     private View bankLinkScreen(Banks.Bank b) {
         FrameLayout root = new FrameLayout(this);
@@ -502,7 +497,8 @@ public class MainActivity extends Activity {
         Ui.stack(col, Ui.bodySmall(this, "쉼표는 고른 계좌의 입출금 내역만 볼 수 있어요. 돈을 보내거나 결제할 수는 없어요."), Ui.Space.ITEM);
 
         Ui.stack(col, Ui.caption(this, "연결할 계좌"), Ui.Space.LARGE);
-        for (int i = 0; i < BANK_ACCOUNTS.length; i++) {
+        String[][] accounts = Personas.accounts(Personas.forBank(b));
+        for (int i = 0; i < accounts.length; i++) {
             final int k = i;
             boolean on = bankAccountPick == i;
             LinearLayout r = Ui.h(this);
@@ -510,8 +506,8 @@ public class MainActivity extends Activity {
             r.setBackground(on ? Ui.roundStroke(this, Ui.WHITE, Ui.Radius.BOX, b.bg, 2) : Ui.roundStroke(this, Ui.WHITE, Ui.Radius.BOX, Ui.LINE));
             Ui.pad(r, this, 16, 14);
             LinearLayout t = Ui.v(this);
-            t.addView(Ui.text(this, BANK_ACCOUNTS[i][0] + "  " + BANK_ACCOUNTS[i][1], Ui.Font.LABEL, Ui.TEXT, Ui.BOLD));
-            Ui.stack(t, Ui.meta(this, BANK_ACCOUNTS[i][2]), Ui.Space.TEXT);
+            t.addView(Ui.text(this, accounts[i][0] + "  " + accounts[i][1], Ui.Font.LABEL, Ui.TEXT, Ui.BOLD));
+            Ui.stack(t, Ui.meta(this, accounts[i][2]), Ui.Space.TEXT);
             r.addView(t, Ui.weight1());
             View dot = new View(this);
             dot.setBackground(on ? Ui.circle(b.bg) : Ui.roundStroke(this, Ui.WHITE, 10, Ui.LINE, 2));
@@ -533,7 +529,11 @@ public class MainActivity extends Activity {
 
         TextView go = Ui.button(this, "동의하고 연결하기", true, v -> {
             if (!bankLinkConsent) return;
-            String[] acc = BANK_ACCOUNTS[bankAccountPick];
+            String[] acc = accounts[bankAccountPick];
+            // 계좌를 연결하면 그 사람의 정기 수입 · 예산으로 (IBK기업 = 지수, 그 밖 = 수민)
+            Settings st = store.settings();
+            Personas.apply(Personas.forBank(b), BackendSlots.get(), st);
+            store.saveSettings(st);
             showBankLayer(bankMoving(b, "연결했어요. 쉼표로 돌아갈게요"));
             content.postDelayed(() -> {
                 BackendSlots.get().account = new BackendSlots.Account(b.name, acc[0], acc[1]);
@@ -601,12 +601,45 @@ public class MainActivity extends Activity {
                 false), Ui.Space.BLOCK);
 
         footerButton(Ui.button(this, "시작하기", true, v -> {
+            seedPersona(Personas.forAccount(BackendSlots.get().account));
             Settings st = store.settings();
             st.onboarded = true;
             store.saveSettings(st);
             onboardStep = ONBOARD_DONE;
             open(PAGE_HOME);
         }));
+    }
+
+    /**
+     * 온보딩을 마칠 때 연결한 계좌의 이번 주기 내역을 넣는다 (오픈뱅킹 연동 전 데모 데이터).
+     * 수민: 10일째 · 급여일 뒤 지출 95,000원 · 오늘 점심 8,000원 → 오늘 한도 14,000원 중 6,000원 남음, 지난달 결제 12건(리포트)
+     * 지수: 10일째 · 급여일 뒤 지출 420,000원 · 오늘 점심 10,000원 → 오늘 한도 24,000원, 지난달 무신사 후드 집업 '후회돼요'
+     */
+    private void seedPersona(Personas.P p) {
+        Settings st = store.settings();
+        LocalDate today = LocalDate.now(zone);
+        st.cycleStartOverride = today.minusDays(10).toEpochDay();
+        st.lateResetTs = 0;
+        store.saveSettings(st);
+        store.clearRecords();
+        if (p == Personas.P.JISU) {
+            addSync("급여일 뒤 계좌 지출", 420_000, today.minusDays(1), 12, 0, false);
+            addSync("외식 · 회사 근처 점심", 10_000, today, 12, 20, false);
+            Record r = new Record();
+            r.ts = today.minusDays(24).atTime(23, 10).atZone(zone).toInstant().toEpochMilli();
+            r.app = TargetApp.MUSINSA;
+            r.title = "후드 집업";
+            r.amount = 79_000;
+            r.discretionary = 79_000;
+            r.outcome = Outcome.DELIBERATE_PAY;
+            r.intensity = Intensity.MEDIUM;
+            r.review = "후회돼요";
+            store.addRecord(r);
+        } else {
+            addSync("급여일 뒤 계좌 지출", 95_000, today.minusDays(1), 12, 0, false);
+            addSync("외식 · 학교 앞 식당", 8_000, today, 12, 30, false);
+            addSampleMonth();
+        }
     }
 
     /** 머리말 + 항목별 금액 + 합계 카드. */
@@ -928,22 +961,9 @@ public class MainActivity extends Activity {
 
     // ================================================================== 설정 · 테스트 도구 (홈 › 톱니바퀴)
 
-    /**
-     * 개발자 도구: 설정 제목을 길게 누르면 열고 닫는다 (앱을 새로 켜면 닫힌 상태).
-     * 평소 설정에는 보이지 않는 현재 세션 · 앱 버전 · 야식 반복 트리거 · 테스트 도구 · 감지 로그 · 마지막 화면 텍스트를 담는다.
-     */
-    private static boolean devTools = false;
-
     private void settingsScreen() {
         Settings s = store.settings();
-        View header = Ui.screenHeader(this, "설정", v -> open(PAGE_HOME));
-        header.setOnLongClickListener(v -> {
-            devTools = !devTools;
-            toast(devTools ? "개발자 도구를 열었어요" : "개발자 도구를 닫았어요");
-            refresh();
-            return true;
-        });
-        add(header, 0);
+        add(Ui.screenHeader(this, "설정", v -> open(PAGE_HOME)), 0);
         add(statusCard(), Ui.Space.BLOCK);
 
         // 예산
@@ -960,29 +980,6 @@ public class MainActivity extends Activity {
         EditText cpg = numberField(bc, "식비: 쿠팡 식료품", s.coupangFoodBudget);
         add(bc, Ui.Space.ITEM);
 
-        // 야식 반복 트리거 (개발자 도구에서만)
-        final boolean[] lateOn = {s.lateEnabled};
-        EditText ls = null, le = null, lw = null, ln = null;
-        if (devTools) {
-            add(Ui.sectionTitle(this, "야식 반복 트리거"), Ui.Space.SECTION);
-            LinearLayout lc = Ui.card(this);
-            TextView toggle = Ui.chip(this, lateOn[0] ? "켜짐" : "꺼짐", lateOn[0], null);
-            toggle.setOnClickListener(v -> {
-                lateOn[0] = !lateOn[0];
-                toggle.setText(lateOn[0] ? "켜짐" : "꺼짐");
-            });
-            LinearLayout tr = Ui.h(this);
-            tr.addView(Ui.bodySmall(this, "야식 반복 개입"), Ui.weight1());
-            tr.addView(toggle);
-            lc.addView(tr);
-            ls = numberField(lc, "시작 시각 (시)", s.lateStartHour);
-            le = numberField(lc, "끝 시각 (시)", s.lateEndHour);
-            lw = numberField(lc, "최근 며칠", s.lateWindowDays);
-            ln = numberField(lc, "몇 번째부터 개입", s.lateCount);
-            add(lc, Ui.Space.ITEM);
-        }
-        final EditText fls = ls, fle = le, flw = lw, fln = ln;
-
         add(Ui.button(this, "설정 저장", true, v -> {
             Settings st = store.settings();
             st.income = Ui.num(income, st.income);
@@ -994,29 +991,16 @@ public class MainActivity extends Activity {
             st.subscriptions = Ui.num(subs, st.subscriptions);
             st.martBudget = Ui.num(mart, st.martBudget);
             st.coupangFoodBudget = Ui.num(cpg, st.coupangFoodBudget);
-            if (fls != null) {
-                st.lateEnabled = lateOn[0];
-                st.lateStartHour = (int) Ui.num(fls, st.lateStartHour) % 24;
-                st.lateEndHour = (int) Ui.num(fle, st.lateEndHour) % 24;
-                st.lateWindowDays = (int) Math.max(1, Ui.num(flw, st.lateWindowDays));
-                st.lateCount = (int) Math.max(1, Ui.num(fln, st.lateCount));
-            }
             store.saveSettings(st);
             toast("저장했어요");
             refresh();
         }), Ui.Space.STACK);
-
-        if (devTools) testTools(s);
     }
 
-    /** 설정 상태 카드: 결제 감지 · 접근성 설정 링크 (개발자 도구가 열려 있으면 현재 세션 · 앱 버전도). */
+    /** 설정 상태 카드: 결제 감지 · 접근성 설정 링크. */
     private View statusCard() {
         LinearLayout c = Ui.card(this);
         c.addView(Ui.kv(this, "결제 감지(접근성 서비스)", serviceEnabled() ? "켜짐" : "꺼짐", true));
-        if (devTools) {
-            Ui.stack(c, Ui.kv(this, "현재 세션", GuardService.instance == null ? "서비스 미연결" : GuardService.instance.sessionState(), false), Ui.Space.ITEM);
-            Ui.stack(c, Ui.kv(this, "앱 버전", appVersion() + " · Figma Hi-Fi 디자인", false), Ui.Space.ITEM);
-        }
         TextView open = Ui.textLink(this, "접근성 설정 열기 ›", Ui.BRAND, v -> openA11ySettings());
         Ui.pad(open, this, 0, Ui.Space.ITEM, 0, 0);
         c.addView(open);
@@ -1028,145 +1012,6 @@ public class MainActivity extends Activity {
         EditText in = Ui.input(this, "", String.valueOf(value), true);
         Ui.stack(card, Ui.labeledField(this, label, in), Ui.Space.ITEM);
         return in;
-    }
-
-    private void testTools(Settings s) {
-        add(Ui.sectionTitle(this, "테스트 도구 (개발자 도구 · 설정 제목을 길게 누르면 닫혀요)"), Ui.Space.LARGE);
-        LinearLayout tc = Ui.card(this);
-        tc.addView(Ui.body(this, "시나리오 기준: 수입 110만 · 고정 62.5만 · 식비 10만 → 여윳돈 37.5만, 10일째 적용 한도 14,000원."));
-        tc.addView(testButton("① 대학생 수민: 10일째로 맞추기 (용돈·알바 110만 · 이전 지출 95,000원)", () -> {
-            Settings st = store.settings();
-            Settings d = new Settings();
-            setBudget(st, d.income, d.rent, d.utilities, d.phone, d.transport, d.subscriptions, d.martBudget, d.coupangFoodBudget);
-            st.cycleStartOverride = LocalDate.now(zone).minusDays(10).toEpochDay();
-            store.saveSettings(st);
-            store.deleteWhere(Outcome.SYNC);
-            addSync("이번 주기 이전 지출(Mock)", 95_000, LocalDate.now(zone).minusDays(1), 12, 0, false);
-            toast("수민 · 10일째 · 남은 여윳돈 280,000원으로 맞췄어요");
-        }));
-        tc.addView(testButton("⑤ 사회초년생 지수: 월급 210만 · 10일째 · 점심 10,000원 · 지난달 무신사 후회 1건", () -> {
-            Settings st = store.settings();
-            // 월급 210만 − 고정 95만(월세·관리비 65 · 공과금 10 · 통신 7 · 교통 8 · 구독 5) − 식비 25만 = 여윳돈 90만
-            setBudget(st, 2_100_000, 650_000, 100_000, 70_000, 80_000, 50_000, 150_000, 100_000);
-            st.cycleStartOverride = LocalDate.now(zone).minusDays(10).toEpochDay();
-            store.saveSettings(st);
-            store.deleteWhere(Outcome.SYNC);
-            // 월급 직후에 몰아서 쓴 돈 → 남은 여윳돈 480,000원, 오늘 한도 24,000원
-            addSync("이번 주기 이전 지출(Mock)", 420_000, LocalDate.now(zone).minusDays(1), 12, 0, false);
-            addSync("외식 · 회사 근처 점심", 10_000, LocalDate.now(zone), 12, 20, false);
-            // 지난달 무신사에서 사고 다음 날 '후회돼요'라고 답한 기록 → 강함의 과거 연결 질문 재료
-            Record r = new Record();
-            r.ts = LocalDate.now(zone).minusDays(24).atTime(23, 10).atZone(zone).toInstant().toEpochMilli();
-            r.app = TargetApp.MUSINSA;
-            r.title = "후드 집업";
-            r.amount = 79_000;
-            r.discretionary = 79_000;
-            r.outcome = Outcome.DELIBERATE_PAY;
-            r.intensity = Intensity.MEDIUM;
-            r.review = "후회돼요";
-            store.addRecord(r);
-            toast("지수 · 10일째 · 오늘 한도 24,000원 중 10,000원 사용");
-        }));
-        tc.addView(testButton("② 점심 외식 8,000원 추가 (계좌 동기화 Mock)", () -> {
-            addSync("외식 · 학교 앞 식당", 8_000, LocalDate.now(zone), 12, 30, false);
-            toast("오늘 누적에 8,000원 더했어요");
-        }));
-        tc.addView(testButton("결과별 예시 기록 4건 추가 (안 샀어요·이유 있어·고민하고·식비, 기록 색 확인용)", () -> {
-            addSampleOutcomes();
-            toast("예시 기록 4건을 넣었어요");
-        }));
-        tc.addView(testButton("리포트 예시 기록 12건 추가 (지난달 주기에, 고른 이유·다음 날 만족/후회 포함)", () -> {
-            addSampleMonth();
-            toast("이번 주기에 예시 기록 12건을 넣었어요");
-        }));
-        tc.addView(testButton("③ 지난 며칠 야식 3건 추가 (다음 배민 야식이 4번째)", () -> {
-            long now = System.currentTimeMillis();
-            int[] days = {5, 3, 1};
-            long[] amts = {13_000, 14_000, 12_000};
-            for (int i = 0; i < 3; i++) {
-                Record r = new Record();
-                r.app = TargetApp.BAEMIN;
-                r.ts = LocalDateTime.of(LocalDate.now(zone).minusDays(days[i]), LocalTime.of(23, 10)).atZone(zone).toInstant().toEpochMilli();
-                if (r.ts > now) r.ts = now - 60_000;
-                r.title = "야식 (Mock)";
-                r.amount = r.discretionary = amts[i];
-                r.outcome = Outcome.PASS;
-                r.lateNight = true;
-                store.addRecord(r);
-            }
-            Settings st = store.settings();
-            st.lateResetTs = 0;
-            store.saveSettings(st);
-            toast("야식 3건을 넣었어요");
-        }));
-        String hourLabel = s.simulatedHour < 0 ? "실제 시각 사용 중" : "지금을 " + s.simulatedHour + "시로 간주 중";
-        tc.addView(testButton("④ 시각 강제: " + hourLabel + " (눌러서 23시 ↔ 실제)", () -> {
-            Settings st = store.settings();
-            st.simulatedHour = st.simulatedHour < 0 ? 23 : -1;
-            store.saveSettings(st);
-        }));
-        tc.addView(testButton("결제 버튼 가드 표시: " + (s.showGuard ? "켜짐 (파란 테두리)" : "꺼짐") + " — 눌러서 전환", () -> {
-            Settings st = store.settings();
-            st.showGuard = !st.showGuard;
-            store.saveSettings(st);
-        }));
-        tc.addView(testButton("야식 카운트 초기화", () -> {
-            Settings st = store.settings();
-            st.lateResetTs = System.currentTimeMillis();
-            store.saveSettings(st);
-        }));
-        tc.addView(testButton("데모 결제 화면 열기", () -> startActivity(new Intent(this, DemoCheckoutActivity.class))));
-        tc.addView(testButton("UI 갤러리 열기 (토큰·컴포넌트 모음)", () -> startActivity(new Intent(this, UiGalleryActivity.class))));
-        tc.addView(testButton("기록 전체 삭제", () -> {
-            store.clearRecords();
-            toast("기록을 모두 지웠어요");
-        }));
-        tc.addView(testButton("온보딩 다시 보기", () -> {
-            onboardStep = ONBOARD_WELCOME;
-            BackendSlots.get().account = null;
-            pickedBank = null; // 계좌 연결부터 다시
-        }));
-        add(tc, Ui.Space.ITEM);
-
-        add(Ui.sectionTitle(this, "감지 로그"), Ui.Space.SECTION);
-        add(logCard(), Ui.Space.ITEM);
-
-        add(Ui.sectionTitle(this, "마지막으로 읽은 화면 텍스트"), Ui.Space.SECTION);
-        add(Ui.body(this, "대상 앱 결제 화면이 감지되지 않으면 여기 텍스트를 확인해 주세요. 결제 버튼·결제 섹션 라벨이 읽히는지, 금액이 맞는지 볼 수 있어요."), Ui.Space.LINE);
-        for (TargetApp app : TargetApp.values()) add(screenTextCard(app), Ui.Space.ITEM);
-    }
-
-    private View logCard() {
-        LinearLayout c = Ui.card(this);
-        List<String> logs = store.logs();
-        Collections.reverse(logs);
-        for (int i = 0; i < logs.size() && i < LOG_COUNT; i++) {
-            TextView t = Ui.micro(this, logs.get(i), Ui.TEXT);
-            t.setTextIsSelectable(true);
-            c.addView(t);
-        }
-        if (logs.isEmpty()) c.addView(Ui.body(this, "아직 로그가 없어요."));
-        return c;
-    }
-
-    private View screenTextCard(TargetApp app) {
-        LinearLayout c = Ui.card(this);
-        c.addView(Ui.text(this, app.label + " (" + app.pkg + ")", Ui.Font.SMALL, Ui.TEXT, Ui.BOLD));
-        String t = store.lastScreen(app);
-        TextView tv = Ui.micro(this, t.isEmpty() ? "아직 읽은 화면이 없어요." : (t.length() > SCREEN_TEXT_MAX ? t.substring(0, SCREEN_TEXT_MAX) + "\n…" : t), Ui.MUTED);
-        tv.setTextIsSelectable(true);
-        c.addView(tv);
-        return c;
-    }
-
-    /** 테스트 도구 한 줄 버튼: 누르면 동작 후 화면을 다시 그린다. */
-    private View testButton(String label, Runnable r) {
-        TextView t = Ui.textLink(this, label, Ui.BRAND, v -> {
-            r.run();
-            refresh();
-        });
-        Ui.pad(t, this, 0, Ui.Pad.LIST_ROW_V);
-        return t;
     }
 
     /**
@@ -1209,18 +1054,18 @@ public class MainActivity extends Activity {
         long now = prev[1].atStartOfDay(zone).toInstant().toEpochMilli();
         Object[][] samples = {
                 // 앱, 제목, 금액, 결과, 강도, 고른 이유, 다음 날 회고, 멈춘 질문, 야식, 식비
-                {TargetApp.MUSINSA, "울 코트 (예시)", 129_000L, Outcome.PREVENTED, Intensity.STRONG, null, null, 3, false, false},
-                {TargetApp.BAEMIN, "치킨 세트 (예시)", 23_000L, Outcome.REASON_PAY, Intensity.LIGHT, "그냥 먹고 싶어요", "후회돼요", 0, true, false},
-                {TargetApp.BAEMIN, "떡볶이 (예시)", 16_000L, Outcome.REASON_PAY, Intensity.LIGHT, "끼니 대용이에요", "만족해요", 0, false, false},
-                {TargetApp.COUPANG, "무선 이어폰 (예시)", 89_000L, Outcome.PREVENTED, Intensity.MEDIUM, null, null, 1, false, false},
-                {TargetApp.COUPANG, "휴지·세제 (예시)", 26_000L, Outcome.REASON_PAY, Intensity.LIGHT, "다 떨어졌어요", "만족해요", 0, false, false},
-                {TargetApp.MUSINSA, "셔츠 (예시)", 39_000L, Outcome.DELIBERATE_PAY, Intensity.MEDIUM, null, "후회돼요", 0, false, false},
-                {TargetApp.BAEMIN, "피자 (예시)", 28_000L, Outcome.REASON_PAY, Intensity.LIGHT, "그냥 먹고 싶어요", "후회돼요", 0, true, false},
-                {TargetApp.MUSINSA, "머리끈 세트 (예시)", 4_500L, Outcome.REASON_PAY, Intensity.LIGHT, "선물이에요", "만족해요", 0, false, false},
-                {TargetApp.BAEMIN, "회·초밥 세트 (예시)", 45_000L, Outcome.PREVENTED, Intensity.STRONG, null, null, 2, true, false},
-                {TargetApp.COUPANG, "운동화 (예시)", 69_000L, Outcome.DELIBERATE_PAY, Intensity.STRONG, null, "만족해요", 0, false, false},
-                {TargetApp.BAEMIN, "버거 세트 (예시)", 12_000L, Outcome.REASON_PAY, Intensity.LIGHT, "약속이 있어요", null, 0, false, false},
-                {TargetApp.COUPANG, "식료품 (예시)", 18_000L, Outcome.PASS, null, null, null, 0, false, true},
+                {TargetApp.MUSINSA, "울 코트", 129_000L, Outcome.PREVENTED, Intensity.STRONG, null, null, 3, false, false},
+                {TargetApp.BAEMIN, "교촌 허니콤보", 23_000L, Outcome.REASON_PAY, Intensity.LIGHT, "그냥 먹고 싶어요", "후회돼요", 0, true, false},
+                {TargetApp.BAEMIN, "떡볶이", 16_000L, Outcome.REASON_PAY, Intensity.LIGHT, "끼니 대용이에요", "만족해요", 0, false, false},
+                {TargetApp.COUPANG, "무선 이어폰", 89_000L, Outcome.PREVENTED, Intensity.MEDIUM, null, null, 1, false, false},
+                {TargetApp.COUPANG, "휴지·세제", 26_000L, Outcome.REASON_PAY, Intensity.LIGHT, "다 떨어졌어요", "만족해요", 0, false, false},
+                {TargetApp.MUSINSA, "스탠다드 옥스포드 셔츠", 39_000L, Outcome.DELIBERATE_PAY, Intensity.MEDIUM, null, "후회돼요", 0, false, false},
+                {TargetApp.BAEMIN, "도미노 포테이토 피자", 28_000L, Outcome.REASON_PAY, Intensity.LIGHT, "그냥 먹고 싶어요", "후회돼요", 0, true, false},
+                {TargetApp.MUSINSA, "머리끈 세트", 4_500L, Outcome.REASON_PAY, Intensity.LIGHT, "선물이에요", "만족해요", 0, false, false},
+                {TargetApp.BAEMIN, "회·초밥 세트", 45_000L, Outcome.PREVENTED, Intensity.STRONG, null, null, 2, true, false},
+                {TargetApp.COUPANG, "운동화", 69_000L, Outcome.DELIBERATE_PAY, Intensity.STRONG, null, "만족해요", 0, false, false},
+                {TargetApp.BAEMIN, "버거 세트", 12_000L, Outcome.REASON_PAY, Intensity.LIGHT, "약속이 있어요", null, 0, false, false},
+                {TargetApp.COUPANG, "식료품", 18_000L, Outcome.PASS, null, null, null, 0, false, true},
         };
         for (int i = 0; i < samples.length; i++) {
             Object[] s = samples[i];
@@ -1250,18 +1095,18 @@ public class MainActivity extends Activity {
     private static final java.util.Map<String, String[]> SAMPLE_QA = new java.util.HashMap<>();
 
     static {
-        SAMPLE_QA.put("울 코트 (예시)", new String[]{
+        SAMPLE_QA.put("울 코트", new String[]{
                 "Q1. 가진 게 없어서예요, 마음에 들어서예요? / A. 마음에 들어서요",
                 "Q2. 지난달 외투를 두 번 샀어요. 이번엔 뭐가 다를까요? / A. 사실 입던 코트로도 이번 겨울은 괜찮을 것 같아요",
                 "Q3. 결제하면 급여일까지 하루 약 7,500원으로 지내야 해요. 그래도 지금 살래요? / A. 다음으로 미룰게요"});
-        SAMPLE_QA.put("셔츠 (예시)", new String[]{
+        SAMPLE_QA.put("스탠다드 옥스포드 셔츠", new String[]{
                 "Q1. 가진 게 없어서예요, 마음에 들어서예요? / A. 마음에 들어서요",
                 "Q2. 다음에 사도 괜찮을까요? / A. 세일이 오늘까지라 놓치기 싫어요"});
-        SAMPLE_QA.put("운동화 (예시)", new String[]{
+        SAMPLE_QA.put("운동화", new String[]{
                 "Q1. 지금 쓰던 건 어떤 상태예요? / A. 다 떨어졌어요",
                 "Q2. 이번 달 쿠팡에서 벌써 3번 결제했어요. 이번엔 뭐가 다를까요? / A. 신던 운동화 밑창이 다 닳아서 매일 신을 거예요",
                 "Q3. 결제하면 급여일까지 하루 약 9,000원으로 지내야 해요. 그래도 지금 살래요? / A. 그래도 살래요"});
-        SAMPLE_QA.put("회·초밥 세트 (예시)", new String[]{
+        SAMPLE_QA.put("회·초밥 세트", new String[]{
                 "Q1. 4만 원이 넘는 야식이에요. 오늘 특별한 날이에요? / A. 그냥 먹고 싶어요",
                 "Q2. 지난주 야식 뒤에 '후회돼요'라고 답했어요. 오늘은 뭐가 달라요? / A. 다를 게 없네요, 내일 아침에 후회할 것 같아요"});
     }
