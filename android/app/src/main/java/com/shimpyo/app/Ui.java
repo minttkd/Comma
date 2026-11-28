@@ -68,7 +68,7 @@ final class Ui {
     static final int TODAY_OK_BG = Color.parseColor("#D3E5D8");   // 여유
     static final int TODAY_WARN_BG = Color.parseColor("#F5E2B0"); // 주의
     static final int TODAY_OVER_BG = Color.parseColor("#F2CFC9"); // 초과
-    static final int TODAY_WARN_BAR = Color.parseColor("#E0A100"); // 주의일 때 게이지 막대 (노랑, 흰 바탕 막대 위에서 잘 보이게)
+    static final int TODAY_WARN_BAR = Color.parseColor("#F28C00"); // 주의일 때 게이지 막대 (신호등 황색 · 주황 느낌)
     static final int TODAY_SUB = Color.parseColor("#4F5651");     // 그 위 작은 글자 (세 바탕 모두 대비 5:1 이상)
     static final int REPORT_BG = Color.parseColor("#E9F1FA");  // 홈 "소비 돌아보기" 입구 · 연하늘 (멈춘 결제 연초록과 구분)
     static final int REPORT_FG = Color.parseColor("#2D5E91");  // 그 위 글자 (바탕 대비 6:1)
