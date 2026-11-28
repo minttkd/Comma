@@ -461,12 +461,12 @@ public class MainActivity extends Activity {
     /** S02에서 고른 은행 (다음을 누르면 그 은행 앱 연결 화면으로). */
     private Banks.Bank pickedBank;
     private int bankAccountPick = 0;
-    private boolean bankLinkConsent = true;
+    private boolean bankLinkConsent = false; // 필수 동의: 눌러야 [연결하기]가 켜진다
 
     /** 은행을 고르면: "은행 앱으로 이동" → 계좌 고르기 · 내역 조회 동의 → 연결 → S02로 돌아와 정기 수입 표시. */
     private void showBankLink(Banks.Bank b) {
         bankAccountPick = 0;
-        bankLinkConsent = true;
+        bankLinkConsent = false;
         showBankLayer(bankMoving(b, Banks.fullName(b) + " 앱으로 이동하고 있어요"));
         content.postDelayed(() -> {
             if (bankLink != null) showBankLayer(bankLinkScreen(b));
@@ -551,7 +551,7 @@ public class MainActivity extends Activity {
         sc.addView(col, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(sc, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, ViewGroup.LayoutParams.MATCH_PARENT));
 
-        TextView go = Ui.button(this, "동의하고 연결하기", true, v -> {
+        TextView go = Ui.button(this, "연결하기", true, v -> {
             if (!bankLinkConsent) return;
             String[] acc = accounts[bankAccountPick];
             // 계좌를 연결하면 그 사람의 정기 수입 · 예산으로 (IBK기업 = 지수, 그 밖 = 수민)
