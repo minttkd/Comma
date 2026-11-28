@@ -18,6 +18,11 @@ public class Settings {
     public long martBudget = 40_000;
     public long coupangFoodBudget = 60_000;
 
+    // ---- 연결된 계좌 (S02에서 은행 앱으로 연결, 빈 값이면 연결 전)
+    public String linkedBank = "";
+    public String linkedKind = "";
+    public String linkedNumber = "";
+
     // ---- 트리거 수치 (PRD 결정 필요 수치)
     public double k = 2.0;
     public long highAbs = 100_000;

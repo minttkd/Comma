@@ -104,6 +104,9 @@ public final class Store {
             o.put("lateCount", s.lateCount);
             o.put("lateResetTs", s.lateResetTs);
             o.put("reduceTargets", s.reduceTargets);
+            o.put("linkedBank", s.linkedBank);
+            o.put("linkedKind", s.linkedKind);
+            o.put("linkedNumber", s.linkedNumber);
             o.put("apiKey", s.apiKey);
             o.put("model", s.model);
             o.put("aiTimeoutMs", s.aiTimeoutMs);
@@ -142,6 +145,9 @@ public final class Store {
         s.lateResetTs = o.optLong("lateResetTs", d.lateResetTs);
         s.showGuard = o.optBoolean("showGuard", d.showGuard);
         s.reduceTargets = o.optString("reduceTargets", d.reduceTargets);
+        s.linkedBank = o.optString("linkedBank", d.linkedBank);
+        s.linkedKind = o.optString("linkedKind", d.linkedKind);
+        s.linkedNumber = o.optString("linkedNumber", d.linkedNumber);
         s.apiKey = o.optString("apiKey", d.apiKey);
         s.model = o.optString("model", d.model);
         // 0.3까지의 기본값(claude-haiku-4-5)이 저장돼 있으면 새 기본값으로 옮긴다

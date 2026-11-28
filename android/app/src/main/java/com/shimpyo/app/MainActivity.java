@@ -92,6 +92,7 @@ public class MainActivity extends Activity {
         styleWindow(this);
         setContentView(buildLayout());
         BackendSlots.load(this);
+        restoreAccount();
         getWindow().setNavigationBarColor(Ui.BG); // 하단 탭이 없어 시스템 내비게이션 바도 바탕색으로
         if (!store.settings().onboarded) onboardStep = ONBOARD_WELCOME;
     }
@@ -137,6 +138,10 @@ public class MainActivity extends Activity {
         if (reviewSheet != null) {
             reviewDismissed = true;
             hideReview();
+            return;
+        }
+        if (relink && onboardStep == ONBOARD_INCOME) { // 설정에서 은행을 바꾸다 뒤로: 원래 계좌로 설정에 돌아간다
+            cancelRelink();
             return;
         }
         if (onboardStep > ONBOARD_PERMISSION) { // 권한 안내에서 뒤로 가면 첫 화면이 아니라 앱을 닫는다
@@ -310,7 +315,10 @@ public class MainActivity extends Activity {
     private View onboardingTopBar(int step) {
         LinearLayout r = Ui.h(this);
         if (step > ONBOARD_PERMISSION) {
-            r.addView(Ui.backButton(this, v -> goOnboarding(step - 1)), Ui.square(this, Ui.Size.ICON_BUTTON));
+            r.addView(Ui.backButton(this, v -> {
+                if (relink && step == ONBOARD_INCOME) cancelRelink();
+                else goOnboarding(step - 1);
+            }), Ui.square(this, Ui.Size.ICON_BUTTON));
             Ui.inline(r, Ui.steps(this, step - ONBOARD_WELCOME, ONBOARD_BUDGET - ONBOARD_WELCOME, true), Ui.Space.BLOCK);
         } else {
             Ui.pad(r, this, 0, Ui.Pad.STEPS_TOP, 0, Ui.Pad.STEPS_BOTTOM);
@@ -415,19 +423,35 @@ public class MainActivity extends Activity {
     }
 
     private View linkedAccountCard(BackendSlots.Account a) {
-        LinearLayout c = Ui.card(this);
-        LinearLayout head = Ui.h(this);
-        head.setGravity(Gravity.CENTER_VERTICAL);
-        head.addView(Ui.caption(this, "연결된 계좌"), Ui.weight1());
-        head.addView(Ui.textLink(this, "다른 은행으로 바꾸기", Ui.MUTED, v -> {
+        return linkedAccountCard(a, v -> {
             BackendSlots.get().account = null;
             pickedBank = null;
             refresh();
-        }), Ui.wrap());
-        c.addView(head, Ui.fillW());
+        }, true);
+    }
+
+    /** 연결된 계좌 카드. caption=false면 "연결된 계좌" 머리말 없이 (설정은 섹션 제목이 따로 있다). */
+    private View linkedAccountCard(BackendSlots.Account a, View.OnClickListener change, boolean caption) {
+        LinearLayout c = Ui.card(this);
         Banks.Bank b = Banks.byName(a.bank);
-        if (b != null) Ui.stack(c, Banks.accountRow(this, b, b.name + " " + a.kind, a.maskedNumber), Ui.Space.ROW);
-        else Ui.stack(c, Ui.text(this, a.displayName(), Ui.Font.BODY, Ui.TEXT, Ui.MEDIUM), Ui.Space.TIGHT);
+        View row = b != null ? Banks.accountRow(this, b, b.name + " " + a.kind, a.maskedNumber)
+                : Ui.text(this, a.displayName(), Ui.Font.BODY, Ui.TEXT, Ui.MEDIUM);
+        TextView change2 = Ui.textLink(this, "다른 은행으로 바꾸기", Ui.MUTED, change);
+        if (caption) {
+            LinearLayout head = Ui.h(this);
+            head.setGravity(Gravity.CENTER_VERTICAL);
+            head.addView(Ui.caption(this, "연결된 계좌"), Ui.weight1());
+            head.addView(change2, Ui.wrap());
+            c.addView(head, Ui.fillW());
+            Ui.stack(c, row, Ui.Space.ROW);
+        } else {
+            // 설정: 섹션 제목이 따로 있어 머리말 없이, 계좌 줄 오른쪽에 바꾸기
+            LinearLayout r = Ui.h(this);
+            r.setGravity(Gravity.CENTER_VERTICAL);
+            r.addView(row, Ui.weight1());
+            r.addView(change2, Ui.wrap());
+            c.addView(r, Ui.fillW());
+        }
         return c;
     }
 
@@ -533,6 +557,9 @@ public class MainActivity extends Activity {
             // 계좌를 연결하면 그 사람의 정기 수입 · 예산으로 (IBK기업 = 지수, 그 밖 = 수민)
             Settings st = store.settings();
             Personas.apply(Personas.forBank(b), BackendSlots.get(), st);
+            st.linkedBank = b.name;
+            st.linkedKind = acc[0];
+            st.linkedNumber = acc[1];
             store.saveSettings(st);
             showBankLayer(bankMoving(b, "연결했어요. 쉼표로 돌아갈게요"));
             content.postDelayed(() -> {
@@ -554,9 +581,15 @@ public class MainActivity extends Activity {
 
     /** 정기 수입 카드. 내역(BackendSlots)의 합계가 월 수입과 같을 때만 "용돈 … + 알바비 …"를 보여 준다. */
     private View incomeCard(Settings s, BackendSlots data) {
+        return incomeCard(s, data, true);
+    }
+
+    private View incomeCard(Settings s, BackendSlots data, boolean caption) {
         LinearLayout c = Ui.tintCard(this, Ui.BRAND_LIGHT);
-        c.addView(Ui.text(this, "정기 수입", Ui.Font.CAPTION, Ui.BRAND, Ui.MEDIUM));
-        Ui.stack(c, Ui.heading(this, "매달 " + s.payday + "일 · 약 " + Money.won(s.income)), Ui.Space.ITEM);
+        if (caption) c.addView(Ui.text(this, "정기 수입", Ui.Font.CAPTION, Ui.BRAND, Ui.MEDIUM));
+        TextView head = Ui.heading(this, "매달 " + s.payday + "일 · 약 " + Money.won(s.income));
+        if (caption) Ui.stack(c, head, Ui.Space.ITEM);
+        else c.addView(head);
         String detail;
         if (!data.incomeSources.isEmpty() && data.incomeTotal() == s.income) {
             StringBuilder b = new StringBuilder();
@@ -602,12 +635,59 @@ public class MainActivity extends Activity {
 
         footerButton(Ui.button(this, "시작하기", true, v -> {
             seedPersona(Personas.forAccount(BackendSlots.get().account));
+            relink = false;
+            relinkPrev = null;
             Settings st = store.settings();
             st.onboarded = true;
             store.saveSettings(st);
             onboardStep = ONBOARD_DONE;
             open(PAGE_HOME);
         }));
+    }
+
+    // ------------------------------------------------------------------ 연결된 계좌 저장 · 설정에서 은행 바꾸기
+
+    /** 설정에서 "다른 은행으로 바꾸기"로 S02(은행 고르기)에 들어왔는지. 뒤로 가면 원래 계좌로 설정에 돌아간다. */
+    private boolean relink = false;
+    private BackendSlots.Account relinkPrev;
+
+    /** 앱을 다시 켜도 연결된 계좌 · 정기 수입이 보이게 Settings에 저장해 둔 계좌를 되살린다. */
+    private void restoreAccount() {
+        Settings st = store.settings();
+        BackendSlots d = BackendSlots.get();
+        if (d.account == null && st.linkedBank != null && !st.linkedBank.isEmpty()) {
+            d.account = new BackendSlots.Account(st.linkedBank, st.linkedKind, st.linkedNumber);
+            Personas.applyIncome(Personas.forAccount(d.account), d);
+        }
+    }
+
+    /** 설정 › 다른 은행으로 바꾸기: 은행 고르기 단계로. 새 은행을 연결하고 시작하기를 누르면 그 사람의 데이터로 다시 시작한다. */
+    private void startRelink() {
+        relinkPrev = BackendSlots.get().account;
+        relink = true;
+        BackendSlots.get().account = null;
+        pickedBank = null;
+        goOnboarding(ONBOARD_INCOME);
+    }
+
+    private void cancelRelink() {
+        hideBankLink();
+        if (BackendSlots.get().account == null) BackendSlots.get().account = relinkPrev;
+        // 은행 앱에서 연결까지 했다면 예산·수입이 바뀌었을 수 있어 원래 계좌 사람 것으로 되돌린다
+        Settings st = store.settings();
+        BackendSlots.Account a = relinkPrev;
+        if (a != null) {
+            Personas.apply(Personas.forAccount(a), BackendSlots.get(), st);
+            st.linkedBank = a.bank;
+            st.linkedKind = a.kind;
+            st.linkedNumber = a.maskedNumber;
+            store.saveSettings(st);
+            BackendSlots.get().account = a;
+        }
+        relink = false;
+        relinkPrev = null;
+        onboardStep = ONBOARD_DONE;
+        open(PAGE_SETTINGS);
     }
 
     /**
@@ -966,24 +1046,45 @@ public class MainActivity extends Activity {
         add(Ui.screenHeader(this, "설정", v -> open(PAGE_HOME)), 0);
         add(statusCard(), Ui.Space.BLOCK);
 
-        // 예산
-        add(Ui.sectionTitle(this, "예산"), Ui.Space.SECTION);
+        BackendSlots data = BackendSlots.get();
+
+        // 연결된 계좌
+        add(Ui.sectionTitle(this, "연결된 계좌"), Ui.Space.SECTION);
+        if (data.account != null) {
+            add(linkedAccountCard(data.account, v -> startRelink(), false), Ui.Space.ITEM);
+        } else {
+            LinearLayout ac = Ui.card(this);
+            ac.addView(Ui.body(this, "연결된 계좌가 없어요"));
+            TextView link = Ui.textLink(this, "은행 고르기 ›", Ui.BRAND, v -> startRelink());
+            Ui.stack(ac, link, Ui.Space.ITEM);
+            add(ac, Ui.Space.ITEM);
+        }
+
+        // 정기 수입 (연결된 계좌에서 찾은 값)
+        add(Ui.sectionTitle(this, "정기 수입"), Ui.Space.SECTION);
+        add(incomeCard(s, data, false), Ui.Space.ITEM);
+
+        // 정기 지출 (고정지출 · 고칠 수 있음)
+        add(Ui.sectionTitle(this, "정기 지출"), Ui.Space.SECTION);
         LinearLayout bc = Ui.card(this);
-        EditText income = numberField(bc, "월 수입", s.income);
-        EditText payday = numberField(bc, "급여일 (1~28)", s.payday);
+        bc.addView(Ui.caption(this, "합계 " + Money.won(s.fixedTotal())));
         EditText rent = numberField(bc, "월세·관리비", s.rent);
         EditText util = numberField(bc, "공과금", s.utilities);
         EditText phone = numberField(bc, "통신비", s.phone);
         EditText trans = numberField(bc, "교통비", s.transport);
         EditText subs = numberField(bc, "구독료", s.subscriptions);
-        EditText mart = numberField(bc, "식비: 마트", s.martBudget);
-        EditText cpg = numberField(bc, "식비: 쿠팡 식료품", s.coupangFoodBudget);
         add(bc, Ui.Space.ITEM);
+
+        // 식비 예산
+        add(Ui.sectionTitle(this, "식비 예산"), Ui.Space.SECTION);
+        LinearLayout fc = Ui.card(this);
+        fc.addView(Ui.caption(this, "합계 " + Money.won(s.foodBudget())));
+        EditText mart = numberField(fc, "마트 장보기", s.martBudget);
+        EditText cpg = numberField(fc, "쿠팡 식료품", s.coupangFoodBudget);
+        add(fc, Ui.Space.ITEM);
 
         add(Ui.button(this, "설정 저장", true, v -> {
             Settings st = store.settings();
-            st.income = Ui.num(income, st.income);
-            st.payday = (int) Math.max(1, Math.min(28, Ui.num(payday, st.payday)));
             st.rent = Ui.num(rent, st.rent);
             st.utilities = Ui.num(util, st.utilities);
             st.phone = Ui.num(phone, st.phone);

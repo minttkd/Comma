@@ -10,8 +10,8 @@ android {
         applicationId = "com.shimpyo.app"
         minSdk = 26
         targetSdk = 34
-        versionCode = 26
-        versionName = "0.26"
+        versionCode = 27
+        versionName = "0.27"
     }
 
     buildTypes {

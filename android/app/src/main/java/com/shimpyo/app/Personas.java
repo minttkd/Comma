@@ -36,13 +36,23 @@ final class Personas {
         };
     }
 
+    /** 정기 수입 내역만 (앱을 다시 켰을 때 저장된 계좌로 되살릴 때). */
+    static void applyIncome(P p, BackendSlots d) {
+        d.incomeSources.clear();
+        if (p == P.JISU) {
+            d.incomeSources.add(new BackendSlots.IncomeSource("월급", 2_100_000));
+        } else {
+            d.incomeSources.add(new BackendSlots.IncomeSource("용돈", 600_000));
+            d.incomeSources.add(new BackendSlots.IncomeSource("알바비", 500_000));
+        }
+    }
+
     /** 계좌를 연결하면: 정기 수입 내역(BackendSlots)과 예산(Settings)을 그 사람 것으로. */
     static void apply(P p, BackendSlots d, Settings s) {
-        d.incomeSources.clear();
+        applyIncome(p, d);
         Settings def = new Settings();
         s.payday = 25;
         if (p == P.JISU) {
-            d.incomeSources.add(new BackendSlots.IncomeSource("월급", 2_100_000));
             s.income = 2_100_000;
             s.rent = 650_000;
             s.utilities = 100_000;
@@ -52,8 +62,6 @@ final class Personas {
             s.martBudget = 150_000;
             s.coupangFoodBudget = 100_000;
         } else {
-            d.incomeSources.add(new BackendSlots.IncomeSource("용돈", 600_000));
-            d.incomeSources.add(new BackendSlots.IncomeSource("알바비", 500_000));
             s.income = def.income;
             s.rent = def.rent;
             s.utilities = def.utilities;
