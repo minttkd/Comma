@@ -756,15 +756,12 @@ public class MainActivity extends Activity {
         tileR.setBackground(Ui.round(this, Ui.WHITE, HOME_RADIUS));
         add(Ui.tilePair(this, tileL, tileR, Ui.Space.BLOCK), Ui.Space.BLOCK);
         int reportDefault = ReportViews.defaultOffset(s, recs, LocalDate.now(zone), zone);
-        View entry = Ui.entryCard(this, new Sumsumi(this, Sumsumi.Mood.OKAY, true).prop(topCategoryProp(s, recs, reportDefault)),
-                reportDefault < 0 ? "지난달 소비 돌아보기" : "이번 달 소비 돌아보기",
-                v -> { reportOffset = reportDefault; open(PAGE_REPORT); });
-        entry.setBackground(Ui.round(this, Ui.REPORT_BG, HOME_RADIUS));
-        add(entry, Ui.Space.BLOCK);
-        View stopped = Ui.highlightBox(this, st.prevented == 0 ? Sumsumi.Mood.NORMAL : Sumsumi.Mood.PROUD, "이번 달 멈춘 결제", st.prevented == 0 ? "멈춘 결제가 여기 쌓여요"
-                : st.prevented + "번 멈춰서 " + Money.won(st.preventedSum) + " 아꼈어요", v -> open(PAGE_STOPPED));
-        stopped.setBackground(Ui.round(this, Ui.BRAND_LIGHT, HOME_RADIUS));
-        add(stopped, Ui.Space.BLOCK);
+        add(homeEntry(new Sumsumi(this, Sumsumi.Mood.OKAY, true).prop(topCategoryProp(s, recs, reportDefault)), null,
+                reportDefault < 0 ? "지난달 소비 돌아보기" : "이번 달 소비 돌아보기", HOME_REPORT_BG, HOME_REPORT_SUB,
+                v -> { reportOffset = reportDefault; open(PAGE_REPORT); }), Ui.Space.BLOCK);
+        add(homeEntry(new Sumsumi(this, st.prevented == 0 ? Sumsumi.Mood.NORMAL : Sumsumi.Mood.PROUD, true), "이번 달 멈춘 결제",
+                st.prevented == 0 ? "멈춘 결제가 여기 쌓여요" : st.prevented + "번 멈춰서 " + Money.won(st.preventedSum) + " 아꼈어요",
+                Ui.GREEN, Ui.ON_HERO_SUB, v -> open(PAGE_STOPPED)), Ui.Space.BLOCK);
         add(Ui.sectionHeader(this, "결제 내역", "더보기 ›", v -> open(PAGE_RECORDS)), Ui.Space.BLOCK);
         add(recentRecordsCard(recs), Ui.Space.BLOCK);
 
@@ -811,6 +808,33 @@ public class MainActivity extends Activity {
         Ui.stack(c, Ui.text(this, "오늘 한도 " + Money.won(b.limit) + " 중 " + Money.won(b.todaySpent) + " 사용",
                 Ui.Font.CAPTION, Ui.TODAY_SUB, Ui.REGULAR), Ui.Space.ITEM);
         return c;
+    }
+
+    /** 홈 "소비 돌아보기" 입구: 진한 파랑 바탕 + 흰 글자 (아래 진한 초록 "멈춘 결제"와 구분). */
+    private static final int HOME_REPORT_BG = android.graphics.Color.parseColor("#3B6EA5");
+    private static final int HOME_REPORT_SUB = android.graphics.Color.parseColor("#DCE8F5");
+
+    /** 홈 입구 카드: 진한 색 바탕 · 왼쪽 숨숨이 · (작은 머리말) · 흰 굵은 제목 · 오른쪽 큰 화살표. */
+    private View homeEntry(View lead, String caption, String title, int bg, int subColor, View.OnClickListener click) {
+        LinearLayout b = Ui.h(this);
+        b.setGravity(Gravity.CENTER_VERTICAL);
+        b.setBackground(Ui.round(this, bg, HOME_RADIUS));
+        Ui.pad(b, this, Ui.Pad.BOX_H, Ui.Pad.BOX_V);
+        LinearLayout.LayoutParams lp = Ui.square(this, Ui.Size.CARD_FACE);
+        lp.rightMargin = Ui.dp(this, Ui.Space.ROW);
+        b.addView(lead, lp);
+        LinearLayout texts = Ui.v(this);
+        if (caption != null) texts.addView(Ui.text(this, caption, Ui.Font.CAPTION, subColor, Ui.MEDIUM));
+        TextView t = Ui.text(this, title, Ui.Font.BUTTON, Ui.WHITE, Ui.BOLD);
+        if (caption != null) Ui.stack(texts, t, Ui.Space.LINE);
+        else texts.addView(t);
+        b.addView(texts, new LinearLayout.LayoutParams(0, ViewGroup.LayoutParams.WRAP_CONTENT, 1f));
+        TextView arrow = Ui.text(this, "→", 24, Ui.WHITE, Ui.BOLD);
+        arrow.setIncludeFontPadding(false);
+        Ui.inline(b, arrow, Ui.Space.ITEM);
+        b.setClickable(true);
+        b.setOnClickListener(click);
+        return b;
     }
 
     /** 홈 카드 모서리: 숨숨이처럼 둥글게. */
@@ -911,16 +935,25 @@ public class MainActivity extends Activity {
     }
 
     private View reviewSheetContent(Record r, int total) {
+        // 강조: 쉼표 초록 시트 + 흰 글자, 버튼은 흰 바탕
         LinearLayout sheet = Ui.bottomSheet(this, Ui.Pad.REVIEW_SHEET_TOP);
+        sheet.setBackground(Ui.corners(this, Ui.GREEN, Ui.Radius.SHEET, Ui.Radius.SHEET, 0, 0));
         LinearLayout tags = Ui.h(this);
-        tags.addView(Ui.tag(this, "어제 결제 돌아보기", Ui.Tone.BRAND), Ui.wrap());
-        if (total > 1) Ui.inline(tags, Ui.text(this, total + "건 중 1번째", Ui.Font.CAPTION, Ui.SUBTLE, Ui.MEDIUM), Ui.Space.ITEM);
+        TextView tag = Ui.text(this, "어제 결제 돌아보기", Ui.Font.CAPTION, Ui.WHITE, Ui.MEDIUM);
+        tag.setBackground(Ui.round(this, Ui.ON_HERO_BOX, Ui.Radius.TAG));
+        Ui.pad(tag, this, Ui.Pad.TAG_H, Ui.Pad.TAG_V);
+        tags.addView(tag, Ui.wrap());
+        if (total > 1) Ui.inline(tags, Ui.text(this, total + "건 중 1번째", Ui.Font.CAPTION, Ui.ON_HERO_SUB, Ui.MEDIUM), Ui.Space.ITEM);
         sheet.addView(tags, Ui.fillW());
 
-        Ui.stack(sheet, Ui.heading(this, "구매한 " + appShort(r.app) + " " + r.title + " " + Money.won(r.amount) + ",\n만족하시나요?"), Ui.Space.BLOCK);
-        Ui.stack(sheet, Ui.buttonPair(this,
-                Ui.button(this, "만족해요", false, v -> answerReview(r, "만족해요")),
-                Ui.button(this, "후회돼요", false, v -> answerReview(r, "후회돼요"))), Ui.Space.BLOCK);
+        TextView q = Ui.heading(this, "구매한 " + appShort(r.app) + " " + r.title + " " + Money.won(r.amount) + ",\n만족하시나요?");
+        q.setTextColor(Ui.WHITE);
+        Ui.stack(sheet, q, Ui.Space.BLOCK);
+        TextView ok = Ui.button(this, "만족해요", false, v -> answerReview(r, "만족해요"));
+        TextView bad = Ui.button(this, "후회돼요", false, v -> answerReview(r, "후회돼요"));
+        ok.setBackground(Ui.round(this, Ui.WHITE, Ui.Radius.BOX));
+        bad.setBackground(Ui.round(this, Ui.WHITE, Ui.Radius.BOX));
+        Ui.stack(sheet, Ui.buttonPair(this, ok, bad), Ui.Space.BLOCK);
         return sheet;
     }
 
