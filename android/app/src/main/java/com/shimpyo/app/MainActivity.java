@@ -928,9 +928,22 @@ public class MainActivity extends Activity {
 
     // ================================================================== 설정 · 테스트 도구 (홈 › 톱니바퀴)
 
+    /**
+     * 개발자 도구: 설정 제목을 길게 누르면 열고 닫는다 (앱을 새로 켜면 닫힌 상태).
+     * 평소 설정에는 보이지 않는 현재 세션 · 앱 버전 · 야식 반복 트리거 · 테스트 도구 · 감지 로그 · 마지막 화면 텍스트를 담는다.
+     */
+    private static boolean devTools = false;
+
     private void settingsScreen() {
         Settings s = store.settings();
-        add(Ui.screenHeader(this, "설정", v -> open(PAGE_HOME)), 0);
+        View header = Ui.screenHeader(this, "설정", v -> open(PAGE_HOME));
+        header.setOnLongClickListener(v -> {
+            devTools = !devTools;
+            toast(devTools ? "개발자 도구를 열었어요" : "개발자 도구를 닫았어요");
+            refresh();
+            return true;
+        });
+        add(header, 0);
         add(statusCard(), Ui.Space.BLOCK);
 
         // 예산
@@ -947,24 +960,28 @@ public class MainActivity extends Activity {
         EditText cpg = numberField(bc, "식비: 쿠팡 식료품", s.coupangFoodBudget);
         add(bc, Ui.Space.ITEM);
 
-        // 야식
-        add(Ui.sectionTitle(this, "야식 반복 트리거"), Ui.Space.SECTION);
-        LinearLayout lc = Ui.card(this);
+        // 야식 반복 트리거 (개발자 도구에서만)
         final boolean[] lateOn = {s.lateEnabled};
-        TextView toggle = Ui.chip(this, lateOn[0] ? "켜짐" : "꺼짐", lateOn[0], null);
-        toggle.setOnClickListener(v -> {
-            lateOn[0] = !lateOn[0];
-            toggle.setText(lateOn[0] ? "켜짐" : "꺼짐");
-        });
-        LinearLayout tr = Ui.h(this);
-        tr.addView(Ui.bodySmall(this, "야식 반복 개입"), Ui.weight1());
-        tr.addView(toggle);
-        lc.addView(tr);
-        EditText ls = numberField(lc, "시작 시각 (시)", s.lateStartHour);
-        EditText le = numberField(lc, "끝 시각 (시)", s.lateEndHour);
-        EditText lw = numberField(lc, "최근 며칠", s.lateWindowDays);
-        EditText ln = numberField(lc, "몇 번째부터 개입", s.lateCount);
-        add(lc, Ui.Space.ITEM);
+        EditText ls = null, le = null, lw = null, ln = null;
+        if (devTools) {
+            add(Ui.sectionTitle(this, "야식 반복 트리거"), Ui.Space.SECTION);
+            LinearLayout lc = Ui.card(this);
+            TextView toggle = Ui.chip(this, lateOn[0] ? "켜짐" : "꺼짐", lateOn[0], null);
+            toggle.setOnClickListener(v -> {
+                lateOn[0] = !lateOn[0];
+                toggle.setText(lateOn[0] ? "켜짐" : "꺼짐");
+            });
+            LinearLayout tr = Ui.h(this);
+            tr.addView(Ui.bodySmall(this, "야식 반복 개입"), Ui.weight1());
+            tr.addView(toggle);
+            lc.addView(tr);
+            ls = numberField(lc, "시작 시각 (시)", s.lateStartHour);
+            le = numberField(lc, "끝 시각 (시)", s.lateEndHour);
+            lw = numberField(lc, "최근 며칠", s.lateWindowDays);
+            ln = numberField(lc, "몇 번째부터 개입", s.lateCount);
+            add(lc, Ui.Space.ITEM);
+        }
+        final EditText fls = ls, fle = le, flw = lw, fln = ln;
 
         add(Ui.button(this, "설정 저장", true, v -> {
             Settings st = store.settings();
@@ -977,25 +994,29 @@ public class MainActivity extends Activity {
             st.subscriptions = Ui.num(subs, st.subscriptions);
             st.martBudget = Ui.num(mart, st.martBudget);
             st.coupangFoodBudget = Ui.num(cpg, st.coupangFoodBudget);
-            st.lateEnabled = lateOn[0];
-            st.lateStartHour = (int) Ui.num(ls, st.lateStartHour) % 24;
-            st.lateEndHour = (int) Ui.num(le, st.lateEndHour) % 24;
-            st.lateWindowDays = (int) Math.max(1, Ui.num(lw, st.lateWindowDays));
-            st.lateCount = (int) Math.max(1, Ui.num(ln, st.lateCount));
+            if (fls != null) {
+                st.lateEnabled = lateOn[0];
+                st.lateStartHour = (int) Ui.num(fls, st.lateStartHour) % 24;
+                st.lateEndHour = (int) Ui.num(fle, st.lateEndHour) % 24;
+                st.lateWindowDays = (int) Math.max(1, Ui.num(flw, st.lateWindowDays));
+                st.lateCount = (int) Math.max(1, Ui.num(fln, st.lateCount));
+            }
             store.saveSettings(st);
             toast("저장했어요");
             refresh();
         }), Ui.Space.STACK);
 
-        testTools(s);
+        if (devTools) testTools(s);
     }
 
-    /** 설정 상태 카드: 결제 감지 · 현재 세션 · 앱 버전 · 접근성 설정 링크. */
+    /** 설정 상태 카드: 결제 감지 · 접근성 설정 링크 (개발자 도구가 열려 있으면 현재 세션 · 앱 버전도). */
     private View statusCard() {
         LinearLayout c = Ui.card(this);
         c.addView(Ui.kv(this, "결제 감지(접근성 서비스)", serviceEnabled() ? "켜짐" : "꺼짐", true));
-        Ui.stack(c, Ui.kv(this, "현재 세션", GuardService.instance == null ? "서비스 미연결" : GuardService.instance.sessionState(), false), Ui.Space.ITEM);
-        Ui.stack(c, Ui.kv(this, "앱 버전", appVersion() + " · Figma Hi-Fi 디자인", false), Ui.Space.ITEM);
+        if (devTools) {
+            Ui.stack(c, Ui.kv(this, "현재 세션", GuardService.instance == null ? "서비스 미연결" : GuardService.instance.sessionState(), false), Ui.Space.ITEM);
+            Ui.stack(c, Ui.kv(this, "앱 버전", appVersion() + " · Figma Hi-Fi 디자인", false), Ui.Space.ITEM);
+        }
         TextView open = Ui.textLink(this, "접근성 설정 열기 ›", Ui.BRAND, v -> openA11ySettings());
         Ui.pad(open, this, 0, Ui.Space.ITEM, 0, 0);
         c.addView(open);
@@ -1010,7 +1031,7 @@ public class MainActivity extends Activity {
     }
 
     private void testTools(Settings s) {
-        add(Ui.sectionTitle(this, "테스트 도구 (시연용)"), Ui.Space.LARGE);
+        add(Ui.sectionTitle(this, "테스트 도구 (개발자 도구 · 설정 제목을 길게 누르면 닫혀요)"), Ui.Space.LARGE);
         LinearLayout tc = Ui.card(this);
         tc.addView(Ui.body(this, "시나리오 기준: 수입 110만 · 고정 62.5만 · 식비 10만 → 여윳돈 37.5만, 10일째 적용 한도 14,000원."));
         tc.addView(testButton("① 대학생 수민: 10일째로 맞추기 (용돈·알바 110만 · 이전 지출 95,000원)", () -> {
