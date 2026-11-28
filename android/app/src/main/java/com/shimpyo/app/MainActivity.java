@@ -798,7 +798,9 @@ public class MainActivity extends Activity {
         Ui.inlineFill(head, texts, Ui.Space.ROW);
         c.addView(head, Ui.fillW());
         float ratio = b.limit == 0 ? 1f : Math.min(1f, (float) b.todaySpent / b.limit);
-        Ui.stack(c, Ui.bar(this, ratio, over ? Ui.RED : Ui.BRAND, Ui.WHITE), Ui.Space.ITEM);
+        // 게이지 색: 초과 → 빨강, 거의 다 씀(주의) → 노랑, 여유 → 먹색
+        int barColor = over ? Ui.RED : signal == 1 ? Ui.TODAY_WARN_BAR : Ui.BRAND;
+        Ui.stack(c, Ui.bar(this, ratio, barColor, Ui.WHITE), Ui.Space.ITEM);
         Ui.stack(c, Ui.text(this, "오늘 한도 " + Money.won(b.limit) + " 중 " + Money.won(b.todaySpent) + " 사용",
                 Ui.Font.CAPTION, Ui.TODAY_SUB, Ui.REGULAR), Ui.Space.ITEM);
         return c;
